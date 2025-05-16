@@ -7,6 +7,12 @@ SECTIONS {
 		KEEP(*(.text*))
 	}
 
+	.init_array ALIGN(4) : { /* comes after text since we are refrencing code*/
+		__init_array_start = .;
+		KEEP(*(.init_array))
+		__init_array_end = .;
+	}
+
 	. = 0x200000;           /* start data at this location for MMU setup */
 	.rodata : {
 		KEEP(*(.rodata*))
@@ -15,6 +21,8 @@ SECTIONS {
 		KEEP(*(.data*))
 	}
 	.bss : {
+		__bss_start__ = .;
 		KEEP(*(.bss*))
+		__bss_end__ = .;
 	}
 }

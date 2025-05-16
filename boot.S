@@ -92,7 +92,7 @@ el1_entry:
 	ldr x2, =_start 
 	mov sp, x2 // stack pointer starts _start
 	// branch and link to main routine in C/C++
-	bl kmain
+	bl main
 
 .global _reboot
 _reboot:
