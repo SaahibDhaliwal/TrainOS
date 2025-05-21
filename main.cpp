@@ -3,6 +3,7 @@
 #include <array>
 
 #include "rpi.h"
+#include "task_manager.h"
 
 extern "C" void setup_mmu();
 
@@ -34,6 +35,7 @@ int main() {
     initialize_bss();  // sets entire bss region to 0's
     run_init_array();  // call constructors
 
+
     // set up GPIO pins for both console and marklin uarts
     gpio_init();
     // not strictly necessary, since console is configured during boot
@@ -43,14 +45,14 @@ int main() {
 
     unsigned int counter = 1;
 
-    // declare kernel data structures
-    // initialize( tds ); // tds is an array of TDs
-    // for(int i = 0; i < 4; i++ ) {
-    // 	active = schedule( tds );
-    // 	kerxit( active, req ); // req is a pointer to a Request
-    // 	handle( tds, req );
-    // }
+    TaskManager taskManager;
 
+    //   initialize();
+    //   for (;;) {
+    //     currtask = schedule();
+    //     request = activate(currtask); // activate does eret
+    //     handle(request);
+    //   }
     // initialize user task: set up stack and "fake" context and resume
 
     for (;;) {
