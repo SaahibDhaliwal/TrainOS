@@ -1,36 +1,4 @@
-.text
-.align 2
 
-.global Create
-Create:
-    svc 0
-    br x30
-
-.global MyTid
-MyTid:
-    svc 1
-    br x30
-
-.global MyParentTid
-MyParentTid:
-    svc 2
-    br x30
-
-.global Yield
-Yield:
-    svc 3
-    br x30
-
-.global Exit
-Exit:
-    svc 4
-    br x30
-
-//this should probably live somewhere else
-.global get_esr
-get_esr:
-    mrs x0, ESR_EL1
-    br x30
 
 .macro callee_save_registers
 
@@ -108,17 +76,20 @@ get_esr:
 .endm
 
 
-.global	user2kernel
-user2kernel:
+.global	user_to_kernel
+user_to_kernel:
 // https://developer.arm.com/documentation/102412/0103/Handling-exceptions/Taking-an-exception?lang=en#md244-taking-an-exception__stack-pointer-selection-and-stack-pointer-registers
     // As we enter the first-level handler at the vector table, we are using SP_ELx. This should by default be used to save the register context.
     // However, we typically then switch to use SP_EL0 instead for any further processing.
     
-  
+    //shifts arguments by one so we can use x0
+    // if there are more than two arguments, add below
+    mov x2, x1
+    mov x1, x0
     // if you care about whats in x2, save it on the stack on your end...
     // moves stack pointer to the user one so that we save their stuff there
-    mrs x2, sp_el0
-    mov sp, x2
+    mrs x0, sp_el0
+    mov sp, x0
     //might be able to condense it into "mrs _el0, sp"
 
     //save their info on their stack
@@ -126,33 +97,33 @@ user2kernel:
     callee_save_registers 
 
 
-    mrs x2, elr_el1
+    mrs x0, elr_el1
     // write the register to where the stack pointer is pointing
-    str x2, [sp, -16]
+    str x0, [sp, -16]
     
-    mrs x2, spsr_el1
-    str x2, [sp, -24]
+    mrs x0, spsr_el1
+    str x0, [sp, -24]
 
-    mrs x2, sp_el0
-    str x2, [sp, -32]
+    mrs x0, sp_el0
+    str x0, [sp, -32]
 
     //change stack pointer back to el1, from before we did anything 
 
-    mrs x2, sp_el1
-    mov sp, x2
+    mrs x0, sp_el1
+    mov sp, x0
     
 
     restore_kernel
 
-    // Ensure that the C handler code knows the exception code, provided in x2
-    mrs x2, elr_el1
+    // Ensure that the C handler code knows the exception code, provided in x0
+    mrs x0, elr_el1
 
     // branch to C++ to handle whatever SVC code is provided
-    bl handle_request
+    bl x30
 
 
-.global	kernel2user
-kernel2user:
+.global	kernel_to_user
+kernel_to_user:
     
     save_kernel
    // pray that x2 has the stack pointer of the user task

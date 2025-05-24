@@ -30,7 +30,7 @@ void initialize_bss() {
 
 int main() {
 #if defined(MMU)
-    setup_mmu();
+    setup_mmu();`
 #endif
     initialize_bss();  // sets entire bss region to 0's
     run_init_array();  // call constructors
@@ -49,9 +49,9 @@ int main() {
 
     //   initialize();
     //   for (;;) {
-    //     currtask = schedule();
-    //     request = activate(currtask); // activate does eret
-    //     handle(request);
+    //     currtask_TID = taskManager.get
+    //     errorcode = activate(currtask_TID); 
+    //     handle_request(errorcode);
     //   }
     // initialize user task: set up stack and "fake" context and resume
 

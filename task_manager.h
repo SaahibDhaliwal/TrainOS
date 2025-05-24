@@ -21,5 +21,5 @@ class TaskManager {
 
   public:
     TaskManager();
-    void next_scheduled_task();
+    TaskDescriptor* next_scheduled_task();
 };

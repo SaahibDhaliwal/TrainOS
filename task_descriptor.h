@@ -18,6 +18,6 @@ class TaskDescriptor {
    public:
     TaskDescriptor();
 
-    uint64_t GetTid();
-    uint64_t GetPid();
+    uint64_t getTid();
+    uint64_t getPid();
 };

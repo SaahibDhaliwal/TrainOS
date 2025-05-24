@@ -7,10 +7,6 @@ vbar_init:
     //br x30
     ret
 
-@ .align 2
-@ dummy_handler:
-@     wfe
-@ 	b dummy_handler
 
 
 // See https://developer.arm.com/documentation/102412/0103/Handling-exceptions/Taking-an-exception?lang=en
@@ -53,7 +49,7 @@ vbar_baseaddr:
 // ---------------------------------
     .align 7 
     lower_el_AARCH64_SYNCH:
-        bl kernel2user          //Important one for A1
+        bl user_to_kernel          //Important one for A1
 
     .align 7 
     lower_el_AARCH64_IRQ:
