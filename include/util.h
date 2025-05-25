@@ -1,5 +1,5 @@
-#ifndef _util_h_
-#define _util_h_ 1
+#ifndef __UTIL__
+#define __UTIL__
 
 int a2d(char ch);
 char a2i(char ch, char **src, int base, int *nump);
