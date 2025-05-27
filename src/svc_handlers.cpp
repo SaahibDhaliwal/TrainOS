@@ -24,10 +24,10 @@ void dummy_handler() {
         "str x30, [%0, #240]\n"
         :
         : "r"(regs)
-        : "x16", "x17", "memory");
+        : "x16", "memory"); //clobber list
 
     for (int i = 0; i < 31; i++) {
         // note that this truncates to the lower 32 bits
-        uart_printf(CONSOLE, "x%u = %x\n", i, (unsigned int)regs[i]);
+        uart_printf(CONSOLE, "x%u = %x\n\r", i, regs[i]);
     }
 }

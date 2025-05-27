@@ -51,22 +51,7 @@ extern "C" int kmain() {
         uint32_t request = taskManager.activate(curTask);
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
-
-    unsigned int counter = 1;
-    for (;;) {
-        uart_printf(CONSOLE, "PI[%u]> ", counter++);
-        for (;;) {
-            char c = uart_getc(CONSOLE);
-            uart_putc(CONSOLE, c);
-            if (c == '\r') {
-                uart_putc(CONSOLE, '\n');
-                break;
-            } else if (c == 'q' || c == 'Q') {
-                uart_puts(CONSOLE, "\r\n");
-                return 0;
-            }  // if
-        }  // for
-    }  // for
+    return 0;
 }  // kmain
 
 #if !defined(MMU)

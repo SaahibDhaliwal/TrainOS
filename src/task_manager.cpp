@@ -7,7 +7,6 @@
 #include "task_descriptor.h"
 
 extern "C" {
-uint32_t get_esr();  // in contextswitch.S
 uint32_t kernelToUser(Context* kernelContext, Context* userTaskContext);
 }
 

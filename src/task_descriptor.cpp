@@ -34,7 +34,7 @@ uint64_t TaskDescriptor::getTid() const {
 
 uint64_t TaskDescriptor::getReg(uint8_t reg) const {
     if (reg >= 31) {
-        uart_printf(CONSOLE, "Trying to get register %d!\n", reg);
+        uart_printf(CONSOLE, "Trying to get register %d!\n\r", reg);
         return 0;
     }
 
