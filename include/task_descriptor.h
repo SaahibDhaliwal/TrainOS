@@ -7,8 +7,6 @@
 
 enum class TaskState { UNDEFINED, ACTIVE, READY, EXITED, SEND_BLOCKED, RECEIVE_BLOCKED, REPLY_BLOCKED, EVENT_BLOCKED };
 
-constexpr uint8_t MAX_PRIORITY = 64;
-
 class TaskDescriptor {
     Context context;            // task context
     uint64_t tid;               // task identifier
