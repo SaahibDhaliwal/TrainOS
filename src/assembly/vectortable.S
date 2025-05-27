@@ -7,11 +7,6 @@ vbar_init:
     //br x30
     ret
 
- .align 2
- dummy_handler:
-     wfe
- 	b dummy_handler
-
 
 // See https://developer.arm.com/documentation/102412/0103/Handling-exceptions/Taking-an-exception?lang=en
 
