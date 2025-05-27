@@ -24,10 +24,7 @@ class TaskManager {
    private:
     uint64_t nextTaskId;             // tid of next task
     Stack<TaskDescriptor> freelist;  // free list of TaskDescriptor's
-
-    Context kernelContext;  // kernel's context
-
-    // alignas(16) char stackSlabs[Config::USER_TASK_STACK_SIZE * Config::MAX_TASKS];
+    Context kernelContext;  // kernel's contex
     TaskDescriptor taskSlabs[Config::MAX_TASKS];              // slabs of TaskDescriptor's
     Queue<TaskDescriptor> readyQueues[Config::MAX_PRIORITY];  // intrusive scheduling queue
 

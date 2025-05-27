@@ -9,10 +9,10 @@ SECTIONS {
 
 	/* mark constructor initialization array */
   	.init_array : ALIGN(4) {
-    __init_array_start = .;
-    KEEP(*(.init_array*))
-    __init_array_end = .;
-  }
+		__init_array_start = .;
+		KEEP(*(.init_array*))
+		__init_array_end = .;
+    }
 
 	. = 0x200000;           /* start data at this location for MMU setup */
 	.rodata : {

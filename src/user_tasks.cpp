@@ -12,21 +12,21 @@ void FirstUserTask() {
     const uint64_t higherPrio = 2 + 1;
 
     // create two tasks at a lower priority
-    uart_printf(CONSOLE, "Created: %u\n", Create(lowerPrio, &TestTask));
-    uart_printf(CONSOLE, "Created: %u\n", Create(lowerPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\n\r", Create(lowerPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\n\r", Create(lowerPrio, &TestTask));
 
     // create two tasks at a higher priority
-    uart_printf(CONSOLE, "Created: %u\n", Create(higherPrio, &TestTask));
-    uart_printf(CONSOLE, "Created: %u\n", Create(higherPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\n\r", Create(higherPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\n\r", Create(higherPrio, &TestTask));
 
-    uart_printf(CONSOLE, "FirstUserTask: exiting\n");
+    uart_printf(CONSOLE, "FirstUserTask: exiting\n\r");
     Exit();
 }
 
 void TestTask() {
-    uart_printf(CONSOLE, "[Task %u] Parent: %u\n", MyTid(), MyParentTid());
+    uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", MyTid(), MyParentTid());
     Yield();
-    uart_printf(CONSOLE, "[Task %u] Parent: %u\n", MyTid(), MyParentTid());
+    uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", MyTid(), MyParentTid());
     Exit();
 }
 

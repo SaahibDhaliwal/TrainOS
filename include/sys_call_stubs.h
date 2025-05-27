@@ -1,4 +1,3 @@
-
 #ifndef __SYS_CALL_STUBS__
 #define __SYS_CALL_STUBS__
 
