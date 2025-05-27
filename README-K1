@@ -4,7 +4,7 @@ Building (linux.student.cs.uwaterloo.ca)
 Clone repo:
 git clone https://git.uwaterloo.ca/dduranro/kernel.git
 cd kernel
-git checkout 
+git checkout a9f0dc5c795f298e617402ce6c17b97d509f5340
 make
 
 That is, you type in the console 'make' to compile the program.
