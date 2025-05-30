@@ -1,5 +1,3 @@
-#include <string.h>
-
 #include <array>
 
 #include "rpi.h"
@@ -43,12 +41,21 @@ extern "C" int kmain() {
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
+    // Trying to do:
+    // IdleTask task
+    // auto memberPtr = &IdleTask::main; <-- passing that doesnt work since pointer also holds info about object 
+    
+    // This doesnt work either 
+    // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( IdleTask::staticMain ));       // idle task
+    // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( FirstUserTask::staticMain ));       // idle task
+    taskManager.createTask(nullptr, 3, reinterpret_cast<uint64_t>(NameServer));       // this should have tid = 0
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));       // idle task
     taskManager.createTask(nullptr, 2, reinterpret_cast<uint64_t>(FirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
+        //if (static_cast<SYSCALL_NUM>(request) == SYSCALL_NUM::ERROR) break; // user SP is out of bounds
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
     return 0;

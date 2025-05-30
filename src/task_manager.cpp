@@ -57,5 +57,18 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 value is returned when switching from user to kernel.
     uint32_t ESR_EL1 = kernelToUser(&kernelContext, task->getMutableContext());
+
+//     // Check if the SP of the task has gotten past it's bounds
+//    uint64_t checksp = task->getMutableContext()->sp;
+//    uint64_t stacktop = Config::USER_STACK_BASE - (task->getSlabIdx() * Config::USER_TASK_STACK_SIZE);
+//    uint64_t stacklimit = stacktop - Config::USER_TASK_STACK_SIZE;
+   
+//    if (checksp > stacktop || checksp < stacklimit){
+//         uart_printf(CONSOLE, "stacktop:   %u \n\r", stacktop);
+//         uart_printf(CONSOLE, "stacklimit: %u \n\r", stacklimit);
+//         uart_printf(CONSOLE, "USER SP:    %u \n\r", checksp);
+//         uart_printf(CONSOLE, "Error: user stack pointer has been corrupted.");
+//         return 5; //hardcoded rn for error
+//    }
     return ESR_EL1 & 0xFFFFFF;
 }

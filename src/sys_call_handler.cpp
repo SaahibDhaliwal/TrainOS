@@ -37,6 +37,18 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
             taskManager->exitTask(curTask);
             break;
         }
+        case SYSCALL_NUM::SEND: {
+           // taskManager->exitTask(curTask);
+            break;
+        }
+        case SYSCALL_NUM::RECEIVE: {
+           // taskManager->exitTask(curTask);
+            break;
+        }
+        case SYSCALL_NUM::REPLY: {
+            //taskManager->exitTask(curTask);
+            break;
+        }
         default: {  // we can make this more extensive
             uart_printf(CONSOLE, "Unknown syscall: %u\n", N);
             break;

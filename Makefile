@@ -21,7 +21,8 @@ ifeq ($(OPT),on)
 OPTFLAGS=-O3
 endif
 WARNINGS:=-Wall -Wextra -Wpedantic -Wno-unused-const-variable -Wno-stringop-overflow
-CFLAGS:= -Isrc -Isrc/containers -Iinclude -g -pipe -static -ffreestanding -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(WARNINGS)
+# I had to get rid of freestanding for the map. Says its fine on piazza
+CFLAGS:= -Isrc -Isrc/containers -Iinclude -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(WARNINGS)
 
 # -Wl,option tells gcc to pass 'option' to the linker with commas replaced by spaces
 # doing this rather than calling the linker directly simplifies the compilation procedure

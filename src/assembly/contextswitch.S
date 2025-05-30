@@ -26,6 +26,21 @@ Exit:
     svc 4
     ret
 
+.global Send
+Send:
+    svc 5
+    ret
+
+.global Receive
+Receive:
+    svc 6
+    ret
+
+.global Reply
+Reply:
+    svc 7
+    ret
+
 .macro store_callee_registers context
     str x19, [\context, #(8 * 19)]
     str x20, [\context, #(8 * 20)]
@@ -103,6 +118,8 @@ userToKernel:
     str x0, [x3, #(8 * 0)]
     str x1, [x3, #(8 * 1)]
     str x2, [x3, #(8 * 2)]
+    str x4, [x3, #(8 * 3)]
+    str x5, [x3, #(8 * 4)]  // Message Send has 5 params
 
     // Save SP_EL0
     mrs x2, sp_el0
