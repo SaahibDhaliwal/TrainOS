@@ -48,7 +48,6 @@ extern "C" int kmain() {
     // This doesnt work either 
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( IdleTask::staticMain ));       // idle task
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( FirstUserTask::staticMain ));       // idle task
-    taskManager.createTask(nullptr, 3, reinterpret_cast<uint64_t>(NameServer));       // this should have tid = 0
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));       // idle task
     taskManager.createTask(nullptr, 2, reinterpret_cast<uint64_t>(FirstUserTask));  // spawn parent task
     for (;;) {

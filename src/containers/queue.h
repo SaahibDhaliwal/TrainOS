@@ -24,6 +24,7 @@ class Queue {
         T* node = head;
         head = head->next;
         if (!head) tail = nullptr; //nothing next
+        count--;
         return node;
     }
 

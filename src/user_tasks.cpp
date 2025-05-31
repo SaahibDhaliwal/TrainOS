@@ -11,38 +11,6 @@
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
 
-// FirstUserTask FirstUserTask::instance;
-// void FirstUserTask::main(){
-//      // Assumes FirstUserTask is at Priority 2
-//     const uint64_t lowerPrio = 2 - 1;
-//     const uint64_t higherPrio = 2 + 1;
-
-//     // create two tasks at a lower priority
-//     uart_printf(CONSOLE, "Created: %u\n\r", Create(lowerPrio, TestTask::staticMain));
-//     uart_printf(CONSOLE, "Created: %u\n\r", Create(lowerPrio, TestTask::staticMain));
-
-//     // create two tasks at a higher priority
-//     uart_printf(CONSOLE, "Created: %u\n\r", Create(higherPrio, TestTask::staticMain));
-//     uart_printf(CONSOLE, "Created: %u\n\r", Create(higherPrio, TestTask::staticMain));
-
-//     uart_printf(CONSOLE, "FirstUserTask: exiting\n\r");
-//     Exit();
-// }
-
-// TestTask TestTask::instance;
-// void TestTask::main() {
-//     uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", MyTid(), MyParentTid());
-//     Yield();
-//     uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", MyTid(), MyParentTid());
-//     Exit();
-// }
-
-// IdleTask IdleTask::instance;
-// void IdleTask::main() {
-//     while (true) {
-//         asm volatile("wfe");
-//     }
-// }
 
 void FirstUserTask(){
     //  Assumes FirstUserTask is at Priority 2
@@ -74,16 +42,18 @@ void IdleTask() {
     }
 }
 
+void RPS_Server();
+void RPS_Client();
 
 void RPSFirstUserTask(){
 
-    uart_printf(CONSOLE, "Created NameServer: %u\n\r", Create(9, &NameServer));
+    uart_printf(CONSOLE, "[First User Task] Created NameServer: %u\n\r", Create(9, &NameServer));
 
-    uart_printf(CONSOLE, "Created RPS Server: %u\n\r", Create(9, &RPS_Server));
+    uart_printf(CONSOLE, "[First User Task] Created RPS Server: %u\n\r", Create(9, &RPS_Server));
    
-    uart_printf(CONSOLE, "Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client)); 
+    uart_printf(CONSOLE, "[First User Task] Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client)); 
 
-    uart_printf(CONSOLE, "Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client)); 
+    uart_printf(CONSOLE, "[First User Task] Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client)); 
 
 
     Exit();
@@ -107,7 +77,7 @@ void NameServer() {
 
     // Testing out map implementation
     uint64_t newTID = Create(1, &TestTask);
-    char* test = "AAAA";
+    char test[] = "AAAA";
     NameMap.emplace(newTID, test);
 
     uart_printf(CONSOLE, "Got value: %s\n\r", NameMap[newTID]);
@@ -152,10 +122,8 @@ void RPS_Client() {
 class rps_player{
     rps_player* next = nullptr;
     uint64_t TID;
-    uint64_t paired_with;
-
+    rps_player*  paired_with = nullptr;
     uint64_t slabIdx;
-    
     
     template <typename T>
     friend class Queue;
@@ -164,15 +132,16 @@ class rps_player{
     friend class Stack;
 
     public:
+        // no oop bc lazy :(
+        int waiting_on_pair = 0;
+        int quit = 0;
         rps_player(uint64_t newTID=0){
             TID = newTID;
         }
         uint64_t getTid() {return TID;}
+        rps_player*  getPair() {return paired_with;}
         void setTid(uint64_t id){ TID = id;}
-        void setSlabIdx(uint64_t idx){
-            slabIdx = idx;
-        }
-        void setPair(uint64_t id){ paired_with = id;}
+        void setPair(rps_player*  id){ paired_with = id;}
 };
 
 
@@ -188,16 +157,16 @@ void RPS_Server() {
 
     //initialize our structs
     for (int i = 0; i < MAX_PLAYERS; i += 1) {
-        playerSlabs[i].setSlabIdx(i);
         freelist.push(&playerSlabs[i]);
     } 
-
 
 
     for(;;){
         uint64_t* clientTID = nullptr;
         char msg[128];
         int msgsize = Receive(clientTID, msg, 128);
+
+        uart_printf(CONSOLE, "[RPS Server]: Request from TID: %u , with contents: %s \n\r", *clientTID, msg);
 
         //this will parse the message we receive
         // split along the first space, if found
@@ -226,42 +195,130 @@ void RPS_Server() {
             if (freelist.empty()){
                 uart_printf(CONSOLE, "No more space in free list\r\n");
             }
+            // get new rps player from slab
             rps_player* newplayer = freelist.pop();
             newplayer->setTid(*clientTID);
+            // put them on the end of the queue
             player_queue.push(newplayer);
 
             if(player_queue.tally() < 2){
                 continue;
-            } 
+            }
+
+            char signup_msg[] = "What is your play?";
 
             rps_player* player_one = player_queue.pop();
-            Reply(player_one->getTid(), "What is your play?", 19);
+            Reply(player_one->getTid(), signup_msg, strlen(signup_msg)); 
 
             rps_player* player_two = player_queue.pop();
-            Reply(player_two->getTid(), "What is your play?", 19);
+            Reply(player_two->getTid(), signup_msg, strlen(signup_msg));
 
-            //player_one->
+            player_one->setPair(player_two);
+            player_two->setPair(player_one);
 
             //push both of them on the map of pairs
-            
 
         } else if (!strcmp(command, "PLAY")){
-            //should check if they're already playing
-            //DOESNT WORK ATM
-            // if(*clientTID != player1.TID || *clientTID != player2.TID){
-            //     //reply with error
-            //     Reply(*clientTID, "Error: Did not register!", 21);
-            // }
-            
+
+            for(int i=0; i<MAX_PLAYERS; i++){
+                if (playerSlabs[i].getTid() == *clientTID){
+
+                    rps_player* partner = playerSlabs[i].getPair();
+                    if(!partner){
+                        uart_printf(CONSOLE, "ERROR: Trying to play without signing up!");
+                        break;
+                    }
+
+                    if(playerSlabs[i].quit){
+                        // partner sets this to quit upon them quitting
+                        // If we put them back on the queue, our logic flow would get wayyy to complex
+                        char msg[] = "Sorry, your partner quit. Please signup again";
+                        Reply(*clientTID, msg, strlen(msg));
+                        freelist.push(&playerSlabs[i]);
+                        break;
+                    }
+
+
+                    int clientAction = 0;
+                    if (!strcmp(param, "ROCK")){
+                        clientAction = 1;
+                    }else if(!strcmp(param, "PAPER")) {
+                        clientAction = 2;
+                    } else if(!strcmp(param, "SCISSORS")) {
+                        clientAction = 3;
+                    } else {
+                        uart_printf(CONSOLE, "ERROR: NOT A VALID ACTION FROM {ROCK, PAPER, SCISSORS}");
+                        break;
+                    }
+
+                    if(!partner->waiting_on_pair){
+                        //partner is not waiting on me (I have played first)
+                        //so I am now waiting for my partner to send their message
+                        playerSlabs[i].waiting_on_pair = clientAction;
+                    } else {
+                        //partner was waiting on me, time to do the game!
+                        int partnerAction = partner->waiting_on_pair;
+                        const char* winner_msg = "Winner!";
+                        const char* loser_msg = "Loser!";
+                        const char* tie_msg = "Tied!";
+
+                        if(clientAction == partnerAction ){
+                            //tied
+                            Reply(*clientTID, tie_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), tie_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 1 && partnerAction == 2){
+                            //client loss, partner won (rock loses to paper)
+                            Reply(*clientTID, loser_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 1 && partnerAction == 3){
+                            //client won, partner loss (rock beats scissors)
+                            Reply(*clientTID, winner_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 2 && partnerAction == 1){
+                            //client won, partner loss (paper beats rock)
+                            Reply(*clientTID, winner_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 2 && partnerAction == 3){
+                            //client loss, partner won (paper loses to scissors)
+                            Reply(*clientTID, loser_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 3 && partnerAction == 1){
+                            //client loss, partner won (scissors loses to rock)
+                            Reply(*clientTID, loser_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+
+                        } else if(clientAction == 3 && partnerAction == 2){
+                            //client won, partner loss (scissors beats paper)
+                            Reply(*clientTID, winner_msg, strlen(loser_msg));
+                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+                        }
+                        // clear their waiting 
+                        playerSlabs[i].waiting_on_pair = 0;
+                        partner->waiting_on_pair = 0;
+                        
+                    }
+                    //found our desired slab, stop looping through the rest
+                    break;
+                }
+            }
+
 
         } else if (!strcmp(command, "QUIT")){
             //remove from our struct
-            //freelist.push()
             for(int i=0; i<MAX_PLAYERS; i++){
                 if (playerSlabs[i].getTid() == *clientTID){
+                    playerSlabs[i].getPair()->quit = 1; // let our partner know we quit
                     freelist.push(&playerSlabs[i]);
+                    break;
                 }
             }
+        } else {
+            uart_printf(CONSOLE, "That was not a valid command! First word must be {SIGNUP, PLAY, QUIT}");
         }
 
     }
