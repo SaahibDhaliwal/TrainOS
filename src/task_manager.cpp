@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <algorithm>
+
 #include "config.h"
 #include "rpi.h"
 #include "task_descriptor.h"
@@ -12,22 +14,21 @@ uint32_t kernelToUser(Context* kernelContext, Context* userTaskContext);
 
 TaskManager::TaskManager() : nextTaskId(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
-        taskSlabs[i].setSlabIdx(i);
+        taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
     }  // for
 }
 
-int TaskManager::createTask(TaskDescriptor* parent, uint64_t priority, uint64_t entryPoint) {
+uint32_t TaskManager::createTask(TaskDescriptor* parent, uint64_t priority, uint64_t entryPoint) {
     if (freelist.empty()) return -1;
     if (priority >= Config::MAX_PRIORITY) return -1;
 
     TaskDescriptor* td = freelist.pop();
-    uint64_t stackTop = Config::USER_STACK_BASE - (td->getSlabIdx() * Config::USER_TASK_STACK_SIZE);
-    uint64_t tid = nextTaskId++;
-    td->initialize(tid, parent, priority, entryPoint, stackTop);
+    uint64_t stackTop = Config::USER_STACK_BASE - (td->getTid() * Config::USER_TASK_STACK_SIZE);
+    td->initialize(parent, priority, entryPoint, stackTop);
     readyQueues[priority].push(td);
 
-    return tid;
+    return td->getTid();
 }
 
 void TaskManager::exitTask(TaskDescriptor* task) {
@@ -40,6 +41,23 @@ void TaskManager::rescheduleTask(TaskDescriptor* task) {
     readyQueues[priority].push(task);
     task->setState(TaskState::READY);
 }
+
+bool TaskManager::isTidValid(int64_t tid) {
+    return tid >= 0 && tid < Config::MAX_TASKS && taskSlabs[tid].getState() != TaskState::EXITED;
+}
+
+TaskDescriptor* TaskManager::getTask(uint32_t tid) {
+    return &taskSlabs[tid];
+}
+
+// void TaskManager::sendMessage() {
+// }
+
+// void TaskManager::recieveMessage() {
+// }
+
+// void TaskManager::replyMessage() {
+// }
 
 TaskDescriptor* TaskManager::schedule() {
     for (int priority = Config::MAX_PRIORITY - 1; priority >= 0; priority -= 1) {
@@ -57,18 +75,5 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 value is returned when switching from user to kernel.
     uint32_t ESR_EL1 = kernelToUser(&kernelContext, task->getMutableContext());
-
-//     // Check if the SP of the task has gotten past it's bounds
-//    uint64_t checksp = task->getMutableContext()->sp;
-//    uint64_t stacktop = Config::USER_STACK_BASE - (task->getSlabIdx() * Config::USER_TASK_STACK_SIZE);
-//    uint64_t stacklimit = stacktop - Config::USER_TASK_STACK_SIZE;
-   
-//    if (checksp > stacktop || checksp < stacklimit){
-//         uart_printf(CONSOLE, "stacktop:   %u \n\r", stacktop);
-//         uart_printf(CONSOLE, "stacklimit: %u \n\r", stacklimit);
-//         uart_printf(CONSOLE, "USER SP:    %u \n\r", checksp);
-//         uart_printf(CONSOLE, "Error: user stack pointer has been corrupted.");
-//         return 5; //hardcoded rn for error
-//    }
     return ESR_EL1 & 0xFFFFFF;
 }

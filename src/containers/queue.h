@@ -10,7 +10,7 @@ class Queue {
    public:
     void push(T* node) {
         node->next = nullptr;
-        if (!head) { //first one in queue
+        if (!head) {  // first one in queue
             head = tail = node;
         } else {
             tail->next = node;
@@ -20,10 +20,10 @@ class Queue {
     }
 
     T* pop() {
-        if (!head) return nullptr; //nothing in q
+        if (!head) return nullptr;  // nothing in q
         T* node = head;
         head = head->next;
-        if (!head) tail = nullptr; //nothing next
+        if (!head) tail = nullptr;  // nothing next
         count--;
         return node;
     }
@@ -34,6 +34,12 @@ class Queue {
 
     bool empty() const {
         return head == nullptr;
+    }
+
+    void reset() {
+        count = 0;
+        head = nullptr;
+        tail = nullptr;
     }
 
     int tally() const {

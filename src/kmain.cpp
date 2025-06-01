@@ -43,18 +43,20 @@ extern "C" int kmain() {
 
     // Trying to do:
     // IdleTask task
-    // auto memberPtr = &IdleTask::main; <-- passing that doesnt work since pointer also holds info about object 
-    
-    // This doesnt work either 
+    // auto memberPtr = &IdleTask::main; <-- passing that doesnt work since pointer also holds info about object
+
+    // This doesnt work either
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( IdleTask::staticMain ));       // idle task
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( FirstUserTask::staticMain ));       // idle task
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));       // idle task
-    taskManager.createTask(nullptr, 2, reinterpret_cast<uint64_t>(FirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
+    taskManager.createTask(nullptr, 2, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
+    char c;
+    uart_getc(CONSOLE);
     for (;;) {
         curTask = taskManager.schedule();
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
-        //if (static_cast<SYSCALL_NUM>(request) == SYSCALL_NUM::ERROR) break; // user SP is out of bounds
+        // if (static_cast<SYSCALL_NUM>(request) == SYSCALL_NUM::ERROR) break; // user SP is out of bounds
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
     return 0;
