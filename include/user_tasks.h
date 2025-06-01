@@ -3,7 +3,6 @@
 
 #include "task_descriptor.h"
 
-
 // class BaseTask {
 //     public:
 //         virtual ~BaseTask() = default;
@@ -46,5 +45,7 @@ void TestTask();
 void IdleTask();
 
 void NameServer();
+
+void RPSFirstUserTask();
 
 #endif /* user_tasks.h */

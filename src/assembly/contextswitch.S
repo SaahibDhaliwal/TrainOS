@@ -109,32 +109,32 @@ userToKernel:
     // Restore kernelContext and userContext from kernel's stack (from when we did kernelToUser)
     // x3 = userContext
     // x4 = kernelContext
-    ldp x3, x4, [sp], #16
+    ldp x6, x7, [sp], #16
 
     // Store callee-saved registers for userContext in the TD's context array
-    store_callee_registers x3
+    store_callee_registers x6
 
     // Also store any arguments the user passed 
-    str x0, [x3, #(8 * 0)]
-    str x1, [x3, #(8 * 1)]
-    str x2, [x3, #(8 * 2)]
-    str x4, [x3, #(8 * 3)]
-    str x5, [x3, #(8 * 4)]  // Message Send has 5 params
+    str x0, [x6, #(8 * 0)]
+    str x1, [x6, #(8 * 1)]
+    str x2, [x6, #(8 * 2)]
+    str x3, [x6, #(8 * 3)]
+    str x4, [x6, #(8 * 4)]  // Message Send has 5 params
 
     // Save SP_EL0
     mrs x2, sp_el0
-    str x2, [x3, #(8 * 31)]
+    str x2, [x6, #(8 * 31)]
 
     // Save ELR_EL1
     mrs x2, elr_el1
-    str x2, [x3, #(8 * 32)]
+    str x2, [x6, #(8 * 32)]
 
     // Save SPSR_EL1
     mrs x2, spsr_el1
-    str x2, [x3, #(8 * 33)]
+    str x2, [x6, #(8 * 33)]
 
     // Restore callee-saved registers from kernelContext
-    restore_callee_registers x4
+    restore_callee_registers x7
 
     mrs x0, esr_el1
 
