@@ -101,14 +101,20 @@ kernelToUser:
 
     // return value from syscall
     ldr x0, [x1, #(8 * 0)]
+    // also restore their arguments?
+    //ldr x2, [x1, #(8 * 2)]
+    //ldr x3, [x1, #(8 * 3)]
+    //ldr x4, [x1, #(8 * 4)]
+
+    //ldr x1, [x1, #(8 * 1)]
 
     eret
 
 .global userToKernel
 userToKernel:
     // Restore kernelContext and userContext from kernel's stack (from when we did kernelToUser)
-    // x3 = userContext
-    // x4 = kernelContext
+    // x6 = userContext
+    // x7 = kernelContext
     ldp x6, x7, [sp], #16
 
     // Store callee-saved registers for userContext in the TD's context array

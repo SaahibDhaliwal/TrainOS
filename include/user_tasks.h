@@ -48,4 +48,6 @@ void NameServer();
 
 void RPSFirstUserTask();
 
+void PerformanceMeasurement();
+
 #endif /* user_tasks.h */

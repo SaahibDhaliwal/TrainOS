@@ -43,17 +43,78 @@ void IdleTask() {
     }
 }
 
+void SenderTask(){
+
+    // RegisterAs("sender");
+
+    // //this won't work as intended
+    // for(;;){
+    //     int receiverTID = WhoIs("receiver");
+    //     if(receiverTID != -1) break;
+    //     Yield();
+    // }
+    // int receiverTID = WhoIs("receiver");
+    char * msg = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis,.";
+    
+    for(int i=0; i < Config::EXPERIMENT_COUNT; i++){
+        char reply[Config::MAX_MESSAGE_LENGTH];
+        uart_printf(CONSOLE, "Initiating send...\n\r");
+        int replylen = Send(4, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+        uart_printf(CONSOLE, "Successfully sent! Got reply: %s\n\r", reply);
+    }
+    
+}
+
+void ReceiverTask(){
+
+    // RegisterAs("receiver");
+
+    // //this won't work as intended
+    // for(;;){
+    //     int receiverTID = WhoIs("sender");
+    //     if(receiverTID != -1) break;
+    //     Yield();
+    // }
+    // int receiverTID = WhoIs("receiver");
+
+    char reply[Config::MAX_MESSAGE_LENGTH];
+
+    for(int i=0; i < Config::EXPERIMENT_COUNT; i++){
+        uint32_t sender;
+        char buffer[Config::MAX_MESSAGE_LENGTH];
+        
+        int msgLen = Receive(&sender, buffer, Config::MAX_MESSAGE_LENGTH);
+        uart_printf(CONSOLE, "Received Message: %s\n\r", buffer);
+        Reply(sender, "Got Message", Config::MAX_MESSAGE_LENGTH);
+        uart_printf(CONSOLE, "Sent Reply! \n\r");
+    }
+
+
+
+}
+
+
+void PerformanceMeasurement(){
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(10, &NameServer));
+
+    uart_printf(CONSOLE, "[First Task]: Created Sender: %u\n\r", Create(9, &SenderTask));
+    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", Create(9, &ReceiverTask));
+    Exit();
+}
+
+
+
 void RPS_Server();
 void RPS_Client();
 
 void RPSFirstUserTask() {
-    uart_printf(CONSOLE, "[First User Task] Created NameServer: %u\n\r", Create(9, &NameServer));
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(9, &NameServer));
 
-    uart_printf(CONSOLE, "[First User Task] Created RPS Server: %u\n\r", Create(9, &RPS_Server));
+    uart_printf(CONSOLE, "[First Task]: Created RPS Server: %u\n\r", Create(9, &RPS_Server));
 
-    uart_printf(CONSOLE, "[First User Task] Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client));
+    uart_printf(CONSOLE, "[First Task]: Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client));
 
-    uart_printf(CONSOLE, "[First User Task] Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client));
+    uart_printf(CONSOLE, "[First Task]: Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client));
 
     Exit();
 }
@@ -70,7 +131,10 @@ void NameServer() {
         uint32_t sender;
         char buffer[Config::MAX_MESSAGE_LENGTH];
         uint32_t messageLen;
+        // uart_printf(CONSOLE, "waiting to recieve \n\r");
         messageLen = Receive(&sender, buffer, Config::MAX_MESSAGE_LENGTH);
+        // uart_printf(CONSOLE, "recieve! \n\r");
+
         Reply(sender, "0", 2);
 
         if (strncmp(buffer, "reg", 3) == 0) {
@@ -110,24 +174,60 @@ void NameServer() {
 }
 
 void RPS_Client() {
-    // RegisterAs("rps_client");
+    // uart_printf(CONSOLE, "tid %u, registering\n\r", MyTid());
+
+    RegisterAs("rps_client");
     // find RPS server
+    // uart_printf(CONSOLE, "tid %u, finding\n\r", MyTid());
     int serverTID = WhoIs("rps_server");
+    // uart_printf(CONSOLE, "tid %u, FOUND\n\r", MyTid());
 
     char msg[] = "SIGNUP";
-    char reply[64];
-    Send(serverTID, msg, strlen(msg), reply, 64);
-    uart_printf(CONSOLE, "[Task: %u] Successfully signed up!\n\r", MyTid());
+    char reply[Config::MAX_MESSAGE_LENGTH];
+    int replylen = Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    //we never get here. Why?
+    uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
 
-    strcpy(msg, "PLAY ROCK");
-    char msg2[] = "PLAY ROCK";
-    Send(serverTID, msg2, strlen(msg), reply, 64);
-    uart_printf(CONSOLE, "[Task: %u] Successfully played!\n\r", MyTid());
+    // for(int i=0; i<replylen; i++){
+    //     reply[i] = '\0';
+    // }
+    reply[0] = 0;
 
-    strcpy(msg, "PLAY ROCK");
+    //strcpy(msg, "PLAY ROCK");
+   int rngValue = ((get_timer() % 10) % 3) + 1;
+    // int rngValue = 0;
+    // if (MyTid() == 4){
+    //     rngValue = 2;
+    // } else {
+    //     rngValue = 1;
+    // }
+
+    switch(rngValue){
+        case 1: {
+            char msg2[] = "PLAY ROCK";
+            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+            uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,        Result: %s\n\r", MyTid(), reply);
+            } break;
+        case 2: {
+            char msg2[] = "PLAY PAPER";
+            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+            uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,       Result: %s\n\r", MyTid(), reply);
+            } break;
+        case 3: {
+            char msg2[] = "PLAY SCISSORS";
+            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+            uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,    Result: %s\n\r", MyTid(), reply);
+            } break;
+    }
+
+
+    //char msg2[] = "PLAY ROCK";
+    // uart_printf(CONSOLE, "[Task: %u] Played: \n\r", MyTid());
+
+    //strcpy(msg, "PLAY ROCK");
     char msg3[] = "QUIT";
-    Send(serverTID, msg3, strlen(msg), reply, 64);
-    uart_printf(CONSOLE, "[Task: %u] Successfully quit!\n\r", MyTid());
+    Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
     Exit();
 }
 
@@ -181,10 +281,13 @@ void RPS_Server() {
     for (;;) {
         uint32_t clientTID;
         char msg[128];
+
+        // uart_printf(CONSOLE, "waiting to receive \n\r");
+        // once we go to receive the next task, there are no more tasks in the scheduler
+        // issue: After receiving the first task, once we go back here to receive the second, scheduler goes to idle
         int msgsize = Receive(&clientTID, msg, 128);
 
-        uart_printf(CONSOLE, "[RPS Server]: Request from TID: %u , with contents: %s \n\r", clientTID, msg);
-
+        uart_printf(CONSOLE, "[RPS Server]: Request from TID: %u: '%s' \n\r", clientTID, msg);
         // this will parse the message we receive
         //  split along the first space, if found
         char command[64];
@@ -210,7 +313,7 @@ void RPS_Server() {
             // once two are on queue, reply and ask for first play
             // player_queue.push(&client);
             if (freelist.empty()) {
-                uart_printf(CONSOLE, "No more space in free list\n\r");
+                uart_printf(CONSOLE, "No more space in free list!!\n\r");
             }
             // get new rps player from slab
             rps_player* newplayer = freelist.pop();
@@ -219,16 +322,16 @@ void RPS_Server() {
             player_queue.push(newplayer);
 
             if (player_queue.tally() < 2) {
+                //uart_printf(CONSOLE, "Not enough people, TID: %u\r\n", clientTID);
                 continue;
             }
 
             char signup_msg[] = "What is your play?";
 
             rps_player* player_one = player_queue.pop();
-            Reply(player_one->getTid(), signup_msg, strlen(signup_msg));
-
+            Reply(player_one->getTid(), signup_msg, Config::MAX_MESSAGE_LENGTH);
             rps_player* player_two = player_queue.pop();
-            Reply(player_two->getTid(), signup_msg, strlen(signup_msg));
+            Reply(player_two->getTid(), signup_msg, Config::MAX_MESSAGE_LENGTH);
 
             player_one->setPair(player_two);
             player_two->setPair(player_one);
@@ -248,7 +351,7 @@ void RPS_Server() {
                         // partner sets this to quit upon them quitting
                         // If we put them back on the queue, our logic flow would get wayyy to complex
                         char msg[] = "Sorry, your partner quit. Please signup again";
-                        Reply(clientTID, msg, strlen(msg));
+                        Reply(clientTID, msg, Config::MAX_MESSAGE_LENGTH);
                         freelist.push(&playerSlabs[i]);
                         break;
                     }
@@ -272,44 +375,44 @@ void RPS_Server() {
                     } else {
                         // partner was waiting on me, time to do the game!
                         int partnerAction = partner->waiting_on_pair;
-                        const char* winner_msg = "Winner!";
-                        const char* loser_msg = "Loser!";
-                        const char* tie_msg = "Tied!";
+                        const char* winner_msg = "Winner!\0";
+                        const char* loser_msg = "Loser!\0";
+                        const char* tie_msg = "Tied!\0";
 
                         if (clientAction == partnerAction) {
                             // tied
-                            Reply(clientTID, tie_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), tie_msg, strlen(loser_msg));
+                            Reply(clientTID, tie_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), tie_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 1 && partnerAction == 2) {
                             // client loss, partner won (rock loses to paper)
-                            Reply(clientTID, loser_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+                            Reply(clientTID, loser_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), winner_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 1 && partnerAction == 3) {
                             // client won, partner loss (rock beats scissors)
-                            Reply(clientTID, winner_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+                            Reply(clientTID, winner_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), loser_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 2 && partnerAction == 1) {
                             // client won, partner loss (paper beats rock)
-                            Reply(clientTID, winner_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+                            Reply(clientTID, winner_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), loser_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 2 && partnerAction == 3) {
                             // client loss, partner won (paper loses to scissors)
-                            Reply(clientTID, loser_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+                            Reply(clientTID, loser_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), winner_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 3 && partnerAction == 1) {
                             // client loss, partner won (scissors loses to rock)
-                            Reply(clientTID, loser_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), winner_msg, strlen(loser_msg));
+                            Reply(clientTID, loser_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), winner_msg, Config::MAX_MESSAGE_LENGTH);
 
                         } else if (clientAction == 3 && partnerAction == 2) {
                             // client won, partner loss (scissors beats paper)
-                            Reply(clientTID, winner_msg, strlen(loser_msg));
-                            Reply(partner->getTid(), loser_msg, strlen(loser_msg));
+                            Reply(clientTID, winner_msg, Config::MAX_MESSAGE_LENGTH);
+                            Reply(partner->getTid(), loser_msg, Config::MAX_MESSAGE_LENGTH);
                         }
                         // clear their waiting
                         playerSlabs[i].waiting_on_pair = 0;
@@ -322,6 +425,7 @@ void RPS_Server() {
 
         } else if (!strcmp(command, "QUIT")) {
             // remove from our struct
+            // uart_printf(CONSOLE, "Reached Quit \r\n");
             for (int i = 0; i < MAX_PLAYERS; i++) {
                 if (playerSlabs[i].getTid() == clientTID) {
                     playerSlabs[i].getPair()->quit = 1;  // let our partner know we quit
@@ -333,4 +437,5 @@ void RPS_Server() {
             uart_printf(CONSOLE, "That was not a valid command! First word must be {SIGNUP, PLAY, QUIT}\n\r");
         }
     }
+    Exit(); // in case we ever somehow break out of the infinite for loop
 }

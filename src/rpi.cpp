@@ -98,6 +98,16 @@ static const uint32_t UART_LCRH_FEN = 0x10;
 static const uint32_t UART_LCRH_WLEN_LOW = 0x20;
 static const uint32_t UART_LCRH_WLEN_HIGH = 0x40;
 
+/*********** TIMER CONTROL ************************ ************/
+static char* const  TIMER_BASE = (char*)(MMIO_BASE + 0x3000);
+static const uint32_t TIMER_LO   = 0x04;
+static const uint32_t TIMER_HI   = 0x08;
+#define TIMER_REG(offset) (*(volatile uint32_t*)(TIMER_BASE + offset))
+
+unsigned int get_timer(){
+	return TIMER_REG(TIMER_LO);
+}
+
 // Configure the line properties (e.g, parity, baud rate) of a UART and ensure that it is enabled
 void uart_config_and_enable(size_t line) {
     uint32_t baud_ival, baud_fval;

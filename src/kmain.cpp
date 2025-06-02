@@ -49,11 +49,12 @@ extern "C" int kmain() {
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( IdleTask::staticMain ));       // idle task
     // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( FirstUserTask::staticMain ));       // idle task
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
-    taskManager.createTask(nullptr, 2, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 8, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
     char c;
     uart_getc(CONSOLE);
     for (;;) {
         curTask = taskManager.schedule();
+        // uart_printf(CONSOLE, "next task: %u \n\r", curTask->getTid());
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
         // if (static_cast<SYSCALL_NUM>(request) == SYSCALL_NUM::ERROR) break; // user SP is out of bounds

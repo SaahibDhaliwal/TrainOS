@@ -50,6 +50,9 @@ class TaskDescriptor {
     void setState(TaskState state);
 
     void enqueueSender(TaskDescriptor* sender) {
+        // the below line is redundant?
+        // right now, even after queueing the sender, we manually change the state
+        // ex: see where this gets called
         sender->setState(TaskState::WAITING_FOR_RECEIVE);
         senders.push(sender);
     }
