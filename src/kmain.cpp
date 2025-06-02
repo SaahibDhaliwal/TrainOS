@@ -47,6 +47,7 @@ extern "C" int kmain() {
     uart_getc(CONSOLE);
     for (;;) {
         curTask = taskManager.schedule();
+        // uart_printf(CONSOLE, "Next: %u\n\r", curTask->getTid());
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
         sysCallHandler.handle(request, &taskManager, curTask);

@@ -105,7 +105,6 @@ kernelToUser:
     //ldr x2, [x1, #(8 * 2)]
     //ldr x3, [x1, #(8 * 3)]
     //ldr x4, [x1, #(8 * 4)]
-
     //ldr x1, [x1, #(8 * 1)]
 
     eret

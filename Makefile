@@ -9,7 +9,7 @@ OUT_DIR := build
 TARGET := kernel1
 
 MMU?=on
-OPT?=on
+OPT?=off
 
 # COMPILE OPTIONS
 ifeq ($(MMU),on)

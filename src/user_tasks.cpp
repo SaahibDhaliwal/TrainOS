@@ -59,12 +59,21 @@ void SenderTask() {
         "sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies "
         "nec, pellentesque eu, pretium quis,.";
 
+    int start = 0;
+    int end = 0;
+    start = get_timer();
+    end = get_timer();
+    // uart_printf(CONSOLE, "first clock diff: %u \n\r", end - start);
+
+    
+    char reply[Config::MAX_MESSAGE_LENGTH];
+    start = get_timer();
     for (int i = 0; i < Config::EXPERIMENT_COUNT; i++) {
-        char reply[Config::MAX_MESSAGE_LENGTH];
-        uart_printf(CONSOLE, "Initiating send...\n\r");
+        uart_printf(CONSOLE, "clock time diff: %u \n\r", end - start);
         int replylen = Send(4, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "Successfully sent! Got reply: %s\n\r", reply);
     }
+    end = get_timer();
+    Exit();
 }
 
 void ReceiverTask() {
@@ -85,10 +94,11 @@ void ReceiverTask() {
         char buffer[Config::MAX_MESSAGE_LENGTH];
 
         int msgLen = Receive(&sender, buffer, Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "Received Message: %s\n\r", buffer);
+        // uart_printf(CONSOLE, "Received Message! \n\r", buffer);
         Reply(sender, "Got Message", Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "Sent Reply! \n\r");
+        // uart_printf(CONSOLE, "Sent Reply! \n\r");
     }
+    Exit();
 }
 
 void PerformanceMeasurement() {
@@ -111,67 +121,113 @@ void RPSFirstUserTask() {
 
     uart_printf(CONSOLE, "[First Task]: Created RPS Client with TID: %u\n\r", Create(9, &RPS_Client));
 
-    // uart_printf(CONSOLE, "[First Task]: I am exiting\n\r");
     Exit();
 }
 
 void RPS_Client() {
-    // uart_printf(CONSOLE, "tid %u, registering\n\r", MyTid());
 
-    // RegisterAs("rps_client");
-    // find RPS server
-    // uart_printf(CONSOLE, "tid %u, finding\n\r", MyTid());
     int serverTID = WhoIs("rps_server");
-    // uart_printf(CONSOLE, "tid %u, FOUND\n\r", MyTid());
-
     char msg[] = "SIGNUP";
-    char reply[Config::MAX_MESSAGE_LENGTH];
+    // char reply[Config::MAX_MESSAGE_LENGTH];
+    // int replylen = Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    // uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
 
-    // uart_printf(CONSOLE, "RPS CLIENT SENDING TO: %d\n\r", serverTID);
-    int replylen = Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    // we never get here. Why?
-    uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
-
-    // for(int i=0; i<replylen; i++){
-    //     reply[i] = '\0';
+    // for(int i = 0; i< Config::EXPERIMENT_COUNT; i++){
+    //     int rngValue = ((get_timer() % 10) % 3) + 1;
+    //     switch (rngValue) {
+    //         case 1: {
+    //             char msg2[] = "PLAY ROCK";
+    //             Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    //             uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,        Result: %s\n\r", MyTid(), reply);
+    //         } break;
+    //         case 2: {
+    //             char msg2[] = "PLAY PAPER";
+    //             Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    //             uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,       Result: %s\n\r", MyTid(), reply);
+    //         } break;
+    //         case 3: {
+    //             char msg2[] = "PLAY SCISSORS";
+    //             Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    //             uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,    Result: %s\n\r", MyTid(), reply);
+    //         } break;
+    //     }
     // }
-    reply[0] = 0;
 
-    // strcpy(msg, "PLAY ROCK");
-    int rngValue = ((get_timer() % 10) % 3) + 1;
-    // int rngValue = 0;
-    // if (MyTid() == 4){
-    //     rngValue = 2;
-    // } else {
-    //     rngValue = 1;
+    //         char msg3[] = "QUIT";
+    //         Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    //         uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
+    //         Exit();
+
     // }
+    int quitflag = 1;
 
-    switch (rngValue) {
-        case 1: {
-            char msg2[] = "PLAY ROCK";
-            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,        Result: %s\n\r", MyTid(), reply);
-        } break;
-        case 2: {
-            char msg2[] = "PLAY PAPER";
-            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,       Result: %s\n\r", MyTid(), reply);
-        } break;
-        case 3: {
-            char msg2[] = "PLAY SCISSORS";
-            Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,    Result: %s\n\r", MyTid(), reply);
-        } break;
+    for(;;){
+        char reply[Config::MAX_MESSAGE_LENGTH];
+        if (quitflag){
+            Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+            uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
+            quitflag = 0;
+        }
+        
+    
+        for(int i = 0; i < Config::EXPERIMENT_COUNT; i++){
+            int rngValue = ((get_timer() % 10) % 3) + 1;
+
+            if(rngValue == 1){
+                char msg2[] = "PLAY ROCK";
+                Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
+                uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,        Result: %s\n\r", MyTid(), reply);
+                if (!strcmp(reply, "Sorry, your partner quit.")){ //weird compiler behaviour if this is outside
+                    quitflag = 1;
+                }
+            } else if (rngValue == 2){
+                char msg2[] = "PLAY PAPER";
+                Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
+                uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,       Result: %s\n\r", MyTid(), reply);
+                
+            } else if (rngValue == 3){
+                char msg2[] = "PLAY SCISSORS";
+                Send(serverTID, msg2, strlen(msg2)+1, reply, Config::MAX_MESSAGE_LENGTH);
+                uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,    Result: %s\n\r", MyTid(), reply);
+                if (!strcmp(reply, "Sorry, your partner quit.")){
+                    quitflag = 1;
+                }
+            } else {
+                uart_printf(CONSOLE, "BAD RNG");
+            }
+
+            if (!strcmp(reply, "Sorry, your partner quit.")){
+                    break;
+            }
+
+            if (quitflag){
+                break;
+            }
+       
+        }
+        int quitRNG = (get_timer() % 100);
+        // uart_printf(CONSOLE, "quitrng:%u ", quitRNG);
+        if(quitRNG <= 10){
+            char msg3[] = "QUIT";
+            Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+            uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit!\n\r", MyTid());
+            Exit();
+        }
+        if (quitflag){
+            uart_printf(CONSOLE, "[Client: %u ]: My partner quit. Signing up again...\n\r", MyTid());
+            // break;
+        }
+
     }
 
     // char msg2[] = "PLAY ROCK";
     //  uart_printf(CONSOLE, "[Task: %u] Played: \n\r", MyTid());
 
     // strcpy(msg, "PLAY ROCK");
-    char msg3[] = "QUIT";
-    Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
-    Exit();
+    // char msg3[] = "QUIT";
+    // Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
+    // uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
+    // Exit();
 }
 
 class rps_player {
@@ -252,6 +308,20 @@ void RPS_Server() {
                 tracker++;
             }
         }
+        param[tracker] = '\0';
+        for (int i = 0; i < 64; i++){
+            uart_putc(CONSOLE, param[i]);
+            if(param[i] == '\0'){
+                uart_putc(CONSOLE, '!');
+            }
+
+        }
+        uart_putc(CONSOLE, '\n');
+        uart_putc(CONSOLE, '\r');
+        // uart_printf(CONSOLE, "Param: %s, len: %d\n\r", param, strlen(param));
+        // uart_printf(CONSOLE, "Param: %s, len: %d\n\r", param, strlen(param));
+
+
 
         // parse info
         if (!strcmp(command, "SIGNUP")) {  // if match, strcmp equals zero
@@ -295,13 +365,15 @@ void RPS_Server() {
                     if (playerSlabs[i].quit) {
                         // partner sets this to quit upon them quitting
                         // If we put them back on the queue, our logic flow would get wayyy to complex
-                        char msg[] = "Sorry, your partner quit. Please signup again";
+                        char msg[] = "Sorry, your partner quit.";
                         Reply(clientTID, msg, Config::MAX_MESSAGE_LENGTH);
                         freelist.push(&playerSlabs[i]);
                         break;
                     }
 
                     int clientAction = 0;
+                    // int strval =  strcmp(param, "SCISSORS");
+                    // uart_printf(CONSOLE, "FIRST GOT: %s strcmp: %d\n\r", param, strval);
                     if (!strcmp(param, "ROCK")) {
                         clientAction = 1;
                     } else if (!strcmp(param, "PAPER")) {
@@ -309,7 +381,9 @@ void RPS_Server() {
                     } else if (!strcmp(param, "SCISSORS")) {
                         clientAction = 3;
                     } else {
-                        uart_printf(CONSOLE, "ERROR: NOT A VALID ACTION FROM {ROCK, PAPER, SCISSORS}\n\r");
+                        uart_printf(CONSOLE,
+                             "ERROR: NOT A VALID ACTION FROM {ROCK, PAPER, SCISSORS} FROM TID %u: \n\r", clientTID);
+                        uart_printf(CONSOLE, "GOT: %s strcmp: %d\n\r", param, strcmp(param, "SCISSORS"));
                         break;
                     }
 
@@ -375,9 +449,14 @@ void RPS_Server() {
                 if (playerSlabs[i].getTid() == clientTID) {
                     playerSlabs[i].getPair()->quit = 1;  // let our partner know we quit
                     freelist.push(&playerSlabs[i]);
+
+                    char quit_msg[] = "You have quit";
+                    Reply(clientTID, quit_msg, Config::MAX_MESSAGE_LENGTH);
                     break;
                 }
             }
+            // uart_printf(CONSOLE, "Error: could not find slab\r\n");
+
         } else {
             uart_printf(CONSOLE, "That was not a valid command! First word must be {SIGNUP, PLAY, QUIT}\n\r");
         }
