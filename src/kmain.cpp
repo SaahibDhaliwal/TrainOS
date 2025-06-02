@@ -41,23 +41,14 @@ extern "C" int kmain() {
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
-    // Trying to do:
-    // IdleTask task
-    // auto memberPtr = &IdleTask::main; <-- passing that doesnt work since pointer also holds info about object
-
-    // This doesnt work either
-    // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( IdleTask::staticMain ));       // idle task
-    // taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>( FirstUserTask::staticMain ));       // idle task
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
-    taskManager.createTask(nullptr, 8, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));           // idle task
+    taskManager.createTask(nullptr, 10, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
     char c;
     uart_getc(CONSOLE);
     for (;;) {
         curTask = taskManager.schedule();
-        // uart_printf(CONSOLE, "next task: %u \n\r", curTask->getTid());
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
-        // if (static_cast<SYSCALL_NUM>(request) == SYSCALL_NUM::ERROR) break; // user SP is out of bounds
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
     return 0;

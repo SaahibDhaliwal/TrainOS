@@ -43,8 +43,6 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
             int64_t receiverTid = curTask->getReg(0);
 
             if (!taskManager->isTidValid(receiverTid)) {
-                //might be trying to send to someone who doesn't exist yet
-                uart_printf(CONSOLE, "Trying to send to someone nonexistant\r\n");
                 curTask->setReturnValue(-1);
                 break;
             }
@@ -59,27 +57,19 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
                 char* receiverMsg = reinterpret_cast<char*>(receiver->getReg(1));
                 size_t receiverMsgLen = static_cast<size_t>(receiver->getReg(2));
 
-                // set sender tid for receiver
-                *receiverSenderOut = curTask->getTid();
-
-                // uart_printf(CONSOLE, "\n\r  SenderTID: %u, ReceiverMsg buffer before copy: %s \n\r", curTask->getTid(), receiverMsg);
-                // uart_printf(CONSOLE, "   Looking to copy: %s \n\r\n\r", senderMsg);
-                // copy message
                 size_t n = std::min(senderMsgLen, receiverMsgLen);
                 for (size_t i = 0; i < n; ++i) {
                     receiverMsg[i] = senderMsg[i];
                 }
-                //receiverMsg[n] = 0;
 
-                curTask->setState(TaskState::WAITING_FOR_REPLY);
+                *receiverSenderOut = curTask->getTid();  // set sender tid for receiver
 
                 receiver->setReturnValue(n);
-                // uart_printf(CONSOLE, "TID %u has unblocked receiver TID %u\n\r",curTask->getTid(), receiver->getTid());
-
                 taskManager->rescheduleTask(receiver);
 
+                curTask->setState(TaskState::WAITING_FOR_REPLY);
             } else {
-                //our intended receiver isn't receiving yet, so we get blocked and queue on their sender
+                // our intended receiver isn't receiving yet, so we get blocked and queue on their sender
                 curTask->setState(TaskState::WAITING_FOR_RECEIVE);
                 receiver->enqueueSender(curTask);
             }
@@ -88,47 +78,42 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
         }
         case SYSCALL_NUM::RECEIVE: {
             uint32_t* receiverSenderOut = reinterpret_cast<uint32_t*>(curTask->getReg(0));
-            char* receiverMsg = reinterpret_cast<char*>(curTask->getReg(1)); //this register has stuff from the last msg
+            char* receiverMsg = reinterpret_cast<char*>(curTask->getReg(1));
             size_t receiverMsgLen = static_cast<size_t>(curTask->getReg(2));
 
             if (!curTask->hasSenders()) {                        // do we have any senders?
                 curTask->setState(TaskState::WAITING_FOR_SEND);  // block the receiver
-                //this is wrong. At least, we get to this point when we SHOULD have a sender in our queue
-                // uart_printf(CONSOLE, "TID %u, no senders\n\r",curTask->getTid() );
                 break;
             }
-            // reciever has a list of senders
 
-            // if the person in that list is not actually waiting for a a recievie
             TaskDescriptor* sender = curTask->dequeueSender();
-            if (sender->getState() == TaskState::WAITING_FOR_RECEIVE) {
-                sender->setState(TaskState::WAITING_FOR_REPLY);
 
+            if (sender->getState() == TaskState::WAITING_FOR_RECEIVE) {
                 char* senderMsg = reinterpret_cast<char*>(sender->getReg(1));
                 size_t senderMsgLen = static_cast<size_t>(sender->getReg(2));
 
-                // set sender tid for receiver
-                *receiverSenderOut = sender->getTid();
-
-                // uart_printf(CONSOLE, "\n\r  RecieveTID: %u, ReceiverMsg buffer before copy: %s \n\r", curTask->getTid(), receiverMsg);
-                // uart_printf(CONSOLE, "   Looking to copy: %s \n\r\n\r", senderMsg);
-                // copy message
                 size_t n = std::min(senderMsgLen, receiverMsgLen);
-                for (size_t i = 0; i < n; ++i) {
+                for (size_t i = 0; i < n; i += 1) {
                     receiverMsg[i] = senderMsg[i];
                 }
-                //receiverMsg[n] = 0;
+
+                *receiverSenderOut = sender->getTid();  // set sender tid for receiver
 
                 curTask->setReturnValue(n);
                 taskManager->rescheduleTask(curTask);
+
+                sender->setState(TaskState::WAITING_FOR_REPLY);
+
             } else {  // send-receive-reply could not be completed
                 sender->setReturnValue(-2);
                 taskManager->rescheduleTask(sender);
+                break;
             }
             break;
         }
         case SYSCALL_NUM::REPLY: {
             int64_t senderTid = curTask->getReg(0);
+
             if (!taskManager->isTidValid(senderTid)) {
                 curTask->setReturnValue(-1);
                 taskManager->rescheduleTask(curTask);
@@ -137,38 +122,28 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
 
             TaskDescriptor* sender = taskManager->getTask(senderTid);
 
-            if (sender->getState() != TaskState::WAITING_FOR_REPLY) {
+            if (sender->getState() == TaskState::WAITING_FOR_REPLY) {
+                const char* replierMsg = reinterpret_cast<const char*>(curTask->getReg(1));
+                size_t replierMsgLen = static_cast<size_t>(curTask->getReg(2));
+
+                char* senderReplyMsg = reinterpret_cast<char*>(sender->getReg(3));
+                size_t senderReplyMsgLen = static_cast<size_t>(sender->getReg(4));
+
+                size_t n = std::min(replierMsgLen, senderReplyMsgLen);
+                for (size_t i = 0; i < n; i += 1) {
+                    senderReplyMsg[i] = replierMsg[i];
+                }
+
+                sender->setReturnValue(n);
+                taskManager->rescheduleTask(sender);
+
+                curTask->setReturnValue(n);
+                taskManager->rescheduleTask(curTask);
+            } else {
                 curTask->setReturnValue(-2);
                 taskManager->rescheduleTask(curTask);
-                break;
             }
 
-            const char* replierMsg = reinterpret_cast<const char*>(curTask->getReg(1));
-            size_t replierMsgLen = static_cast<size_t>(curTask->getReg(2));
-
-            char* senderReplyMsg = reinterpret_cast<char*>(sender->getReg(3));
-            size_t senderReplyMsgLen = static_cast<size_t>(sender->getReg(4));
-
-            // copy message
-            size_t n = std::min(replierMsgLen, senderReplyMsgLen);
-            for (size_t i = 0; i < n; i += 1) {
-                senderReplyMsg[i] = replierMsg[i];
-            }
-
-            // uart_printf(CONSOLE, "message 'replier' is sending to og 'sender': %s\n\r", senderReplyMsg);
-
-            // name server had already called reciever
-            // rps server calls name server -> sees name server is ready to recieve
-            // rps server copies message to name server
-            // name server returns does shit
-            // name server sends back a reply
-            // we copied the reply here
-
-            sender->setReturnValue(n);
-            taskManager->rescheduleTask(sender);
-
-            curTask->setReturnValue(n);
-            taskManager->rescheduleTask(curTask);
             break;
         }
         default: {  // we can make this more extensive

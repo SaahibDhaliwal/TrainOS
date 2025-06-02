@@ -44,8 +44,6 @@ void TestTask();
 
 void IdleTask();
 
-void NameServer();
-
 void RPSFirstUserTask();
 
 void PerformanceMeasurement();
