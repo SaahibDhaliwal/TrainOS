@@ -41,14 +41,6 @@ class TaskManager {
     bool isTidValid(int64_t tid);
 
     TaskDescriptor* getTask(uint32_t tid);
-
-    // int32_t sendMessage(TaskDescriptor* sender, const char* senderMsg, size_t senderMsgLen, TaskDescriptor* receiver,
-    //                     uint32_t* receiverSenderOut, char* receiverMsg,
-    //                     size_t receiverMsgLen);  // task sends a message to dstTid
-    // uint32_t recieveMessage(TaskDescriptor* task, uint32_t* senderTid, char* msg,
-    //                         size_t msgLen);  // task wants to recieve a message
-    // int32_t replyMessage(TaskDescriptor* task, uint32_t dstTid, const char* replyAddress,
-    //                      size_t replyLen);  // task is replying to dstTid
 };
 
 #endif /* task_manager.h */

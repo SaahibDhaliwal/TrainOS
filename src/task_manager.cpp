@@ -50,15 +50,6 @@ TaskDescriptor* TaskManager::getTask(uint32_t tid) {
     return &taskSlabs[tid];
 }
 
-// void TaskManager::sendMessage() {
-// }
-
-// void TaskManager::recieveMessage() {
-// }
-
-// void TaskManager::replyMessage() {
-// }
-
 TaskDescriptor* TaskManager::schedule() {
     for (int priority = Config::MAX_PRIORITY - 1; priority >= 0; priority -= 1) {
         if (!readyQueues[priority].empty()) {
