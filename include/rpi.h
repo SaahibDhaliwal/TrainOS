@@ -13,5 +13,6 @@ void uart_putc(size_t line, char c);
 void uart_putl(size_t line, const char *buf, size_t blen);
 void uart_puts(size_t line, const char *buf);
 void uart_printf(size_t line, const char *fmt, ...);
+unsigned int get_timer();
 
 #endif /* rpi.h */

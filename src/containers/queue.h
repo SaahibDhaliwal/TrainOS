@@ -5,23 +5,26 @@ class Queue {
    private:
     T* head = nullptr;
     T* tail = nullptr;
+    int count = 0;
 
    public:
     void push(T* node) {
         node->next = nullptr;
-        if (!head) {
+        if (!head) {  // first one in queue
             head = tail = node;
         } else {
             tail->next = node;
             tail = node;
         }
+        count++;
     }
 
     T* pop() {
-        if (!head) return nullptr;
+        if (!head) return nullptr;  // nothing in q
         T* node = head;
         head = head->next;
-        if (!head) tail = nullptr;
+        if (!head) tail = nullptr;  // nothing next
+        count--;
         return node;
     }
 
@@ -31,6 +34,16 @@ class Queue {
 
     bool empty() const {
         return head == nullptr;
+    }
+
+    void reset() {
+        count = 0;
+        head = nullptr;
+        tail = nullptr;
+    }
+
+    int tally() const {
+        return count;
     }
 };
 
