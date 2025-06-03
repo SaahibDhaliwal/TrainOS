@@ -26,6 +26,21 @@ Exit:
     svc 4
     ret
 
+.global Send
+Send:
+    svc 5
+    ret
+
+.global Receive
+Receive:
+    svc 6
+    ret
+
+.global Reply
+Reply:
+    svc 7
+    ret
+
 .macro store_callee_registers context
     str x19, [\context, #(8 * 19)]
     str x20, [\context, #(8 * 20)]
@@ -86,38 +101,45 @@ kernelToUser:
 
     // return value from syscall
     ldr x0, [x1, #(8 * 0)]
+    // also restore their arguments?
+    //ldr x2, [x1, #(8 * 2)]
+    //ldr x3, [x1, #(8 * 3)]
+    //ldr x4, [x1, #(8 * 4)]
+    //ldr x1, [x1, #(8 * 1)]
 
     eret
 
 .global userToKernel
 userToKernel:
     // Restore kernelContext and userContext from kernel's stack (from when we did kernelToUser)
-    // x3 = userContext
-    // x4 = kernelContext
-    ldp x3, x4, [sp], #16
+    // x6 = userContext
+    // x7 = kernelContext
+    ldp x6, x7, [sp], #16
 
     // Store callee-saved registers for userContext in the TD's context array
-    store_callee_registers x3
+    store_callee_registers x6
 
     // Also store any arguments the user passed 
-    str x0, [x3, #(8 * 0)]
-    str x1, [x3, #(8 * 1)]
-    str x2, [x3, #(8 * 2)]
+    str x0, [x6, #(8 * 0)]
+    str x1, [x6, #(8 * 1)]
+    str x2, [x6, #(8 * 2)]
+    str x3, [x6, #(8 * 3)]
+    str x4, [x6, #(8 * 4)]  // Message Send has 5 params
 
     // Save SP_EL0
     mrs x2, sp_el0
-    str x2, [x3, #(8 * 31)]
+    str x2, [x6, #(8 * 31)]
 
     // Save ELR_EL1
     mrs x2, elr_el1
-    str x2, [x3, #(8 * 32)]
+    str x2, [x6, #(8 * 32)]
 
     // Save SPSR_EL1
     mrs x2, spsr_el1
-    str x2, [x3, #(8 * 33)]
+    str x2, [x6, #(8 * 33)]
 
     // Restore callee-saved registers from kernelContext
-    restore_callee_registers x4
+    restore_callee_registers x7
 
     mrs x0, esr_el1
 

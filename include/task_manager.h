@@ -1,6 +1,8 @@
 #ifndef __TASK_MANAGER__
 #define __TASK_MANAGER__
 
+#include <cstddef>
+
 #include "config.h"
 #include "context.h"
 #include "queue.h"
@@ -22,19 +24,23 @@
 
 class TaskManager {
    private:
-    uint64_t nextTaskId;             // tid of next task
-    Stack<TaskDescriptor> freelist;  // free list of TaskDescriptor's
-    Context kernelContext;  // kernel's contex
+    uint64_t nextTaskId;                                      // tid of next task
+    Queue<TaskDescriptor> freelist;                           // free list of TaskDescriptor's
+    Context kernelContext;                                    // kernel's context
     TaskDescriptor taskSlabs[Config::MAX_TASKS];              // slabs of TaskDescriptor's
     Queue<TaskDescriptor> readyQueues[Config::MAX_PRIORITY];  // intrusive scheduling queue
 
    public:
     TaskManager();
-    int createTask(TaskDescriptor* parent, uint64_t priority, uint64_t entryPoint);  // creates user task
-    void exitTask(TaskDescriptor* task);                                             // exit user task
-    void rescheduleTask(TaskDescriptor* task);                                       // adds task back to ready queue
+    uint32_t createTask(TaskDescriptor* parent, uint64_t priority, uint64_t entryPoint);  // creates user task
+    void exitTask(TaskDescriptor* task);                                                  // exit user task
+    void rescheduleTask(TaskDescriptor* task);  // adds task back to ready queue
+
     TaskDescriptor* schedule();
     uint32_t activate(TaskDescriptor* task);
+    bool isTidValid(int64_t tid);
+
+    TaskDescriptor* getTask(uint32_t tid);
 };
 
 #endif /* task_manager.h */
