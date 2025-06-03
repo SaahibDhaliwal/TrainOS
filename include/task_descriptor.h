@@ -48,18 +48,9 @@ class TaskDescriptor {
     void setReturnValue(uint64_t val);
     void setTid(int32_t tid);
     void setState(TaskState state);
+    void enqueueSender(TaskDescriptor* sender);
 
-    void enqueueSender(TaskDescriptor* sender) {
-        // the below line is redundant?
-        // right now, even after queueing the sender, we manually change the state
-        // ex: see where this gets called
-        sender->setState(TaskState::WAITING_FOR_RECEIVE);
-        senders.push(sender);
-    }
-
-    TaskDescriptor* dequeueSender() {
-        return senders.pop();
-    }
+    TaskDescriptor* dequeueSender();
 };
 
 #endif /* task_descriptor.h */

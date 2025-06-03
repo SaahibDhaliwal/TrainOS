@@ -8,7 +8,7 @@ int RegisterAs(const char *name) {
     char replyBuf[Config::MAX_MESSAGE_LENGTH];
 
     sendBuf[0] = 'r';
-    strcpy(sendBuf + 1, name);
+    strcpy(sendBuf + 1, name); // append r to name
 
     int response = Send(Config::NAME_SERVER_TID, sendBuf, strlen(name) + 2, replyBuf, Config::MAX_MESSAGE_LENGTH);
     if (response < 0) {

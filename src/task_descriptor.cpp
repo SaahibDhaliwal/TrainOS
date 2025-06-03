@@ -68,3 +68,11 @@ void TaskDescriptor::setTid(int32_t newTid) {
 void TaskDescriptor::setState(TaskState newState) {
     state = newState;
 }
+
+void TaskDescriptor::enqueueSender(TaskDescriptor* sender) {
+    senders.push(sender);
+}
+
+TaskDescriptor* TaskDescriptor::dequeueSender() {
+    return senders.pop();
+}

@@ -46,13 +46,13 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
                 curTask->setReturnValue(-1);
                 break;
             }
-
-            const char* senderMsg = reinterpret_cast<const char*>(curTask->getReg(1));
-            size_t senderMsgLen = static_cast<size_t>(curTask->getReg(2));
-
+            
             TaskDescriptor* receiver = taskManager->getTask(receiverTid);
 
             if (receiver->getState() == TaskState::WAITING_FOR_SEND) {
+                const char* senderMsg = reinterpret_cast<const char*>(curTask->getReg(1));
+                size_t senderMsgLen = static_cast<size_t>(curTask->getReg(2));
+
                 uint32_t* receiverSenderOut = reinterpret_cast<uint32_t*>(receiver->getReg(0));
                 char* receiverMsg = reinterpret_cast<char*>(receiver->getReg(1));
                 size_t receiverMsgLen = static_cast<size_t>(receiver->getReg(2));
