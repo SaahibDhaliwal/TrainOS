@@ -9,7 +9,7 @@ constexpr int USER_STACK_BASE = 0x3FFFFFF0;
 constexpr int NAME_SERVER_TID = 2;
 constexpr int NAME_SERVER_CAPACITY = 64;
 constexpr int MAX_MESSAGE_LENGTH = 256;
-constexpr int EXPERIMENT_COUNT = 5;
+constexpr int EXPERIMENT_COUNT = 10000;
 }  // namespace Config
 
 #endif /* config.h */

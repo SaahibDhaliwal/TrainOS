@@ -52,19 +52,15 @@ void SenderTask() {
 
     int start = 0;
     int end = 0;
-    // start = get_timer();
-    // end = get_timer();
-    // uart_printf(CONSOLE, "first clock diff: %u \n\r", end - start);
 
     char reply[Config::MAX_MESSAGE_LENGTH];
     start = get_timer();
     for (int i = 0; i < Config::EXPERIMENT_COUNT; i++) {
-        end = get_timer();
-
-        uart_printf(CONSOLE, "clock time diff: %u \n\r", end - start);
-        // int replylen = Send(4, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-        start = get_timer();
+        int replylen = Send(3, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
     }
+    end = get_timer();
+    uart_printf(CONSOLE, "clock time diff %u \n\r", (end - start) / Config::EXPERIMENT_COUNT);
+
     Exit();
 }
 
@@ -97,6 +93,6 @@ void PerformanceMeasurement() {
     // uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(10, &NameServer));
 
     uart_printf(CONSOLE, "[First Task]: Created Sender: %u\n\r", Create(9, &SenderTask));
-    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", Create(8, &ReceiverTask));
+    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", Create(10, &ReceiverTask));
     Exit();
 }
