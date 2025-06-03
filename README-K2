@@ -1,0 +1,14 @@
+Building (linux.student.cs.uwaterloo.ca)
+========================================
+
+Clone repo:
+git clone https://git.uwaterloo.ca/dduranro/kernel.git
+cd kernel
+git checkout 9a7ff21b3bb9042e0dfb5c05508eaadffb860bbe
+
+make
+
+That is, you type in the console 'make' to compile the program.
+
+This will produce kernel1.img which should be deployed to the RPi and run. 
+See the course web page for deployment instructions.
