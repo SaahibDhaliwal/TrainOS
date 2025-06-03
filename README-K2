@@ -12,3 +12,6 @@ That is, you type in the console 'make' to compile the program.
 
 This will produce kernel1.img which should be deployed to the RPi and run. 
 See the course web page for deployment instructions.
+
+Upon running, by default the RPS game test will execute. Tests will wait for user input before continuing.
+Performance measurements can be done by changing the desired condition alongside updating the first user task.
