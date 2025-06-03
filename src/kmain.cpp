@@ -44,8 +44,8 @@ extern "C" int kmain() {
 
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
     taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
-    char c;
-    uart_getc(CONSOLE);
+    // char c;
+    // uart_getc(CONSOLE);
     for (;;) {
         curTask = taskManager.schedule();
         // uart_printf(CONSOLE, "Next: %u\n\r", curTask->getTid());

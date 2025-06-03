@@ -145,7 +145,7 @@ void RPS_Fixed_Client() {
             } break;
         }
     }
-    Yield();
+    // Yield();
     char msg3[] = "QUIT";
     Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
     uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
@@ -185,24 +185,24 @@ void RPS_Random_Client2() {
                 char msg2[] = "PLAY ROCK";
                 Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
                 uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,           Result: %s\n\r", MyTid(), reply);
-                if (!strcmp(reply, "Sorry, your partner quit.")) {  // weird compiler behaviour if this is outside
-                    quitflag = 1;
-                }
+                // if (!strcmp(reply, "Sorry, your partner quit.")) {  // weird compiler behaviour if this is outside?
+                //     quitflag = 1;
+                // }
             } else if (rngValue == 2) {
                 char msg2[] = "PLAY PAPER";
                 Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
                 uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,          Result: %s\n\r", MyTid(), reply);
-                if (!strcmp(reply, "Sorry, your partner quit.")) {
-                    quitflag = 1;
-                }
+                // if (!strcmp(reply, "Sorry, your partner quit.")) {
+                //     quitflag = 1;
+                // }
 
             } else if (rngValue == 3) {
                 char msg2[] = "PLAY SCISSORS";
                 Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
                 uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,       Result: %s\n\r", MyTid(), reply);
-                if (!strcmp(reply, "Sorry, your partner quit.")) {
-                    quitflag = 1;
-                }
+                // if (!strcmp(reply, "Sorry, your partner quit.")) {
+                //     quitflag = 1;
+                // }
             } else {
                 uart_printf(CONSOLE, "BAD RNG");
             }
@@ -265,24 +265,24 @@ void RPS_Random_Client() {
             char msg2[] = "PLAY ROCK";
             Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
             uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,           Result: %s\n\r", MyTid(), reply);
-            if (!strcmp(reply, "Sorry, your partner quit.")) {  // weird compiler behaviour if this is outside
-                quitflag = 1;
-            }
+            // if (!strcmp(reply, "Sorry, your partner quit.")) {  // weird compiler behaviour if this is outside
+            //     quitflag = 1;
+            // }
         } else if (rngValue == 2) {
             char msg2[] = "PLAY PAPER";
             Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
             uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,          Result: %s\n\r", MyTid(), reply);
-            if (!strcmp(reply, "Sorry, your partner quit.")) {
-                quitflag = 1;
-            }
+            // if (!strcmp(reply, "Sorry, your partner quit.")) {
+            //     quitflag = 1;
+            // }
 
         } else if (rngValue == 3) {
             char msg2[] = "PLAY SCISSORS";
             Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
             uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,       Result: %s\n\r", MyTid(), reply);
-            if (!strcmp(reply, "Sorry, your partner quit.")) {
-                quitflag = 1;
-            }
+            // if (!strcmp(reply, "Sorry, your partner quit.")) {
+            //     quitflag = 1;
+            // }
         } else {
             uart_printf(CONSOLE, "BAD RNG");
         }
@@ -434,9 +434,7 @@ void RPS_Server() {
             // push both of them on the map of pairs
 
         } else if (!strcmp(command, "PLAY")) {
-            int j = 0;
             for (int i = 0; i < MAX_PLAYERS; i++) {
-                j = i;
                 if (playerSlabs[i].getTid() == clientTID) {
                     rps_player* partner = playerSlabs[i].getPair();
                     if (!partner) {
@@ -446,14 +444,12 @@ void RPS_Server() {
 
                     if (playerSlabs[i].quit) {
                         // partner sets this to quit upon them quitting
-                        // If we put them back on the queue, our logic flow would get wayyy to complex
-                        // uart_printf(CONSOLE, "uhoh, partnerTID: %d", playerSlabs[i].paired_with->TID);
+                        // If we put them back on the queue, our logic flow would get way to complex
 
                         char msg[] = "Sorry, your partner quit.";
                         Reply(clientTID, msg, Config::MAX_MESSAGE_LENGTH);
 
                         freelist.push(&playerSlabs[i]);
-                        // clearPlayer(&playerSlabs[i]);  // let our partner know we quit
 
                         break;
                     }
@@ -528,28 +524,26 @@ void RPS_Server() {
                 }
             }
 
-            // worth checking if we made it out
-            //  uart_printf(CONSOLE, "ERROR: I VALUE: %u\n\r", j);
-
         } else if (!strcmp(command, "QUIT")) {
             // remove from our struct
             for (int i = 0; i < MAX_PLAYERS; i++) {
                 if (playerSlabs[i].getTid() == clientTID) {
                     playerSlabs[i].getPair()->quit = 1;  // let our partner know we quit CRUCIAL
                     freelist.push(&playerSlabs[i]);
-                    // clearPlayer(&playerSlabs[i]);
 
                     char quit_msg[] = "You have quit";
                     Reply(clientTID, quit_msg, Config::MAX_MESSAGE_LENGTH);
 
-                    freelist.push(playerSlabs[i].paired_with);
-                    char quit_partner_msg[] = "Sorry, your partner quit.";
-                    Reply(playerSlabs[i].paired_with->TID, quit_partner_msg, Config::MAX_MESSAGE_LENGTH);
+                    // if our partner was waiting for us, we need to free them
+                    if (playerSlabs[i].paired_with->waiting_on_pair) {
+                        freelist.push(playerSlabs[i].paired_with);
+                        char quit_partner_msg[] = "Sorry, your partner quit.";
+                        Reply(playerSlabs[i].paired_with->TID, quit_partner_msg, Config::MAX_MESSAGE_LENGTH);
+                    }
 
                     break;
                 }
             }
-            // uart_printf(CONSOLE, "Error: could not find slab\r\n");
 
         } else {
             uart_printf(CONSOLE, "That was not a valid command! First word must be {SIGNUP, PLAY, QUIT}\n\r");

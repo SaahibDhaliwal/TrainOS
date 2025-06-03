@@ -46,7 +46,7 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
                 curTask->setReturnValue(-1);
                 break;
             }
-            
+
             TaskDescriptor* receiver = taskManager->getTask(receiverTid);
 
             if (receiver->getState() == TaskState::WAITING_FOR_SEND) {

@@ -97,6 +97,6 @@ void PerformanceMeasurement() {
     // uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(10, &NameServer));
 
     uart_printf(CONSOLE, "[First Task]: Created Sender: %u\n\r", Create(9, &SenderTask));
-    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", Create(9, &ReceiverTask));
+    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", Create(8, &ReceiverTask));
     Exit();
 }
