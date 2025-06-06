@@ -71,6 +71,7 @@ Reply:
     ldr x30, [\context, #(8 * 30)]
 .endm
 
+
 .global kernelToUser
 kernelToUser:
     // x0 = kernelContext
@@ -97,6 +98,7 @@ kernelToUser:
 
     // SPSR_EL1
     ldr x2, [x1, #(8 * 33)]
+    
     msr spsr_el1, x2
 
     // return value from syscall
@@ -106,8 +108,9 @@ kernelToUser:
     //ldr x3, [x1, #(8 * 3)]
     //ldr x4, [x1, #(8 * 4)]
     //ldr x1, [x1, #(8 * 1)]
-
+    msr DAIFSet, #0b1001
     eret
+
 
 .global userToKernel
 userToKernel:
@@ -142,5 +145,44 @@ userToKernel:
     restore_callee_registers x7
 
     mrs x0, esr_el1
+
+    ret
+
+
+//Ideally this will save more context than just the first couple of user arguments. Thus, it'll be slower
+// try: save x6 and x7 on stack, after 
+.global slowUserToKernel
+slowUserToKernel:
+    // Restore kernelContext and userContext from kernel's stack (from when we did kernelToUser)
+    // x6 = userContext
+    // x7 = kernelContext
+    ldp x6, x7, [sp], #16
+
+    // Store callee-saved registers for userContext in the TD's context array
+    store_callee_registers x6
+
+    // Also store any arguments the user passed 
+    str x0, [x6, #(8 * 0)]
+    str x1, [x6, #(8 * 1)]
+    str x2, [x6, #(8 * 2)]
+    str x3, [x6, #(8 * 3)]
+    str x4, [x6, #(8 * 4)]  // Message Send has 5 params
+
+    // Save SP_EL0
+    mrs x2, sp_el0
+    str x2, [x6, #(8 * 31)]
+
+    // Save ELR_EL1
+    mrs x2, elr_el1
+    str x2, [x6, #(8 * 32)]
+
+    // Save SPSR_EL1
+    mrs x2, spsr_el1
+    str x2, [x6, #(8 * 33)]
+
+    // Restore callee-saved registers from kernelContext
+    restore_callee_registers x7
+
+    mov x0, #8
 
     ret

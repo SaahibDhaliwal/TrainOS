@@ -1,6 +1,8 @@
 #include <array>
 
+#include "gic.h"
 #include "rpi.h"
+#include "servers/clock_server.h"
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
@@ -32,18 +34,20 @@ extern "C" int kmain() {
 #if defined(MMU)
     setup_mmu();
 #endif
-    initialize_bss();                 // sets entire bss region to 0's
-    run_init_array();                 // call constructors
-    vbar_init();                      // sets up exception vector
-    gpio_init();                      // set up GPIO pins for both console and marklin uarts
+    initialize_bss();  // sets entire bss region to 0's
+    run_init_array();  // call constructors
+    vbar_init();       // sets up exception vector
+    gicInit();
+    gpio_init();  // set up GPIO pins for both console and marklin uarts
+
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
-    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));            // idle task
+    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ClockFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
         if (!curTask) break;

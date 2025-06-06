@@ -14,6 +14,7 @@
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
+#include "timer.h"
 #include "util.h"
 
 void FirstUserTask() {
@@ -56,11 +57,11 @@ void SenderTask() {
     int end = 0;
 
     char reply[Config::MAX_MESSAGE_LENGTH];
-    start = get_timer();
+    start = timerGet();
     for (int i = 0; i < Config::EXPERIMENT_COUNT; i++) {
         int replylen = Send(3, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
     }
-    end = get_timer();
+    end = timerGet();
     uart_printf(CONSOLE, "clock time diff %u \n\r", (end - start) / Config::EXPERIMENT_COUNT);
 
     Exit();
@@ -99,6 +100,7 @@ void RPSFirstUserTaskDebug() {
 void RPSFirstUserTask() {
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(9, &NameServer));
     uart_printf(CONSOLE, "[First Task]: Created RPS Server: %u\n\r", Create(8, &RPS_Server));
+    timerInit();
 
     uart_printf(CONSOLE, "\n\r------  Starting first test: Both tie with Rock ---------\n\r");
     uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");

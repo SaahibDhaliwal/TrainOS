@@ -1,6 +1,7 @@
 #include "rpi.h"
 #include "servers/name_server.h"
 #include "sys_call_stubs.h"
+#include "timer.h"
 
 void RPS_Client() {
     int serverTID = WhoIs("rps_server");
@@ -55,7 +56,7 @@ void RPS_Fixed_Client() {
         if (forced_hand) {
             rngValue = a2d(parentMsg[1]);
         } else {
-            rngValue = ((get_timer() % 10) % 3) + 1;  // note: this makes rock 4/10 chance vs 3/10 for others
+            rngValue = ((timerGet() % 10) % 3) + 1;  // note: this makes rock 4/10 chance vs 3/10 for others
         }
         switch (rngValue) {
             case 1: {
@@ -97,7 +98,7 @@ void RPS_Random_Client2() {
         }
 
         for (int i = 0; i < num_plays; i++) {
-            int rngValue = ((get_timer() % 10) % 3) + 1;
+            int rngValue = ((timerGet() % 10) % 3) + 1;
 
             if (rngValue == 1) {
                 char msg2[] = "PLAY ROCK";
@@ -131,7 +132,7 @@ void RPS_Random_Client2() {
                 break;
             }
         }
-        // int quitRNG = (get_timer() % 100);
+        // int quitRNG = (timerGet() % 100);
         // // uart_printf(CONSOLE, "quitrng:%u ", quitRNG);
         // if (quitRNG <= 10) {
         //     char msg3[] = "QUIT";
@@ -178,7 +179,7 @@ void RPS_Random_Client() {
     }
 
     for (int i = 0; i < num_plays; i++) {
-        int rngValue = ((get_timer() % 10) % 3) + 1;
+        int rngValue = ((timerGet() % 10) % 3) + 1;
 
         if (rngValue == 1) {
             char msg2[] = "PLAY ROCK";
@@ -211,7 +212,7 @@ void RPS_Random_Client() {
             break;
         }
     }
-    // int quitRNG = (get_timer() % 100);
+    // int quitRNG = (timerGet() % 100);
     // // uart_printf(CONSOLE, "quitrng:%u ", quitRNG);
     // if (quitRNG <= 10) {
     //     char msg3[] = "QUIT";

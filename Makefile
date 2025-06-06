@@ -6,7 +6,7 @@ CXX:=$(XBINDIR)/$(TRIPLE)-g++
 OBJCOPY:=$(XBINDIR)/$(TRIPLE)-objcopy
 OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 OUT_DIR := build
-TARGET := kernel1
+TARGET := kernel3
 
 MMU?=on
 OPT?=on

@@ -2,9 +2,11 @@
 
 #include <algorithm>
 
+#include "gic.h"
 #include "rpi.h"
 #include "task_descriptor.h"
 #include "task_manager.h"
+#include "timer.h"
 
 void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
     switch (static_cast<SYSCALL_NUM>(N)) {
@@ -143,6 +145,18 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
                 curTask->setReturnValue(-2);
                 taskManager->rescheduleTask(curTask);
             }
+
+            break;
+        }
+        case SYSCALL_NUM::TICK: {
+            // read output compare register and add offset for next timer tick
+            uint32_t interrupt_id = gicGetInterrupt();
+            timerSetNextTick();
+            uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
+
+            gicEndInterrupt(interrupt_id);
+            uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
+            taskManager->rescheduleTask(curTask);
 
             break;
         }

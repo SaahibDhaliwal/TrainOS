@@ -13,3 +13,10 @@ extern "C" void dummy_handler() {
         asm volatile("wfe");
     }
 }
+
+extern "C" void test_handler() {
+    uart_printf(CONSOLE, "YOU MESSED SOMETHING UP IN THE KERNEL ASSEMBLY!\n\r");
+    while (true) {
+        asm volatile("wfe");
+    }
+}

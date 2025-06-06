@@ -10,6 +10,10 @@ vbar_init:
 
 // See https://developer.arm.com/documentation/102412/0103/Handling-exceptions/Taking-an-exception?lang=en
 
+#define SPSR_MASK_ALL (11 << 6) // mask D,I,F  (1011)
+#define SPSR_CLEARBITS #0xFFFFFFFFFFFFFC3F  // Binary, all ones except for four zeros at position 6,7,8,9
+#define SPSR_EL1       (5 << 0) // EL1 with SP_EL1
+
 .balign 0x800 // this is 2048
 vbar_baseaddr:
     same_el_inEL0_SYNC:
@@ -31,7 +35,7 @@ vbar_baseaddr:
 
     .balign 0x80 
     same_el_inELX_SYNCH:
-        b dummy_handler
+        b test_handler
 
     .balign 0x80 
     same_el_inELX_IRQ:
@@ -52,11 +56,13 @@ vbar_baseaddr:
     
     .balign 0x80 
     lower_el_AARCH64_IRQ:
-        b dummy_handler
+        // see https://tc.gts3.org/cs3210/2020/spring/l/lec14/lec14.html#cover
+        msr DAIFSet, #0b1011
+        b slowUserToKernel          // asynch interrupt
 
     .balign 0x80 
     lower_el_AARCH64_FIQ:
-        b dummy_handler
+        b dummy_handler         // asynch interrupt, but unused
 
     .balign 0x80 
     lower_el_AARCH64_SERROR:

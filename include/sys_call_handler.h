@@ -3,7 +3,17 @@
 
 #include <cstdint>
 
-enum class SYSCALL_NUM { CREATE, MY_TID, MY_PARENT_TID, YIELD, EXIT, SEND, RECEIVE, REPLY };
+enum class SYSCALL_NUM {
+    CREATE,
+    MY_TID,
+    MY_PARENT_TID,
+    YIELD,
+    EXIT,
+    SEND,
+    RECEIVE,
+    REPLY,
+    TICK,
+};
 
 class TaskManager;
 class TaskDescriptor;
