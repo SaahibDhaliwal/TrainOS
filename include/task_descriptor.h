@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "context.h"
+#include "intrusive_node.h"
 #include "queue.h"
 
 enum class TaskState {
@@ -17,20 +18,13 @@ enum class TaskState {
     EVENT_BLOCKED
 };
 
-class TaskDescriptor {
+class TaskDescriptor : public IntrusiveNode<TaskDescriptor> {
     Context context;                // task context
     int32_t tid;                    // task identifier
     TaskDescriptor* parent;         // parent pointer
     uint8_t priority;               // priority
     Queue<TaskDescriptor> senders;  // who wants to send to us?
     TaskState state;                // current run state
-    TaskDescriptor* next;           // intrusive link
-
-    template <typename T>
-    friend class Queue;
-
-    template <typename T>
-    friend class Stack;
 
    public:
     void initialize(TaskDescriptor* parent, uint8_t priority, uint64_t entryPoint, uint64_t stackTop);

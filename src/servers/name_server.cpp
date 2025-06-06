@@ -1,4 +1,4 @@
-#include "name_server.h"
+#include "servers/name_server.h"
 
 #include "sys_call_stubs.h"
 

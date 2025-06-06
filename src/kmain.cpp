@@ -1,7 +1,7 @@
 #include <array>
 
 #include "rpi.h"
-#include "rps_server.h"
+#include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
 #include "user_tasks.h"

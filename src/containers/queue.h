@@ -23,8 +23,8 @@ class Queue {
         if (!head) return nullptr;  // nothing in q
         T* node = head;
         head = head->next;
-        if (!head) tail = nullptr;  // nothing next
         count--;
+        if (!head) tail = nullptr;  // nothing next
         return node;
     }
 
@@ -42,7 +42,7 @@ class Queue {
         tail = nullptr;
     }
 
-    int tally() const {
+    int size() const {
         return count;
     }
 };

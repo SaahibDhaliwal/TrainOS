@@ -16,7 +16,6 @@ void TaskDescriptor::initialize(TaskDescriptor* newParent, uint8_t newPriority, 
     priority = newPriority;
     senders.reset();
     state = TaskState::READY;
-    next = nullptr;
 }
 
 /*********** GETTERS ********************************/
