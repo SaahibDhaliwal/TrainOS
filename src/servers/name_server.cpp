@@ -1,5 +1,6 @@
 #include "servers/name_server.h"
 
+#include "protocols/generic_protocol.h"
 #include "protocols/ns_protocol.h"
 #include "sys_call_stubs.h"
 
@@ -18,7 +19,8 @@ void NameServer() {
         uint32_t senderTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
 
-        sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH);
+        int msgLen = sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        receiveBuffer[msgLen] = '\0';
 
         Command command = commandFromByte(receiveBuffer[0]);
 
@@ -31,9 +33,9 @@ void NameServer() {
                     nameTidPairs[head].name[Config::MAX_MESSAGE_LENGTH - 1] = '\0';
                     nameTidPairs[head].tid = senderTid;
                     head++;
-                    sys::Reply(senderTid, "0", 2);
+                    CharReply(senderTid, toByte(Reply::SUCCESS));
                 } else {
-                    sys::Reply(senderTid, "-1", 3);
+                    CharReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;
@@ -44,16 +46,16 @@ void NameServer() {
 
                 for (int i = 0; i < head; i++) {
                     if (strcmp(name, nameTidPairs[i].name) == 0) {
-                        char tmpBuffer[Config::MAX_MESSAGE_LENGTH];
+                        char tmpBuffer[4];
                         ui2a(nameTidPairs[i].tid, 10, tmpBuffer);
-                        sys::Reply(senderTid, tmpBuffer, strlen(tmpBuffer) + 1);
+                        sys::Reply(senderTid, tmpBuffer, 4);
                         found = true;
                         break;
                     }
                 }
 
                 if (!found) {
-                    sys::Reply(senderTid, "-1", 3);
+                    CharReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;

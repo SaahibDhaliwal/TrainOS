@@ -65,7 +65,6 @@ TaskDescriptor* TaskManager::schedule() {
 uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 value is returned when switching from user to kernel.
-    // uart_printf(CONSOLE, "elr: %d\n\r", task->getMutableContext()->elr);
     uint32_t ESR_EL1 = kernelToUser(&kernelContext, task->getMutableContext());
     return ESR_EL1 & 0xFFFFFF;
 }
