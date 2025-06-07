@@ -6,6 +6,8 @@
 
 #include "util.h"
 
+namespace sys {
+
 extern "C" {
 int Create(int priority, void (*function)());  // Creates task and queues it. Caller becomes parent.
 
@@ -23,8 +25,6 @@ int Receive(uint32_t *tid, char *msg, int msglen);
 
 int Reply(uint32_t tid, const char *reply, int rplen);
 }
-
-int RegisterAs(const char *name);
-int WhoIs(const char *name);
+}  // namespace sys
 
 #endif /*sys_call_stubs.h*/
