@@ -144,3 +144,60 @@ userToKernel:
     mrs x0, esr_el1
 
     ret
+
+.global fillRegisters
+fillRegisters:
+    // x0 has the base
+    add x1, x0, #1
+    add x2, x0, #2
+    add x3, x0, #3
+    add x4, x0, #4
+    add x5, x0, #5
+    add x6, x0, #6
+    add x7, x0, #7
+    add x8, x0, #8
+    add x9, x0, #9
+    add x10, x0, #10
+    add x11, x0, #11
+    add x12, x0, #12
+    add x13, x0, #13
+    add x14, x0, #14
+    add x15, x0, #15
+    add x16, x0, #16
+    add x17, x0, #17
+    add x18, x0, #18
+    add x19, x0, #19
+    add x20, x0, #20
+    add x21, x0, #21
+    add x22, x0, #22
+    add x23, x0, #23
+    add x24, x0, #24
+    add x25, x0, #25
+    add x26, x0, #26
+    add x27, x0, #27
+    add x28, x0, #28
+    add x29, x0, #29
+    ret
+
+.global dumpRegisters
+dumpRegisters:
+    // x0 has the buff
+    str x0, [x0]
+    add x0, x0, #8
+    stp x1, x2, [x0], #16
+    stp x3, x4, [x0], #16
+    stp x5, x6, [x0], #16
+    stp x7, x8, [x0], #16
+    stp x9, x10, [x0], #16
+    stp x11, x12, [x0], #16
+    stp x13, x14, [x0], #16
+    stp x15, x16, [x0], #16
+    stp x17, x18, [x0], #16
+    stp x19, x20, [x0], #16
+    stp x21, x22, [x0], #16
+    stp x23, x24, [x0], #16
+    stp x25, x26, [x0], #16
+    stp x27, x28, [x0], #16
+    stp x29, x30, [x0], #16
+    ret
+

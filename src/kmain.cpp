@@ -4,6 +4,7 @@
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
+#include "test_entry.h"
 #include "user_tasks.h"
 
 extern "C" {
@@ -38,6 +39,10 @@ extern "C" int kmain() {
     gpio_init();                      // set up GPIO pins for both console and marklin uarts
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
+#if defined(TESTING)
+    runTests();
+
+#else
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
@@ -50,6 +55,9 @@ extern "C" int kmain() {
         uint32_t request = taskManager.activate(curTask);
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
+
+#endif  // TESTING
+
     return 0;
 }  // kmain
 

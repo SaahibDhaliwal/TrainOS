@@ -8,10 +8,6 @@
 #include "rpi.h"
 #include "task_descriptor.h"
 
-extern "C" {
-uint32_t kernelToUser(Context* kernelContext, Context* userTaskContext);
-}
-
 TaskManager::TaskManager() : nextTaskId(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
@@ -48,6 +44,10 @@ bool TaskManager::isTidValid(int64_t tid) {
 
 TaskDescriptor* TaskManager::getTask(uint32_t tid) {
     return &taskSlabs[tid];
+}
+
+Context TaskManager::getKernelContext() {
+    return kernelContext;
 }
 
 TaskDescriptor* TaskManager::schedule() {
