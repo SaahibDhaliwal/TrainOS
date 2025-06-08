@@ -4,19 +4,22 @@
 #include "test_utils.h"
 
 extern "C" {
-void fillRegisters(uint64_t base);
+void fillCallerSavedRegisters(uint64_t base);
 void dumpRegisters(uint64_t buf[34]);
 }
+
+constexpr int kernelRegValue = 1;
+constexpr int taskRegValue = 2;
 
 void taskEntry() {
     uint64_t buf[34];
 
-    fillRegisters(200);  // modifies everything except for link register so we actually return
-    sys::Yield();        // user to kernel
+    fillCallerSavedRegisters(taskRegValue);  // modifies everything except for link register so we actually return
+    sys::Yield();                            // user to kernel context switch
 
-    dumpRegisters(buf);  // x0 will be different, everything else should be the same as before we left
-    for (uint64_t i = 19; i < 29; i += 1) {
-        TEST_ASSERT(buf[i] == (200 + i));
+    dumpRegisters(buf);  // x0 is the buf, everything else should be the same as what we filled
+    for (uint64_t i = 10; i <= 10; ++i) {
+        TEST_ASSERT(buf[i] == (taskRegValue + i));
     }
 
     sys::Exit();
@@ -27,17 +30,22 @@ void runContextSwitchTest() {
     TaskDescriptor* curTask = nullptr;
     uint64_t buf[34];
 
-    taskManager.createTask(nullptr, 1, reinterpret_cast<uint64_t>(taskEntry));  // test tasK
+    taskManager.createTask(nullptr, 1, reinterpret_cast<uint64_t>(taskEntry));  // test task
     curTask = taskManager.schedule();
 
     Context kernelContext = taskManager.getKernelContext();
 
-    fillRegisters(100);  // modifies everything except for link register so we actually return
-    uint32_t ESR_EL1 = kernelToUser(&kernelContext, curTask->getMutableContext());
+    fillCallerSavedRegisters(kernelRegValue);  // modifies everything except for link register so we actually return
+    kernelToUser(&kernelContext, curTask->getMutableContext());  // kernel to user context switch
 
-    dumpRegisters(buf);
-    // x0 will be different, everything else should be the same as before we left
-    for (uint64_t i = 19; i < 29; ++i) {
-        TEST_ASSERT(buf[i] == (100 + i));
+    dumpRegisters(buf);  // x0 is the buf, everything else should be the same as what we filled
+    for (uint64_t i = 10; i <= 10; ++i) {
+        TEST_ASSERT(buf[i] == (kernelRegValue + i));
     }
+
+    taskManager.rescheduleTask(curTask);
+    curTask = taskManager.schedule();
+    kernelContext = taskManager.getKernelContext();
+    fillCallerSavedRegisters(kernelRegValue);
+    kernelToUser(&kernelContext, curTask->getMutableContext());  // kernel to user context switch
 }

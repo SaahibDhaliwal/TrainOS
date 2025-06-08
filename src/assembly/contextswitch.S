@@ -145,8 +145,8 @@ userToKernel:
 
     ret
 
-.global fillRegisters
-fillRegisters:
+.global fillCallerSavedRegisters
+fillCallerSavedRegisters:
     // x0 has the base
     add x1, x0, #1
     add x2, x0, #2
@@ -166,17 +166,6 @@ fillRegisters:
     add x16, x0, #16
     add x17, x0, #17
     add x18, x0, #18
-    add x19, x0, #19
-    add x20, x0, #20
-    add x21, x0, #21
-    add x22, x0, #22
-    add x23, x0, #23
-    add x24, x0, #24
-    add x25, x0, #25
-    add x26, x0, #26
-    add x27, x0, #27
-    add x28, x0, #28
-    add x29, x0, #29
     ret
 
 .global dumpRegisters
