@@ -41,6 +41,7 @@ class TaskManager {
     bool isTidValid(int64_t tid);
 
     TaskDescriptor* getTask(uint32_t tid);
+    Context getKernelContext();
 };
 
 #endif /* task_manager.h */

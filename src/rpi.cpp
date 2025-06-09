@@ -185,6 +185,9 @@ void uart_printf(size_t line, const char* fmt, ...) {
                     ui2a(va_arg(va, unsigned int), 16, buf);
                     uart_puts(line, buf);
                     break;
+                case 'c':
+                    uart_putc(line, (char)va_arg(va, int));
+                    break;
                 case 's':
                     uart_puts(line, va_arg(va, char*));
                     break;

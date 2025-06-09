@@ -152,7 +152,7 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
             // read output compare register and add offset for next timer tick
             uint32_t interrupt_id = gicGetInterrupt();
             timerSetNextTick();
-            uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
+            // uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
 
             gicEndInterrupt(interrupt_id);
             uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());

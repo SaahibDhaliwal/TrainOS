@@ -1,6 +1,10 @@
 #include "servers/name_server.h"
 
+#include "protocols/generic_protocol.h"
+#include "protocols/ns_protocol.h"
 #include "sys_call_stubs.h"
+
+using namespace name_server;
 
 void NameServer() {
     NameTid nameTidPairs[Config::NAME_SERVER_CAPACITY];
@@ -15,10 +19,13 @@ void NameServer() {
         uint32_t senderTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
 
-        uint32_t messageLen = Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH);
+        int msgLen = sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        receiveBuffer[msgLen] = '\0';
 
-        switch (receiveBuffer[0]) {
-            case 'r': {
+        Command command = commandFromByte(receiveBuffer[0]);
+
+        switch (command) {
+            case Command::REGISTER: {
                 const char* name = receiveBuffer + 1;
 
                 if (head < Config::NAME_SERVER_CAPACITY) {
@@ -26,30 +33,29 @@ void NameServer() {
                     nameTidPairs[head].name[Config::MAX_MESSAGE_LENGTH - 1] = '\0';
                     nameTidPairs[head].tid = senderTid;
                     head++;
-                    Reply(senderTid, "0", 2);
+                    CharReply(senderTid, toByte(Reply::SUCCESS));
                 } else {
-                    Reply(senderTid, "-1", 3);
+                    CharReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;
             }
-            case 'w': {
+            case Command::WHO_IS: {
                 const char* name = receiveBuffer + 1;
                 bool found = false;
-                unsigned int foundTid = 0;
 
                 for (int i = 0; i < head; i++) {
                     if (strcmp(name, nameTidPairs[i].name) == 0) {
-                        char tmpBuffer[Config::MAX_MESSAGE_LENGTH];
+                        char tmpBuffer[4];
                         ui2a(nameTidPairs[i].tid, 10, tmpBuffer);
-                        Reply(senderTid, tmpBuffer, strlen(tmpBuffer) + 1);
+                        sys::Reply(senderTid, tmpBuffer, 4);
                         found = true;
                         break;
                     }
                 }
 
                 if (!found) {
-                    Reply(senderTid, "-1", 3);
+                    CharReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;
@@ -59,5 +65,5 @@ void NameServer() {
         }
     }
 
-    Exit();
+    sys::Exit();
 }

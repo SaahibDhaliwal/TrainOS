@@ -8,10 +8,6 @@
 #include "rpi.h"
 #include "task_descriptor.h"
 
-extern "C" {
-uint32_t kernelToUser(Context* kernelContext, Context* userTaskContext);
-}
-
 TaskManager::TaskManager() : nextTaskId(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
@@ -50,6 +46,10 @@ TaskDescriptor* TaskManager::getTask(uint32_t tid) {
     return &taskSlabs[tid];
 }
 
+Context TaskManager::getKernelContext() {
+    return kernelContext;
+}
+
 TaskDescriptor* TaskManager::schedule() {
     for (int priority = Config::MAX_PRIORITY - 1; priority >= 0; priority -= 1) {
         if (!readyQueues[priority].empty()) {
@@ -65,7 +65,6 @@ TaskDescriptor* TaskManager::schedule() {
 uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 value is returned when switching from user to kernel.
-    // uart_printf(CONSOLE, "elr: %d\n\r", task->getMutableContext()->elr);
-    uint32_t ESR_EL1 = kernelToUser(&kernelContext, task->getMutableContext());
+    uint32_t ESR_EL1 = slowKernelToUser(&kernelContext, task->getMutableContext());
     return ESR_EL1 & 0xFFFFFF;
 }

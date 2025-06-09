@@ -2,6 +2,9 @@
 
 #include <string.h>
 
+#include "protocols/generic_protocol.h"
+#include "protocols/ns_protocol.h"
+#include "protocols/rps_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "servers/name_server.h"
@@ -11,16 +14,17 @@
 #include "user_tasks.h"
 #include "util.h"
 
+using namespace rps;
 namespace {
-class RpsPlayer : public IntrusiveNode<RpsPlayer> {
+class RPSPlayer : public IntrusiveNode<RPSPlayer> {
    public:
     uint32_t tid = 0;
-    RpsPlayer* opponent = nullptr;
-    int move = 0;
+    RPSPlayer* opponent = nullptr;
+    Move move = Move::NONE;
     bool exited = false;
 
     void initialize(int newTid) {
-        move = 0;
+        move = Move::NONE;
         exited = false;
         tid = newTid;
         opponent = nullptr;
@@ -29,17 +33,17 @@ class RpsPlayer : public IntrusiveNode<RpsPlayer> {
 }  // namespace
 
 void RPS_Server() {
-    int registerReturn = RegisterAs("rps_server");
+    int registerReturn = name_server::RegisterAs(RPS_SERVER_NAME);
     if (registerReturn == -1) {
         uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER \n\r");
-        Exit();
+        sys::Exit();
     }
 
     // signup queue, popped two at a time
     const int MAX_PLAYERS = 64;
-    Queue<RpsPlayer> playerQueue;
-    RpsPlayer playerSlabs[MAX_PLAYERS];
-    Stack<RpsPlayer> freelist;
+    Queue<RPSPlayer> playerQueue;
+    RPSPlayer playerSlabs[MAX_PLAYERS];
+    Stack<RPSPlayer> freelist;
 
     // initialize our structs
     for (int i = 0; i < MAX_PLAYERS; i += 1) {
@@ -47,180 +51,150 @@ void RPS_Server() {
     }
 
     for (;;) {
-        uint32_t clientTid = 0;
-        char msg[Config::MAX_MESSAGE_LENGTH] = {0};
-        int msgsize = Receive(&clientTid, msg, Config::MAX_MESSAGE_LENGTH);
+        uint32_t clientTid;
+        char msg[3] = {0};
+        int msgSize = sys::Receive(&clientTid, msg, 2);
+        Command command = commandFromByte(msg[0]);
+        Move move = (command == Command::PLAY && msgSize >= 2) ? moveFromByte(msg[1]) : Move::NONE;
 
-        uart_printf(CONSOLE, "[RPS Server]: Request from tid: %u: '%s' \n\r", clientTid, msg);
-        // this will parse the message we receive
-        //  split along the first space, if found
-        char command[64] = {0};
-        char param[64] = {0};
-        int msg_parse = 0;
-        int tracker = 0;
-        for (int i = 0; i < msgsize; i++) {
-            if (!msg_parse) {
-                if (msg[i] != ' ') {
-                    command[i] = msg[i];
-                } else {
-                    command[i] = '\0';
-                    msg_parse = 1;
-                }
-            } else {
-                param[tracker] = msg[i];
-                tracker++;
-            }
+        uart_printf(CONSOLE, "[ Server]: Request from [Client %u]: %s", clientTid, commandToString(command));
+        if (command == Command::PLAY) {
+            uart_printf(CONSOLE, " %s", moveToString(move));
         }
-        param[tracker] = '\0';
+        uart_printf(CONSOLE, "\n\r");
 
         // parse info
-        if (!strcmp(command, "SIGNUP")) {  // if match, strcmp equals zero
-            // once two are on queue, reply and ask for first play
-            // playerQueue.push(&client);
-            if (freelist.empty()) {
-                uart_printf(CONSOLE, "No more space in free list!!\n\r");
+        switch (command) {
+            case Command::SIGNUP: {
+                // once two are on queue, reply and ask for first play
+                if (freelist.empty()) {
+                    uart_printf(CONSOLE, "No more space in free list!!\n\r");
+                }
+                // get new rps player from slab
+                RPSPlayer* newPlayer = freelist.pop();
+                newPlayer->initialize(clientTid);
+
+                // put them on the end of the queue
+                playerQueue.push(newPlayer);
+
+                if (playerQueue.size() < 2) {
+                    continue;
+                }
+
+                RPSPlayer* p1 = playerQueue.pop();
+                sys::Reply(p1->tid, "", 0);
+                RPSPlayer* p2 = playerQueue.pop();
+                sys::Reply(p2->tid, "", 0);
+
+                uart_printf(CONSOLE, "[ Server]: [Client %u] is paired with [Client %u]\n\r", p1->tid, p2->tid);
+
+                p1->opponent = p2;
+                p2->opponent = p1;
+
+                break;
             }
-            // get new rps player from slab
-            RpsPlayer* newPlayer = freelist.pop();
-            newPlayer->initialize(clientTid);
+            case Command::PLAY: {
+                for (int i = 0; i < MAX_PLAYERS; i++) {
+                    if (playerSlabs[i].tid == clientTid) {
+                        RPSPlayer* opponent = playerSlabs[i].opponent;
+                        if (!opponent) {
+                            uart_printf(CONSOLE, "[ Server]: ERROR! [Client %u] trying to play without signing up!\n\r",
+                                        clientTid);
+                            break;
+                        }
 
-            // put them on the end of the queue
-            playerQueue.push(newPlayer);
+                        if (playerSlabs[i].exited) {
+                            // opponent sets this to quit upon them quitting
+                            CharReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
+                            freelist.push(&playerSlabs[i]);
+                            break;
+                        }
 
-            if (playerQueue.size() < 2) {
-                // uart_printf(CONSOLE, "Not enough people, tid: %u\r\n", clientTid);
-                continue;
-            }
+                        if (move != Move::ROCK && move != Move::PAPER && move != Move::SCISSORS) {
+                            uart_printf(CONSOLE, "[ Server]: UNKNOWN_MOVE from client %u\n\r", clientTid);
+                            break;
+                        }
 
-            char signup_msg[] = "What is your play?";
+                        if (opponent->move == Move::NONE) {
+                            playerSlabs[i].move = move;
+                        } else {
+                            // opponent was waiting on me, time to do the game!
+                            Move opponentMove = opponent->move;
+                            const char winChar = static_cast<char>(Reply::WINNER);
+                            const char loseChar = static_cast<char>(Reply::LOSER);
+                            const char tieChar = static_cast<char>(Reply::TIED);
 
-            RpsPlayer* p1 = playerQueue.pop();
-            Reply(p1->tid, signup_msg, Config::MAX_MESSAGE_LENGTH);
-            RpsPlayer* p2 = playerQueue.pop();
-            Reply(p2->tid, signup_msg, Config::MAX_MESSAGE_LENGTH);
+                            if (move == opponentMove) {
+                                // tied
+                                CharReply(clientTid, tieChar);
+                                CharReply(opponent->tid, tieChar);
+                            } else if (move == Move::ROCK && opponentMove == Move::PAPER) {
+                                // client loss, opponent won (rock loses to paper)
+                                CharReply(clientTid, loseChar);
+                                CharReply(opponent->tid, winChar);
+                            } else if (move == Move::ROCK && opponentMove == Move::SCISSORS) {
+                                // client won, opponent loss (rock beats scissors)
+                                CharReply(clientTid, winChar);
+                                CharReply(opponent->tid, loseChar);
 
-            uart_printf(CONSOLE, "[RPS Server]: tid(%u) is paired with tid(%u)\n\r", p1->tid, p2->tid);
+                            } else if (move == Move::PAPER && opponentMove == Move::ROCK) {
+                                // client won, opponent loss (paper beats rock)
+                                CharReply(clientTid, winChar);
+                                CharReply(opponent->tid, loseChar);
 
-            p1->opponent = p2;
-            p2->opponent = p1;
+                            } else if (move == Move::PAPER && opponentMove == Move::SCISSORS) {
+                                // client loss, opponent won (paper loses to scissors)
+                                CharReply(clientTid, loseChar);
+                                CharReply(opponent->tid, winChar);
 
-            // push both of them on the map of pairs
+                            } else if (move == Move::SCISSORS && opponentMove == Move::ROCK) {
+                                // client loss, opponent won (scissors loses to rock)
+                                CharReply(clientTid, loseChar);
+                                CharReply(opponent->tid, winChar);
 
-        } else if (!strcmp(command, "PLAY")) {
-            for (int i = 0; i < MAX_PLAYERS; i++) {
-                if (playerSlabs[i].tid == clientTid) {
-                    RpsPlayer* opponent = playerSlabs[i].opponent;
-                    if (!opponent) {
-                        uart_printf(CONSOLE, "ERROR: Trying to play without signing up!\n\r");
+                            } else if (move == Move::SCISSORS && opponentMove == Move::PAPER) {
+                                // client won, opponent loss (scissors beats paper)
+                                CharReply(clientTid, winChar);
+                                CharReply(opponent->tid, loseChar);
+                            }
+                            // clear their waiting
+                            playerSlabs[i].move = Move::NONE;
+                            opponent->move = Move::NONE;
+                        }
+                        // found our desired slab, stop looping through the rest
                         break;
                     }
+                }
 
-                    if (playerSlabs[i].exited) {
-                        // opponent sets this to quit upon them quitting
-                        // If we put them back on the queue, our logic flow would get way to complex
-
-                        char msg[] = "Sorry, your opponent quit.";
-                        Reply(clientTid, msg, Config::MAX_MESSAGE_LENGTH);
-
+                break;
+            }
+            case Command::QUIT: {
+                // remove from our struct
+                for (int i = 0; i < MAX_PLAYERS; i++) {
+                    if (playerSlabs[i].tid == clientTid) {
+                        playerSlabs[i].opponent->exited = true;  // let our opponent know we quit CRUCIAL
                         freelist.push(&playerSlabs[i]);
 
-                        break;
-                    }
+                        CharReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
 
-                    int clientAction = 0;
-                    if (!strcmp(param, "ROCK")) {
-                        clientAction = 1;
-                    } else if (!strcmp(param, "PAPER")) {
-                        clientAction = 2;
-                    } else if (!strcmp(param, "SCISSORS")) {
-                        clientAction = 3;
-                    } else {
-                        uart_printf(CONSOLE, "ERROR: NOT A VALID ACTION FROM {ROCK, PAPER, SCISSORS} FROM tid %u: \n\r",
-                                    clientTid);
-                        uart_printf(CONSOLE, "GOT: %s strcmp: %d\n\r", param, strcmp(param, "SCISSORS"));
-                        break;
-                    }
-
-                    if (!opponent->move) {
-                        // opponent is not waiting on me (I have played first)
-                        // so I am now waiting for my opponent to send their message
-                        playerSlabs[i].move = clientAction;
-
-                    } else {
-                        // opponent was waiting on me, time to do the game!
-                        int opponentAction = opponent->move;
-                        const char* winner_msg = "Winner!\0";
-                        const char* loser_msg = "Loser!\0";
-                        const char* tie_msg = "Tied!\0";
-
-                        if (clientAction == opponentAction) {
-                            // tied
-                            Reply(clientTid, tie_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, tie_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 1 && opponentAction == 2) {
-                            // client loss, opponent won (rock loses to paper)
-                            Reply(clientTid, loser_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 1 && opponentAction == 3) {
-                            // client won, opponent loss (rock beats scissors)
-                            Reply(clientTid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, loser_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 2 && opponentAction == 1) {
-                            // client won, opponent loss (paper beats rock)
-                            Reply(clientTid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, loser_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 2 && opponentAction == 3) {
-                            // client loss, opponent won (paper loses to scissors)
-                            Reply(clientTid, loser_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 3 && opponentAction == 1) {
-                            // client loss, opponent won (scissors loses to rock)
-                            Reply(clientTid, loser_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-
-                        } else if (clientAction == 3 && opponentAction == 2) {
-                            // client won, opponent loss (scissors beats paper)
-                            Reply(clientTid, winner_msg, Config::MAX_MESSAGE_LENGTH);
-                            Reply(opponent->tid, loser_msg, Config::MAX_MESSAGE_LENGTH);
+                        // if our opponent was waiting for us, we need to free them
+                        if (playerSlabs[i].opponent->move != Move::NONE) {
+                            freelist.push(playerSlabs[i].opponent);
+                            CharReply(playerSlabs[i].opponent->tid, static_cast<char>(Reply::OPPONENT_QUIT));
                         }
-                        // clear their waiting
-                        playerSlabs[i].move = 0;
-                        opponent->move = 0;
+
+                        break;
                     }
-                    // found our desired slab, stop looping through the rest
-                    break;
                 }
+
+                break;
             }
+            default: {
+                uart_printf(CONSOLE, "[ Server]: Unknown Command!\n\r");
 
-        } else if (!strcmp(command, "QUIT")) {
-            // remove from our struct
-            for (int i = 0; i < MAX_PLAYERS; i++) {
-                if (playerSlabs[i].tid == clientTid) {
-                    playerSlabs[i].opponent->exited = true;  // let our opponent know we quit CRUCIAL
-                    freelist.push(&playerSlabs[i]);
-
-                    char quit_msg[] = "You have quit";
-                    Reply(clientTid, quit_msg, Config::MAX_MESSAGE_LENGTH);
-
-                    // if our opponent was waiting for us, we need to free them
-                    if (playerSlabs[i].opponent->move) {
-                        freelist.push(playerSlabs[i].opponent);
-                        char quit_opponent_msg[] = "Sorry, your opponent quit.";
-                        Reply(playerSlabs[i].opponent->tid, quit_opponent_msg, Config::MAX_MESSAGE_LENGTH);
-                    }
-
-                    break;
-                }
+                break;
             }
-
-        } else {
-            uart_printf(CONSOLE, "That was not a valid command! First word must be {SIGNUP, PLAY, QUIT}\n\r");
         }
     }
-    Exit();  // in case we ever somehow break out of the infinite for loop
+    sys::Exit();  // in case we ever somehow break out of the infinite for loop
 }

@@ -10,6 +10,7 @@ TARGET := kernel3
 
 MMU?=on
 OPT?=on
+TESTING?=off
 
 # COMPILE OPTIONS
 ifeq ($(MMU),on)
@@ -17,12 +18,18 @@ MMUFLAGS:=-DMMU
 else
 MMUFLAGS:=-mstrict-align -mgeneral-regs-only
 endif
+
 ifeq ($(OPT),on)
 OPTFLAGS=-O3
 endif
+
+ifeq ($(TESTING),on)
+TESTFLAGS:=-DTESTING
+endif
+
 WARNINGS:=-Wall -Wextra -Wpedantic -Wno-unused-const-variable -Wno-stringop-overflow
 # I had to get rid of freestanding for the map. Says its fine on piazza
-CFLAGS:= -Isrc -Isrc/containers -Iinclude -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(WARNINGS)
+CFLAGS:= -Isrc -Isrc/containers -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(WARNINGS)
 
 # -Wl,option tells gcc to pass 'option' to the linker with commas replaced by spaces
 # doing this rather than calling the linker directly simplifies the compilation procedure
@@ -38,10 +45,14 @@ OBJECTS := $(OBJECTS:.S=.o)
 DEPENDS := $(OBJECTS:.o=.d)
 
 # The first rule is the default, ie. "make", "make all" and "make kernel1.img" mean the same
-all: $(TARGET).img
+all: clean $(TARGET).img
 
 clean:
 	rm -f $(OBJECTS) $(DEPENDS) $(TARGET).elf $(TARGET).img
+
+.PHONY: test
+test:
+	 $(MAKE) clean all TESTING=on
 
 $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -S -O binary $< $@

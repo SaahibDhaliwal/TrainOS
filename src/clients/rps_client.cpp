@@ -1,233 +1,132 @@
+#include "protocols/generic_protocol.h"
+#include "protocols/ns_protocol.h"
+#include "protocols/rps_protocol.h"
 #include "rpi.h"
 #include "servers/name_server.h"
+#include "servers/rps_server.h"
 #include "sys_call_stubs.h"
 #include "timer.h"
 
-void RPS_Client() {
-    int serverTID = WhoIs("rps_server");
-    char msg[] = "SIGNUP";
-    int quitflag = 1;
-
-    for (;;) {
-        char reply[Config::MAX_MESSAGE_LENGTH];
-        if (quitflag) {
-            Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
-            quitflag = 0;
-        }
-
-        char msg2[] = "PLAY SCISSORS";
-        Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,        Result: %s\n\r", MyTid(), reply);
-        if (!strcmp(reply, "Sorry, your opponent quit.")) {
-            quitflag = 1;
-        }
-
-        char msg3[] = "QUIT";
-        Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit!\n\r", MyTid());
-        Exit();
-    }
-}
+using namespace rps;
 
 void RPS_Fixed_Client() {
-    int serverTID = WhoIs("rps_server");
-    uint32_t clientTID = 0;
-    char parentMsg[Config::MAX_MESSAGE_LENGTH] = {0};
+    int serverTid = name_server::WhoIs(RPS_SERVER_NAME);
 
-    int msgsize = Receive(&clientTID, parentMsg, Config::MAX_MESSAGE_LENGTH);
-    Reply(clientTID, "0", Config::MAX_MESSAGE_LENGTH);
+    uint32_t parentTid = 0;
+    char parentMsg[4] = {0};
+    sys::Receive(&parentTid, parentMsg, 3);
+    CharReply(parentTid, '0');
 
-    bool forced_hand = 0;
-    int num_plays = Config::EXPERIMENT_COUNT;
-    if (parentMsg[0] == 'F') {
-        forced_hand = true;
+    bool forced_hand = (parentMsg[0] == 'F');
+    int numPlays = a2d(parentMsg[2]);
+
+    if (Signup(serverTid) < 0) {
+        uart_printf(CONSOLE, "[Client %u ]: SIGNUP failed\n\r", sys::MyTid());
+        sys::Exit();
     }
-    num_plays = a2d(parentMsg[2]);
+    uart_printf(CONSOLE, "[Client %u ]: Signed up!\n\r", sys::MyTid());
 
-    char msg[] = "SIGNUP";
-    char reply[Config::MAX_MESSAGE_LENGTH];
-    int replylen = Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
-
-    for (int i = 0; i < num_plays; i++) {
-        int rngValue = -1;
-
+    for (int i = 0; i < numPlays; ++i) {
+        int rngValue;
         if (forced_hand) {
             rngValue = a2d(parentMsg[1]);
         } else {
-            rngValue = ((timerGet() % 10) % 3) + 1;  // note: this makes rock 4/10 chance vs 3/10 for others
+            rngValue = ((timerGet() % 10) % 3) + 1;
         }
-        switch (rngValue) {
-            case 1: {
-                char msg2[] = "PLAY ROCK";
-                Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,           Result: %s\n\r", MyTid(), reply);
-            } break;
-            case 2: {
-                char msg2[] = "PLAY PAPER";
-                Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,          Result: %s\n\r", MyTid(), reply);
-            } break;
-            case 3: {
-                char msg2[] = "PLAY SCISSORS";
-                Send(serverTID, msg2, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,       Result: %s\n\r", MyTid(), reply);
-            } break;
-        }
+
+        Move move = static_cast<Move>(rngValue);
+        Reply reply = Play(serverTid, move);
+        uart_printf(CONSOLE, "[Client: %u ]: Played %s Result: %s\n\r", sys::MyTid(), moveToString(move),
+                    replyToString(reply));
     }
-    // Yield();
-    char msg3[] = "QUIT";
-    Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    uart_printf(CONSOLE, "[Client: %u ]: Successfully quit!\n\r", MyTid());
-    Exit();
-}
 
-void RPS_Random_Client2() {
-    int serverTID = WhoIs("rps_server");
-    int num_plays = 7;
-    char msg[] = "SIGNUP";
-    int quitflag = 1;
-
-    for (int j = 0; j < 2; j++) {
-        char reply[Config::MAX_MESSAGE_LENGTH] = {0};
-        if (quitflag) {
-            Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
-            quitflag = 0;
-        }
-
-        for (int i = 0; i < num_plays; i++) {
-            int rngValue = ((timerGet() % 10) % 3) + 1;
-
-            if (rngValue == 1) {
-                char msg2[] = "PLAY ROCK";
-                Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,           Result: %s\n\r", MyTid(), reply);
-                // if (!strcmp(reply, "Sorry, your opponent quit.")) {  // weird compiler behaviour if this is
-                // outside?
-                //     quitflag = 1;
-                // }
-            } else if (rngValue == 2) {
-                char msg2[] = "PLAY PAPER";
-                Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,          Result: %s\n\r", MyTid(), reply);
-                // if (!strcmp(reply, "Sorry, your opponent quit.")) {
-                //     quitflag = 1;
-                // }
-
-            } else if (rngValue == 3) {
-                char msg2[] = "PLAY SCISSORS";
-                Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-                uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,       Result: %s\n\r", MyTid(), reply);
-                // if (!strcmp(reply, "Sorry, your opponent quit.")) {
-                //     quitflag = 1;
-                // }
-            } else {
-                uart_printf(CONSOLE, "BAD RNG");
-            }
-
-            if (!strcmp(reply, "Sorry, your opponent quit.")) {
-                quitflag = 1;
-                break;
-            }
-        }
-        // int quitRNG = (timerGet() % 100);
-        // // uart_printf(CONSOLE, "quitrng:%u ", quitRNG);
-        // if (quitRNG <= 10) {
-        //     char msg3[] = "QUIT";
-        //     Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-        //     uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit! %u\n\r", MyTid(), quitRNG);
-        //     Exit();
-        // }
-        if (quitflag) {
-            uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", MyTid());
-            // break;
-        }
+    if (Quit(serverTid) < 0) {
+        uart_printf(CONSOLE, "[Client %u ]: Quit failed\n\r", sys::MyTid());
+    } else {
+        uart_printf(CONSOLE, "[Client %u ]: Successfully quit!\n\r", sys::MyTid());
     }
-    char reply[Config::MAX_MESSAGE_LENGTH] = {0};
-    char msg4[] = "QUIT";
-    Send(serverTID, msg4, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit!\n\r", MyTid());
-    Exit();
+    sys::Exit();
 }
 
 void RPS_Random_Client() {
-    int serverTID = WhoIs("rps_server");
-    //  uint32_t clientTID = 0;
-    // char parentMsg[Config::MAX_MESSAGE_LENGTH] = {0};
-
-    // int msgsize = Receive(&clientTID, parentMsg, Config::MAX_MESSAGE_LENGTH);
-    // Reply(clientTID, "0", Config::MAX_MESSAGE_LENGTH);
-
-    // bool forced_hand = 0;
-    int num_plays = 3;
-    // if(parentMsg[0] == 'F'){
-    //     forced_hand = true;
-    // }
-    // num_plays = a2d(parentMsg[2]);
-
-    char msg[] = "SIGNUP";
-    int quitflag = 1;
-
-    // for (int j = 0; j < 2; j++) {
-    char reply[Config::MAX_MESSAGE_LENGTH] = {0};
-    if (quitflag) {
-        Send(serverTID, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-        uart_printf(CONSOLE, "[Client: %u ]: Signed up! Server reply: '%s'\n\r", MyTid(), reply);
-        quitflag = 0;
+    int serverTid = name_server::WhoIs(RPS_SERVER_NAME);
+    if (serverTid < 0) {
+        uart_printf(CONSOLE, "[Client %u]: Could not find  server\n\r", sys::MyTid());
+        sys::Exit();
     }
 
-    for (int i = 0; i < num_plays; i++) {
+    if (Signup(serverTid) < 0) {
+        uart_printf(CONSOLE, "[Client %u]: Signup failed!\n\r", sys::MyTid());
+        sys::Exit();
+    }
+    uart_printf(CONSOLE, "[Client %u]: Signed up!\n\r", sys::MyTid());
+
+    int numPlays = 3;
+    bool needResignup = false;
+
+    for (int i = 0; i < numPlays; i++) {
         int rngValue = ((timerGet() % 10) % 3) + 1;
+        Move move = static_cast<Move>(rngValue);
 
-        if (rngValue == 1) {
-            char msg2[] = "PLAY ROCK";
-            Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played ROCK,           Result: %s\n\r", MyTid(), reply);
-            // if (!strcmp(reply, "Sorry, your opponent quit.")) {  // weird compiler behaviour if this is outside
-            //     quitflag = 1;
-            // }
-        } else if (rngValue == 2) {
-            char msg2[] = "PLAY PAPER";
-            Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played PAPER,          Result: %s\n\r", MyTid(), reply);
-            // if (!strcmp(reply, "Sorry, your opponent quit.")) {
-            //     quitflag = 1;
-            // }
+        Reply reply = Play(serverTid, move);
 
-        } else if (rngValue == 3) {
-            char msg2[] = "PLAY SCISSORS";
-            Send(serverTID, msg2, strlen(msg2) + 1, reply, Config::MAX_MESSAGE_LENGTH);
-            uart_printf(CONSOLE, "[Client: %u ]: Played SCISSORS,       Result: %s\n\r", MyTid(), reply);
-            // if (!strcmp(reply, "Sorry, your opponent quit.")) {
-            //     quitflag = 1;
-            // }
-        } else {
-            uart_printf(CONSOLE, "BAD RNG");
-        }
+        uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s\n\r", sys::MyTid(), moveToString(move),
+                    replyToString(reply));
 
-        if (!strcmp(reply, "Sorry, your opponent quit.")) {
-            quitflag = 1;
+        if (reply == Reply::OPPONENT_QUIT) {
+            needResignup = true;
             break;
         }
     }
-    // int quitRNG = (timerGet() % 100);
-    // // uart_printf(CONSOLE, "quitrng:%u ", quitRNG);
-    // if (quitRNG <= 10) {
-    //     char msg3[] = "QUIT";
-    //     Send(serverTID, msg3, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    //     uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit! %u\n\r", MyTid(), quitRNG);
-    //     Exit();
-    // }
-    if (quitflag) {
-        uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", MyTid());
-        // break;
+
+    if (needResignup) {
+        uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", sys::MyTid());
     }
-    // }
-    // char reply[Config::MAX_MESSAGE_LENGTH] = {0};
-    char msg4[] = "QUIT";
-    Send(serverTID, msg4, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
-    uart_printf(CONSOLE, "[Client: %u ]: Successfully Quit!\n\r", MyTid());
-    Exit();
+
+    if (Quit(serverTid) < 0) {
+        uart_printf(CONSOLE, "[Client %u]: QUIT failed\n\r", sys::MyTid());
+    } else {
+        uart_printf(CONSOLE, "[Client %u]: Successfully quit\n\r", sys::MyTid());
+    }
+    sys::Exit();
+}
+
+void RPS_Random_Client2() {
+    int serverTid = name_server::WhoIs(RPS_SERVER_NAME);
+    if (serverTid < 0) {
+        uart_printf(CONSOLE, "[Client %u]: Could not find  server\n\r", sys::MyTid());
+        sys::Exit();
+    }
+
+    int numPlays = 7;
+    int cycles = 2;
+
+    for (int cycle = 0; cycle < cycles; ++cycle) {
+        if (Signup(serverTid) < 0) {
+            uart_printf(CONSOLE, "[Client %u]: Signup failed!\n\r", sys::MyTid());
+            sys::Exit();
+        }
+        uart_printf(CONSOLE, "[Client %u]: Signed up!\n\r", sys::MyTid());
+
+        for (int i = 0; i < numPlays; ++i) {
+            int rngVal = static_cast<int>((timerGet() % 10) % 3) + 1;
+            Move move = static_cast<Move>(rngVal);
+
+            Reply reply = Play(serverTid, move);
+            uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s \n\r", sys::MyTid(), moveToString(move),
+                        replyToString(reply));
+
+            if (reply == Reply::OPPONENT_QUIT) {
+                uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", sys::MyTid());
+                break;
+            }
+        }
+    }
+
+    if (Quit(serverTid) < 0) {
+        uart_printf(CONSOLE, "[Client %u]: QUIT failed\n\r", sys::MyTid());
+    } else {
+        uart_printf(CONSOLE, "[Client %u]: Successfully quit\n\r", sys::MyTid());
+    }
+    sys::Exit();
 }

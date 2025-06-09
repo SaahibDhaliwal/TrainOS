@@ -12,7 +12,7 @@ void ClockFirstUserTask() {
     // uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", Create(8, &ClockServer));
     uart_printf(CONSOLE, "Started first clock task\n\r");
     timerInit();
-    Exit();
+    sys::Exit();
 }
 
 void ClockNotifier() {

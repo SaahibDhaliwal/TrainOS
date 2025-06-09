@@ -6,6 +6,7 @@
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
+#include "test_entry.h"
 #include "user_tasks.h"
 
 extern "C" {
@@ -42,18 +43,27 @@ extern "C" int kmain() {
 
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
+#if defined(TESTING)
+    runTests();
+
+#else
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));            // idle task
-    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ClockFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
+    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
+        // uart_printf(CONSOLE, "curtask: %u\n\r", curTask->getTid());
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
+        // uart_printf(CONSOLE, "request: %u\n\r", request);
         sysCallHandler.handle(request, &taskManager, curTask);
     }  // for
+
+#endif  // TESTING
+
     return 0;
 }  // kmain
 
