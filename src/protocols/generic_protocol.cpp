@@ -4,9 +4,7 @@
 #include "rpi.h"
 #include "sys_call_stubs.h"
 
-int CharReply(int clientTid, char reply) {
-    int res = sys::Reply(clientTid, &reply, 1);
-
+void handleSendResponse(int res, int clientTid) {
     if (res < 0) {
         switch (res) {
             case -1:
@@ -20,5 +18,16 @@ int CharReply(int clientTid, char reply) {
                 break;
         }
     }
+}
+
+int emptySend(int clientTid) {
+    int res = sys::Send(clientTid, nullptr, 0, nullptr, 0);
+    handleSendResponse(res, clientTid);
+    return res;
+}
+
+int charReply(int clientTid, char reply) {
+    int res = sys::Reply(clientTid, &reply, 1);
+    handleSendResponse(res, clientTid);
     return res;
 }

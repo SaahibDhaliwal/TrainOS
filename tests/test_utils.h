@@ -3,7 +3,7 @@
 
 #include "cursor.h"
 
-#define TEST_ASSERT(expr)                                                                          \
+#define ASSERT(expr)                                                                               \
     do {                                                                                           \
         if (!(expr)) {                                                                             \
             cursor_soft_red();                                                                     \

@@ -1,5 +1,8 @@
 #include "servers/clock_server.h"
 
+#include "interrupt.h"
+#include "protocols/generic_protocol.h"
+#include "protocols/ns_protocol.h"
 #include "rpi.h"
 #include "servers/name_server.h"
 #include "sys_call_stubs.h"
@@ -22,7 +25,11 @@ void ClockFirstUserTask() {
 }
 
 void ClockNotifier() {
-    // waits on events from a timer, and sends notifications that the timer has ticked
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    for (;;) {
+        sys::AwaitEvent(static_cast<int>(INTERRUPT_NUM::CLOCK));
+        emptySend(clockServerTid);
+    }
 }
 
 void ClockClient() {
@@ -37,9 +44,29 @@ void ClockClient() {
 }
 
 void ClockServer() {
-    // initialize the timer, get the value of the first tick
+    int registerReturn = name_server::RegisterAs(CLOCK_SERVER_NAME);
+    if (registerReturn == -1) {
+        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER \n\r");
+        sys::Exit();
+    }
 
-    // for(::){
+    uint64_t ticks = 0;
+    int32_t clockNotifierTid = sys::Create(4, &ClockNotifier);
 
-    //}
+    for (;;) {
+        uint32_t senderTid;
+        char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
+
+        int msgLen = sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        receiveBuffer[msgLen] = '\0';
+
+        if (senderTid == clockNotifierTid) {
+            ticks += 1;
+            uart_printf(CONSOLE, "Current ticks: %u, Current time: %u\n\r", ticks, timerGet());
+            charReply(clockNotifierTid, '0');
+        }
+    }
+    // create clock notifier, so i know the tid
+
+    // if a receive a message and tid is clock notifier i know what to do
 }

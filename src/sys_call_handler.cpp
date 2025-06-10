@@ -148,14 +148,22 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
 
             break;
         }
-        case SYSCALL_NUM::TICK: {
-            // read output compare register and add offset for next timer tick
-            uint32_t interrupt_id = gicGetInterrupt();
-            timerSetNextTick();
-            // uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
+        case SYSCALL_NUM::AWAIT_EVENT: {
+            int64_t eventId = curTask->getReg(0);
+            int ret = taskManager->awaitEvent(eventId, curTask);
+            if (ret == -1) {  // invalid event?
+                curTask->setReturnValue(-1);
+                taskManager->rescheduleTask(curTask);
+            }
 
-            gicEndInterrupt(interrupt_id);
-            uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
+            break;
+        }
+        case SYSCALL_NUM::INTERRUPT: {
+            // read output compare register and add offset for next timer tick
+            uint32_t interruptId = gicGetInterrupt();
+
+            taskManager->handleInterrupt(interruptId);
+
             taskManager->rescheduleTask(curTask);
 
             break;

@@ -51,8 +51,8 @@ extern "C" int kmain() {
     TaskManager taskManager;            // interface for task scheduling and creation
     SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));          // idle task
-    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(RPSFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));            // idle task
+    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ClockFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
         // uart_printf(CONSOLE, "curtask: %u\n\r", curTask->getTid());

@@ -15,7 +15,7 @@ void RPS_Fixed_Client() {
     uint32_t parentTid = 0;
     char parentMsg[4] = {0};
     sys::Receive(&parentTid, parentMsg, 3);
-    CharReply(parentTid, '0');
+    charReply(parentTid, '0');
 
     bool forced_hand = (parentMsg[0] == 'F');
     int numPlays = a2d(parentMsg[2]);

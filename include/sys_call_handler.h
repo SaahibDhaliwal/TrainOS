@@ -12,7 +12,8 @@ enum class SYSCALL_NUM {
     SEND,
     RECEIVE,
     REPLY,
-    TICK,
+    AWAIT_EVENT,
+    INTERRUPT = 50,
 };
 
 class TaskManager;
