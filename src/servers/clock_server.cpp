@@ -46,6 +46,7 @@ void ClockServer() {
 
     for (;;) {
         uint32_t senderTid;
+        // change this to something reasonable, not sure what the protocols look like yet
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
 
         int msgLen = sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
@@ -56,7 +57,7 @@ void ClockServer() {
             uart_printf(CONSOLE, "Current ticks: %u, Current time: %u\n\r", ticks, timerGet());
             charReply(clockNotifierTid, '0');
         }
-    }
+        }
     // create clock notifier, so i know the tid
 
     // if a receive a message and tid is clock notifier i know what to do
