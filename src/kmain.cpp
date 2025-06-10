@@ -21,13 +21,14 @@ extern "C" int kmain() {
 #endif
     kernel_util::initialize_bss();  // sets entire bss region to 0's
     kernel_util::run_init_array();  // call constructors
-    vbar_init();       // sets up exception vector
+    vbar_init();                    // sets up exception vector
     gicInit();
     gpio_init();  // set up GPIO pins for both console and marklin uarts
 
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
 #if defined(TESTING)
+    uart_getc(CONSOLE);
     runTests();
 
 #else
