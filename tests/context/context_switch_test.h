@@ -19,7 +19,7 @@ void taskEntry() {
 
     dumpRegisters(buf);  // x0 is the buf, everything else should be the same as what we filled
     for (uint64_t i = 10; i <= 10; ++i) {
-        TEST_ASSERT(buf[i] == (taskRegValue + i));
+        ASSERT(buf[i] == (taskRegValue + i));
     }
 
     sys::Exit();
@@ -43,7 +43,7 @@ void runContextSwitchTest() {
         if (!(buf[i] == (kernelRegValue + i))) {
             uart_printf(CONSOLE, "Expr I value: %u\n\r", i);
         }
-        TEST_ASSERT(buf[i] == (kernelRegValue + i));
+        ASSERT(buf[i] == (kernelRegValue + i));
     }
 
     taskManager.rescheduleTask(curTask);

@@ -3,13 +3,13 @@
 #include <stdint.h>
 
 #include <algorithm>
-#include <cassert>
 
 #include "config.h"
 #include "gic.h"
 #include "interrupt.h"
 #include "rpi.h"
 #include "task_descriptor.h"
+#include "test_utils.h"
 #include "timer.h"
 
 TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr) {
@@ -44,7 +44,7 @@ void TaskManager::rescheduleTask(TaskDescriptor* task) {
 
 int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
     if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
-        assert(clockEventTask == nullptr);  // no other task should be waiting on clock
+        ASSERT(clockEventTask == nullptr);  // no other task should be waiting on clock
 
         task->setState(TaskState::WAITING_FOR_EVENT);
         clockEventTask = task;
@@ -60,7 +60,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         // uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
 
         gicEndInterrupt(eventId);
-        uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
+        // uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
 
         rescheduleTask(clockEventTask);
         clockEventTask = nullptr;
