@@ -235,7 +235,7 @@ slowUserToKernel:
     str x7, [x6, #(8 * 7)]
     //mov x7, x0
     ldr x7, [sp, #(8 * 0)]
-    str x7, [x6, #(8 * 7)]
+    str x7, [x6, #(8 * 6)]
 
     //ldp x6, x7, [sp], #16
     add sp, sp, #32

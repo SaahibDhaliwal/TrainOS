@@ -1,6 +1,7 @@
 #include <array>
 
 #include "gic.h"
+#include "kernel_utils.h"
 #include "rpi.h"
 #include "servers/clock_server.h"
 #include "servers/rps_server.h"
@@ -14,52 +15,33 @@ void setup_mmu();
 void vbar_init();
 }
 
-// calls constructors
-void run_init_array() {
-    typedef void (*funcvoid0_t)();
-    extern funcvoid0_t __init_array_start, __init_array_end;  // defined in linker script
-    for (funcvoid0_t* ctr = &__init_array_start; ctr < &__init_array_end; ctr += 1) {
-        (*ctr)();
-    }  // for
-}
-
-// zeros out the bss
-void initialize_bss() {
-    extern unsigned int __bss_start__, __bss_end__;  // defined in linker script
-    for (unsigned int* p = &__bss_start__; p < &__bss_end__; p += 1) {
-        *p = 0;
-    }  // for
-}
-
 extern "C" int kmain() {
 #if defined(MMU)
     setup_mmu();
 #endif
-    initialize_bss();  // sets entire bss region to 0's
-    run_init_array();  // call constructors
-    vbar_init();       // sets up exception vector
+    kernel_util::initialize_bss();  // sets entire bss region to 0's
+    kernel_util::run_init_array();  // call constructors
+    vbar_init();                    // sets up exception vector
     gicInit();
     gpio_init();  // set up GPIO pins for both console and marklin uarts
 
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
 #if defined(TESTING)
+    uart_getc(CONSOLE);
     runTests();
 
 #else
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
-    SysCallHandler sysCallHandler;      // interface for handling system calls, extracts/returns params
 
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));            // idle task
     taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ClockFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
-        // uart_printf(CONSOLE, "curtask: %u\n\r", curTask->getTid());
         if (!curTask) break;
         uint32_t request = taskManager.activate(curTask);
-        // uart_printf(CONSOLE, "request: %u\n\r", request);
-        sysCallHandler.handle(request, &taskManager, curTask);
+        kernel_util::handle(request, &taskManager, curTask);
     }  // for
 
 #endif  // TESTING
