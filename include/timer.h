@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 void timerInit();
-unsigned int timerGet();
+uint32_t timerGet();
 void timerSetNextTick();
 
 #endif

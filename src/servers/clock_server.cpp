@@ -8,10 +8,16 @@
 // bit vs byte offset
 
 void ClockFirstUserTask() {
-    // uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", Create(9, &NameServer));
-    // uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", Create(8, &ClockServer));
-    uart_printf(CONSOLE, "Started first clock task\n\r");
-    timerInit();
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", sys::Create(9, &NameServer));
+    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", sys::Create(8, &ClockServer));
+
+    sys::Create(20, &ClockClient);
+    sys::Create(19, &ClockClient);
+    sys::Create(18, &ClockClient);
+    sys::Create(17, &ClockClient);
+
+    // uart_printf(CONSOLE, "Started first clock task\n\r");
+    // timerInit();
     sys::Exit();
 }
 
@@ -21,6 +27,9 @@ void ClockNotifier() {
 
 void ClockClient() {
     // Send request for parameters
+    char* param_msg = "Give me params";
+    char reply[32] = {0};
+    int reply_length = sys::Send(sys::MyParentTid(), param_msg, strlen(param_msg), reply, strlen(reply));
 
     // Discover TID of clock server
 
@@ -28,10 +37,9 @@ void ClockClient() {
 }
 
 void ClockServer() {
+    // initialize the timer, get the value of the first tick
+
+    // for(::){
+
+    //}
 }
-
-int Time(int tid);
-
-int Delay(int tid, int ticks);
-
-int DelayUntil(int tid, int ticks);

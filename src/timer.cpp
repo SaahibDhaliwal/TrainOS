@@ -19,8 +19,10 @@ unsigned int timerGet() {
     return TIMER_REG(TIMER_LO);
 }
 
-void timerInit() {
-    TIMER_REG(TIMER_COMPARE_1) = TIMER_REG(TIMER_LO) + Config::TICK_SIZE;
+uint32_t timerInit() {
+    uint32_t tick_base = TIMER_REG(TIMER_LO) + Config::TICK_SIZE;
+    TIMER_REG(TIMER_COMPARE_1) = tick_base;
+    return tick_base;
 }
 
 void timerSetNextTick() {
