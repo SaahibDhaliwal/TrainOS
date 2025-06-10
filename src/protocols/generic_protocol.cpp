@@ -31,3 +31,11 @@ int charReply(int clientTid, char reply) {
     handleSendResponse(res, clientTid);
     return res;
 }
+
+int uIntReply(int clientTid, uint64_t reply) {
+    char buf[21];  // max digits is 20
+    ui2a(reply, 10, buf);
+    int res = sys::Reply(clientTid, buf, strlen(buf) + 1);
+    handleSendResponse(res, clientTid);
+    return res;
+}

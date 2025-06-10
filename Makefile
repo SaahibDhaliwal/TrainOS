@@ -1,4 +1,4 @@
-XDIR:=/u/cs452/public/xdev
+XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -29,7 +29,7 @@ endif
 
 WARNINGS:=-Wall -Wextra -Wpedantic -Wno-unused-const-variable -Wno-stringop-overflow
 # I had to get rid of freestanding for the map. Says its fine on piazza
-CFLAGS:= -Isrc -Isrc/containers -Isrc/clients -Isrc/servers -Isrc/protocols -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(WARNINGS)
+CFLAGS:= -Isrc -Isrc/containers -Iinclude/clients -Iinclude/servers -Iinclude/protocols -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(WARNINGS)
 
 # -Wl,option tells gcc to pass 'option' to the linker with commas replaced by spaces
 # doing this rather than calling the linker directly simplifies the compilation procedure

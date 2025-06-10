@@ -2,12 +2,14 @@
 
 #include <string.h>
 
-#include "protocols/generic_protocol.h"
-#include "protocols/ns_protocol.h"
-#include "protocols/rps_protocol.h"
+#include "config.h"
+#include "generic_protocol.h"
+#include "intrusive_node.h"
+#include "name_server.h"
+#include "ns_protocol.h"
 #include "queue.h"
 #include "rpi.h"
-#include "servers/name_server.h"
+#include "rps_protocol.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
@@ -15,6 +17,7 @@
 #include "util.h"
 
 using namespace rps;
+
 namespace {
 class RPSPlayer : public IntrusiveNode<RPSPlayer> {
    public:
@@ -35,29 +38,30 @@ class RPSPlayer : public IntrusiveNode<RPSPlayer> {
 void RPS_Server() {
     int registerReturn = name_server::RegisterAs(RPS_SERVER_NAME);
     if (registerReturn == -1) {
-        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER \n\r");
+        uart_printf(CONSOLE, "UNABLE TO REACH NAME RPS Server \n\r");
         sys::Exit();
     }
 
     // signup queue, popped two at a time
-    const int MAX_PLAYERS = 64;
     Queue<RPSPlayer> playerQueue;
-    RPSPlayer playerSlabs[MAX_PLAYERS];
+    RPSPlayer playerSlabs[Config::MAX_TASKS];
     Stack<RPSPlayer> freelist;
 
     // initialize our structs
-    for (int i = 0; i < MAX_PLAYERS; i += 1) {
+    for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         freelist.push(&playerSlabs[i]);
     }
 
     for (;;) {
         uint32_t clientTid;
-        char msg[3] = {0};
-        int msgSize = sys::Receive(&clientTid, msg, 2);
-        Command command = commandFromByte(msg[0]);
-        Move move = (command == Command::PLAY && msgSize >= 2) ? moveFromByte(msg[1]) : Move::NONE;
+        char msg[3];
+        int msgLen = sys::Receive(&clientTid, msg, 2);
+        msg[msgLen] = '\0';
 
-        uart_printf(CONSOLE, "[ Server]: Request from [Client %u]: %s", clientTid, commandToString(command));
+        Command command = commandFromByte(msg[0]);
+        Move move = (command == Command::PLAY && msgLen >= 2) ? moveFromByte(msg[1]) : Move::NONE;
+
+        uart_printf(CONSOLE, "[RPS Server]: Request from [Client %u]: %s", clientTid, commandToString(command));
         if (command == Command::PLAY) {
             uart_printf(CONSOLE, " %s", moveToString(move));
         }
@@ -86,7 +90,7 @@ void RPS_Server() {
                 RPSPlayer* p2 = playerQueue.pop();
                 sys::Reply(p2->tid, "", 0);
 
-                uart_printf(CONSOLE, "[ Server]: [Client %u] is paired with [Client %u]\n\r", p1->tid, p2->tid);
+                uart_printf(CONSOLE, "[RPS Server]: [Client %u] is paired with [Client %u]\n\r", p1->tid, p2->tid);
 
                 p1->opponent = p2;
                 p2->opponent = p1;
@@ -94,11 +98,12 @@ void RPS_Server() {
                 break;
             }
             case Command::PLAY: {
-                for (int i = 0; i < MAX_PLAYERS; i++) {
+                for (int i = 0; i < Config::MAX_TASKS; i++) {
                     if (playerSlabs[i].tid == clientTid) {
                         RPSPlayer* opponent = playerSlabs[i].opponent;
                         if (!opponent) {
-                            uart_printf(CONSOLE, "[ Server]: ERROR! [Client %u] trying to play without signing up!\n\r",
+                            uart_printf(CONSOLE,
+                                        "[RPS Server]: ERROR! [Client %u] trying to play without signing up!\n\r",
                                         clientTid);
                             break;
                         }
@@ -111,7 +116,7 @@ void RPS_Server() {
                         }
 
                         if (move != Move::ROCK && move != Move::PAPER && move != Move::SCISSORS) {
-                            uart_printf(CONSOLE, "[ Server]: UNKNOWN_MOVE from client %u\n\r", clientTid);
+                            uart_printf(CONSOLE, "[RPS Server]: UNKNOWN_MOVE from client %u\n\r", clientTid);
                             break;
                         }
 
@@ -170,7 +175,7 @@ void RPS_Server() {
             }
             case Command::QUIT: {
                 // remove from our struct
-                for (int i = 0; i < MAX_PLAYERS; i++) {
+                for (int i = 0; i < Config::MAX_TASKS; i++) {
                     if (playerSlabs[i].tid == clientTid) {
                         playerSlabs[i].opponent->exited = true;  // let our opponent know we quit CRUCIAL
                         freelist.push(&playerSlabs[i]);
@@ -190,7 +195,7 @@ void RPS_Server() {
                 break;
             }
             default: {
-                uart_printf(CONSOLE, "[ Server]: Unknown Command!\n\r");
+                uart_printf(CONSOLE, "[RPS Server]: Unknown Command!\n\r");
 
                 break;
             }

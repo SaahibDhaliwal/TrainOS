@@ -5,12 +5,12 @@
 #include <cstdint>
 #include <map>
 
-#include "clients/rps_client.h"
 #include "fixed_map.h"
+#include "name_server.h"
 #include "queue.h"
 #include "rpi.h"
-#include "servers/name_server.h"
-#include "servers/rps_server.h"
+#include "rps_client.h"
+#include "rps_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"

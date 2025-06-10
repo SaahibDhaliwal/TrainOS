@@ -1,7 +1,8 @@
-#include "servers/name_server.h"
+#include "name_server.h"
 
-#include "protocols/generic_protocol.h"
-#include "protocols/ns_protocol.h"
+#include "generic_protocol.h"
+#include "ns_protocol.h"
+#include "rpi.h"
 #include "sys_call_stubs.h"
 
 using namespace name_server;
@@ -16,10 +17,9 @@ void NameServer() {
     }
 
     for (;;) {
-        uint32_t senderTid;
+        uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
-
-        int msgLen = sys::Receive(&senderTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
         receiveBuffer[msgLen] = '\0';
 
         Command command = commandFromByte(receiveBuffer[0]);
@@ -31,11 +31,11 @@ void NameServer() {
                 if (head < Config::NAME_SERVER_CAPACITY) {
                     strncpy(nameTidPairs[head].name, name, Config::MAX_MESSAGE_LENGTH - 1);
                     nameTidPairs[head].name[Config::MAX_MESSAGE_LENGTH - 1] = '\0';
-                    nameTidPairs[head].tid = senderTid;
+                    nameTidPairs[head].tid = clientTid;
                     head++;
-                    charReply(senderTid, toByte(Reply::SUCCESS));
+                    charReply(clientTid, toByte(Reply::SUCCESS));
                 } else {
-                    charReply(senderTid, toByte(Reply::FAILURE));
+                    charReply(clientTid, toByte(Reply::FAILURE));
                 }
 
                 break;
@@ -48,20 +48,23 @@ void NameServer() {
                     if (strcmp(name, nameTidPairs[i].name) == 0) {
                         char tmpBuffer[4];
                         ui2a(nameTidPairs[i].tid, 10, tmpBuffer);
-                        sys::Reply(senderTid, tmpBuffer, 4);
+                        sys::Reply(clientTid, tmpBuffer, 4);
                         found = true;
                         break;
                     }
                 }
 
                 if (!found) {
-                    charReply(senderTid, toByte(Reply::FAILURE));
+                    charReply(clientTid, toByte(Reply::FAILURE));
                 }
 
                 break;
             }
-            default:
+            default: {
+                uart_printf(CONSOLE, "[Name Server]: Unknown Command!\n\r");
+
                 break;
+            }
         }
     }
 
