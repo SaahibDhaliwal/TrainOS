@@ -28,6 +28,7 @@ extern "C" int kmain() {
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
 
 #if defined(TESTING)
+    uart_getc(CONSOLE);
     runTests();
 
 #else
