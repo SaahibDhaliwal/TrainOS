@@ -11,6 +11,7 @@
 #include "rpi.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
+#include "test_utils.h"
 #include "timer.h"
 // bit vs byte offset
 
@@ -32,16 +33,38 @@ class DelayedClockClient : public IntrusiveNode<DelayedClockClient> {
 }  // namespace
 
 void ClockFirstUserTask() {
-    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", sys::Create(9, &NameServer));
-    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", sys::Create(8, &ClockServer));
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", sys::Create(49, &NameServer));
+    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", sys::Create(50, &ClockServer));
 
-    sys::Create(20, &ClockClient);
-    sys::Create(19, &ClockClient);
-    sys::Create(18, &ClockClient);
-    sys::Create(17, &ClockClient);
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
 
-    // uart_printf(CONSOLE, "Started first clock task\n\r");
-    // timerInit();
+    uart_printf(CONSOLE, "[Clock Client Time: %d\n\r", clock_server::Time(clockServerTid));
+
+    // uint32_t client_1 = sys::Create(20, &ClockClient);
+    // uint32_t client_2 = sys::Create(19, &ClockClient);
+    // uint32_t client_3 = sys::Create(18, &ClockClient);
+    // uint32_t client_4 = sys::Create(17, &ClockClient);
+
+    // uint32_t client_tid = 0;
+    // char parentMsg[4] = {0};
+    // sys::Receive(&client_tid, parentMsg, 3);
+    // ASSERT(client_tid == client_1);
+    // sys::Reply(client_tid, "1020", 4);
+
+    // sys::Receive(&client_tid, parentMsg, 3);
+    // ASSERT(client_tid == client_2);
+    // sys::Reply(client_tid, "2309", 4);
+
+    // sys::Receive(&client_tid, parentMsg, 3);
+    // ASSERT(client_tid == client_3);
+    // sys::Reply(client_tid, "3306", 4);
+
+    // sys::Receive(&client_tid, parentMsg, 3);
+    // ASSERT(client_tid == client_4);
+    // sys::Reply(client_tid, "7103", 4);
+
+    // uart_printf(CONSOLE, "First User Task: Done\n\r");
+
     sys::Exit();
 }
 
@@ -55,16 +78,28 @@ void ClockNotifier() {
 
 void ClockClient() {
     // Send request for parameters
-    char* param_msg = "Give me params";
-    char reply[32] = {0};
-    int reply_length = sys::Send(sys::MyParentTid(), param_msg, strlen(param_msg), reply, strlen(reply));
+    // char* param_msg = "Give me params";
+    char reply[4] = {0};
+    int reply_length = sys::Send(sys::MyParentTid(), "", 0, reply, 4);
+    ASSERT(reply_length >= 4);
 
-    // Discover TID of clock server
+    int delay_interval = a2d(reply[0]) * 10 + a2d(reply[1]);
+    int delay_count = a2d(reply[2]) * 10 + a2d(reply[3]);
 
-    // Delay N times for each interval t.
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    uart_printf(CONSOLE, "[Clock Client Time: %d\n\r", clock_server::Time(clockServerTid));
+
+    // for (int i = 0; i < delay_count; i++) {
+    //     clock_server::Delay(clockServerTid, delay_interval);
+    //     uart_printf(CONSOLE, "[Clock Client %u] Delay interval: %u Number of completed delays: %u", sys::MyTid(),
+    //                 delay_interval, i + 1);
+    // }
+
+    sys::Exit();
 }
 
 void ClockServer() {
+    timerInit();
     int registerReturn = name_server::RegisterAs(CLOCK_SERVER_NAME);
     if (registerReturn == -1) {
         uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER \n\r");
@@ -80,7 +115,7 @@ void ClockServer() {
     }
 
     uint64_t ticks = 0;
-    int32_t clockNotifierTid = sys::Create(4, &ClockNotifier);
+    int32_t clockNotifierTid = sys::Create(40, &ClockNotifier);
 
     for (;;) {
         uint32_t clientTid;
@@ -90,7 +125,7 @@ void ClockServer() {
 
         if (clientTid == clockNotifierTid) {
             ticks += 1;
-            uart_printf(CONSOLE, "Current ticks: %u, Current time: %u\n\r", ticks, timerGet());
+            // uart_printf(CONSOLE, "Current ticks: %u, Current time: %u\n\r", ticks, timerGet());
             charReply(clockNotifierTid, '0');
 
             for (int i = 0; i < Config::MAX_TASKS; i += 1) {
@@ -106,6 +141,7 @@ void ClockServer() {
 
             switch (command) {
                 case Command::TIME: {
+                    uart_printf(CONSOLE, "ticks: %u\n\r", ticks);
                     uIntReply(clientTid, ticks);
 
                     break;

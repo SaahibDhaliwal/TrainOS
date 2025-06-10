@@ -47,8 +47,9 @@ void IdleTask() {
         asm volatile("wfi");
         asm volatile("mov %0, x0" : "=r"(sum_of_nonidle_ticks));
         uint32_t volatile get_tick = timerGetTick();
-        uart_printf(CONSOLE, "[ Idle Task ] Fraction of execution ticks: %d / %d \n\r", get_tick - sum_of_nonidle_ticks,
-                    get_tick);
+        // uart_printf(CONSOLE, "[ Idle Task ] Fraction of execution ticks: %d / %d \n\r", get_tick -
+        // sum_of_nonidle_ticks,
+        //             get_tick);
     }
 }
 

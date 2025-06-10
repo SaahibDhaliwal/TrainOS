@@ -25,9 +25,9 @@ Reply replyFromByte(char c) {
 
 int Time(int tid) {
     const char sendBuf = toByte(Command::TIME);
-    char replyBuf[32] = {0};
+    char replyBuf[21] = {0};
 
-    int response = sys::Send(tid, &sendBuf, 1, replyBuf, 32);
+    int response = sys::Send(tid, &sendBuf, 1, replyBuf, 21);
 
     if (response < 0) {  // if Send() cannot reach the TID
         return -1;
@@ -42,14 +42,14 @@ int Delay(int tid, int ticks) {
     if (ticks < 0) {  // negative delay
         return -2;
     }
-    char sendBuf[33] = {0};
+    char sendBuf[22] = {0};
     sendBuf[0] = toByte(Command::DELAY);
-    char tick_string[32] = {0};
+    char tick_string[21] = {0};
     ui2a(ticks, 10, tick_string);
     strcpy(sendBuf + 1, tick_string);
 
-    char replyBuf[32] = {0};
-    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, 32);
+    char replyBuf[21] = {0};
+    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, 21);
 
     if (response < 0) {  // if Send() cannot reach the TID
         return -1;
@@ -64,14 +64,14 @@ int DelayUntil(int tid, int ticks) {
     if (ticks < 0) {  // negative delay
         return -2;
     }
-    char sendBuf[33] = {0};
+    char sendBuf[22] = {0};
     sendBuf[0] = toByte(Command::DELAY_UNTIL);
-    char tick_string[32] = {0};
+    char tick_string[21] = {0};
     ui2a(ticks, 10, tick_string);
     strcpy(sendBuf + 1, tick_string);
 
-    char replyBuf[32] = {0};
-    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, strlen(replyBuf));
+    char replyBuf[21] = {0};
+    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, 21);
 
     if (response < 0) {  // if Send() cannot reach the TID
         return -1;
