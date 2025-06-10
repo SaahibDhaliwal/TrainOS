@@ -14,6 +14,7 @@
 
 TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr) {
     idle_tick = 0;
+    idle_tick_sum = 0;
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -58,8 +59,6 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
 void TaskManager::handleInterrupt(int64_t eventId) {
     if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
         timerSetNextTick();
-        // uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
-
         gicEndInterrupt(eventId);
         // uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
 
@@ -100,9 +99,11 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
 
     // check if id is the idle task, so we can do measurements?
     if (task->getTid() == 0) {
-        task->setReturnValue(timerGetTick() - idle_tick);  // send how many ticks we have not been idling
-    } else if (task->getTid() == 1) {                      // so this is the first user task
-        idle_tick = timerGetTick();
+        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \n\r", timerGetTick(), idle_tick, timerGetTick() -
+        // idle_tick);
+        idle_tick_sum += timerGetTick() - idle_tick;  // will be some number of ticks
+        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \n\r", timerGetTick(), idle_tick, timerGetTick() -
+        task->setReturnValue(idle_tick_sum);  // send how many ticks we have not been idling since our last idle
     }
 
     uint32_t ESR_EL1 = slowKernelToUser(&kernelContext, task->getMutableContext());

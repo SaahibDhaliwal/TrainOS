@@ -32,6 +32,7 @@ class TaskManager {
 
     TaskDescriptor* clockEventTask;
     uint32_t idle_tick;
+    uint32_t idle_tick_sum;
 
    public:
     TaskManager();

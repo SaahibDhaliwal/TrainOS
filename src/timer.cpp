@@ -11,8 +11,6 @@ static const uint32_t TIMER_LO = 0x04;
 static const uint32_t TIMER_HI = 0x08;
 static const uint32_t TIMER_COMPARE_1 = 0x10;
 
-// static const uint32_t TICK_SIZE = 10000;  // this could go in config
-
 #define TIMER_REG(offset) (*(volatile uint32_t*)(TIMER_BASE + offset))
 unsigned int first_tick_time = 0;
 
@@ -21,7 +19,7 @@ unsigned int timerGet() {
 }
 
 unsigned int timerGetTick() {
-    return (timerGet() - (first_tick_time - Config::TICK_SIZE)) / Config::TICK_SIZE;
+    return (TIMER_REG(TIMER_LO) - (first_tick_time - Config::TICK_SIZE)) / Config::TICK_SIZE;
 }
 
 unsigned int timerInit() {
