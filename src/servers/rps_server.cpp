@@ -105,7 +105,7 @@ void RPS_Server() {
 
                         if (playerSlabs[i].exited) {
                             // opponent sets this to quit upon them quitting
-                            CharReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
+                            charReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
                             freelist.push(&playerSlabs[i]);
                             break;
                         }
@@ -126,36 +126,36 @@ void RPS_Server() {
 
                             if (move == opponentMove) {
                                 // tied
-                                CharReply(clientTid, tieChar);
-                                CharReply(opponent->tid, tieChar);
+                                charReply(clientTid, tieChar);
+                                charReply(opponent->tid, tieChar);
                             } else if (move == Move::ROCK && opponentMove == Move::PAPER) {
                                 // client loss, opponent won (rock loses to paper)
-                                CharReply(clientTid, loseChar);
-                                CharReply(opponent->tid, winChar);
+                                charReply(clientTid, loseChar);
+                                charReply(opponent->tid, winChar);
                             } else if (move == Move::ROCK && opponentMove == Move::SCISSORS) {
                                 // client won, opponent loss (rock beats scissors)
-                                CharReply(clientTid, winChar);
-                                CharReply(opponent->tid, loseChar);
+                                charReply(clientTid, winChar);
+                                charReply(opponent->tid, loseChar);
 
                             } else if (move == Move::PAPER && opponentMove == Move::ROCK) {
                                 // client won, opponent loss (paper beats rock)
-                                CharReply(clientTid, winChar);
-                                CharReply(opponent->tid, loseChar);
+                                charReply(clientTid, winChar);
+                                charReply(opponent->tid, loseChar);
 
                             } else if (move == Move::PAPER && opponentMove == Move::SCISSORS) {
                                 // client loss, opponent won (paper loses to scissors)
-                                CharReply(clientTid, loseChar);
-                                CharReply(opponent->tid, winChar);
+                                charReply(clientTid, loseChar);
+                                charReply(opponent->tid, winChar);
 
                             } else if (move == Move::SCISSORS && opponentMove == Move::ROCK) {
                                 // client loss, opponent won (scissors loses to rock)
-                                CharReply(clientTid, loseChar);
-                                CharReply(opponent->tid, winChar);
+                                charReply(clientTid, loseChar);
+                                charReply(opponent->tid, winChar);
 
                             } else if (move == Move::SCISSORS && opponentMove == Move::PAPER) {
                                 // client won, opponent loss (scissors beats paper)
-                                CharReply(clientTid, winChar);
-                                CharReply(opponent->tid, loseChar);
+                                charReply(clientTid, winChar);
+                                charReply(opponent->tid, loseChar);
                             }
                             // clear their waiting
                             playerSlabs[i].move = Move::NONE;
@@ -175,12 +175,12 @@ void RPS_Server() {
                         playerSlabs[i].opponent->exited = true;  // let our opponent know we quit CRUCIAL
                         freelist.push(&playerSlabs[i]);
 
-                        CharReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
+                        charReply(clientTid, static_cast<char>(Reply::OPPONENT_QUIT));
 
                         // if our opponent was waiting for us, we need to free them
                         if (playerSlabs[i].opponent->move != Move::NONE) {
                             freelist.push(playerSlabs[i].opponent);
-                            CharReply(playerSlabs[i].opponent->tid, static_cast<char>(Reply::OPPONENT_QUIT));
+                            charReply(playerSlabs[i].opponent->tid, static_cast<char>(Reply::OPPONENT_QUIT));
                         }
 
                         break;

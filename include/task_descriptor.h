@@ -15,7 +15,7 @@ enum class TaskState {
     WAITING_FOR_SEND,
     WAITING_FOR_RECEIVE,
     WAITING_FOR_REPLY,
-    EVENT_BLOCKED
+    WAITING_FOR_EVENT
 };
 
 class TaskDescriptor : public IntrusiveNode<TaskDescriptor> {

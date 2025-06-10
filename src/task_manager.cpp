@@ -3,12 +3,16 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <cassert>
 
 #include "config.h"
+#include "gic.h"
+#include "interrupt.h"
 #include "rpi.h"
 #include "task_descriptor.h"
+#include "timer.h"
 
-TaskManager::TaskManager() : nextTaskId(0) {
+TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -36,6 +40,31 @@ void TaskManager::rescheduleTask(TaskDescriptor* task) {
     uint8_t priority = task->getPriority();
     readyQueues[priority].push(task);
     task->setState(TaskState::READY);
+}
+
+int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
+    if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
+        assert(clockEventTask == nullptr);  // no other task should be waiting on clock
+
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        clockEventTask = task;
+        return 0;
+    } else {  // invalid event
+        return -1;
+    }
+}
+
+void TaskManager::handleInterrupt(int64_t eventId) {
+    if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
+        timerSetNextTick();
+        // uart_printf(CONSOLE, "interrupt ID: %u\n\r", interrupt_id);
+
+        gicEndInterrupt(eventId);
+        uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
+
+        rescheduleTask(clockEventTask);
+        clockEventTask = nullptr;
+    }
 }
 
 bool TaskManager::isTidValid(int64_t tid) {

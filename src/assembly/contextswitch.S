@@ -41,6 +41,11 @@ Reply:
     svc 7
     ret
 
+.global AwaitEvent
+AwaitEvent:
+    svc 8
+    ret
+
 .macro store_callee_registers context
     str x19, [\context, #(8 * 19)]
     str x20, [\context, #(8 * 20)]
@@ -239,7 +244,7 @@ slowUserToKernel:
     
 
 
-    mov x0, #8
+    mov x0, #50
 
     ret
 

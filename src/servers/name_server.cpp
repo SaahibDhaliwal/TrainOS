@@ -33,9 +33,9 @@ void NameServer() {
                     nameTidPairs[head].name[Config::MAX_MESSAGE_LENGTH - 1] = '\0';
                     nameTidPairs[head].tid = senderTid;
                     head++;
-                    CharReply(senderTid, toByte(Reply::SUCCESS));
+                    charReply(senderTid, toByte(Reply::SUCCESS));
                 } else {
-                    CharReply(senderTid, toByte(Reply::FAILURE));
+                    charReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;
@@ -55,7 +55,7 @@ void NameServer() {
                 }
 
                 if (!found) {
-                    CharReply(senderTid, toByte(Reply::FAILURE));
+                    charReply(senderTid, toByte(Reply::FAILURE));
                 }
 
                 break;

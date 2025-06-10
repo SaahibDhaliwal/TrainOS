@@ -1,5 +1,8 @@
 #include "servers/clock_server.h"
 
+#include "interrupt.h"
+#include "protocols/generic_protocol.h"
+#include "protocols/ns_protocol.h"
 #include "rpi.h"
 #include "servers/name_server.h"
 #include "sys_call_stubs.h"
@@ -16,7 +19,11 @@ void ClockFirstUserTask() {
 }
 
 void ClockNotifier() {
-    // waits on events from a timer, and sends notifications that the timer has ticked
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    for (;;) {
+        sys::AwaitEvent(static_cast<int>(INTERRUPT_NUM::CLOCK));
+        emptySend(clockServerTid);
+    }
 }
 
 void ClockClient() {
@@ -28,6 +35,9 @@ void ClockClient() {
 }
 
 void ClockServer() {
+    // create clock notifier, so i know the tid
+
+    // if a receive a message and tid is clock notifier i know what to do
 }
 
 int Time(int tid);
