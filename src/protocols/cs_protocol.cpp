@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "sys_call_stubs.h"
-#include "utils.h"
+#include "util.h"
 
 namespace clock_server {
 
@@ -24,10 +24,10 @@ Reply replyFromByte(char c) {
 }
 
 int Time(int tid) {
-    char sendBuf = toByte(Command::TIME);
+    const char sendBuf = toByte(Command::TIME);
     char replyBuf[32] = {0};
 
-    int response = sys::Send(tid, sendBuf, strlen(sendBuf), replyBuf, strlen(replyBuf));
+    int response = sys::Send(tid, &sendBuf, 1, replyBuf, 32);
 
     if (response < 0) {  // if Send() cannot reach the TID
         return -1;
@@ -45,19 +45,19 @@ int Delay(int tid, int ticks) {
     char sendBuf[33] = {0};
     sendBuf[0] = toByte(Command::DELAY);
     char tick_string[32] = {0};
-    ui2a(ticks, 10, &tick_string);
+    ui2a(ticks, 10, tick_string);
     strcpy(sendBuf + 1, tick_string);
 
     char replyBuf[32] = {0};
-    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, strlen(replyBuf));
+    int response = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuf, 32);
 
     if (response < 0) {  // if Send() cannot reach the TID
         return -1;
     }
 
-    unsigned int tid;
-    a2ui(replyBuf, 10, &tid);
-    return tid;
+    unsigned int time = 0;
+    a2ui(replyBuf, 10, &time);
+    return time;
 }
 
 int DelayUntil(int tid, int ticks) {
@@ -67,7 +67,7 @@ int DelayUntil(int tid, int ticks) {
     char sendBuf[33] = {0};
     sendBuf[0] = toByte(Command::DELAY_UNTIL);
     char tick_string[32] = {0};
-    ui2a(ticks, 10, &tick_string);
+    ui2a(ticks, 10, tick_string);
     strcpy(sendBuf + 1, tick_string);
 
     char replyBuf[32] = {0};
@@ -77,9 +77,9 @@ int DelayUntil(int tid, int ticks) {
         return -1;
     }
 
-    unsigned int tid;
-    a2ui(replyBuf, 10, &tid);
-    return tid;
+    unsigned int time = 0;
+    a2ui(replyBuf, 10, &time);
+    return time;
 }
 
 }  // namespace clock_server

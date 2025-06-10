@@ -7,6 +7,8 @@ void ClockFirstUserTask();
 
 void ClockServer();
 
+void ClockClient();
+
 int Time(int tid);
 
 int Delay(int tid, int ticks);

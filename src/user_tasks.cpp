@@ -42,8 +42,13 @@ void TestTask() {
 }
 
 void IdleTask() {
+    uint32_t time = 0;
     while (true) {
         asm volatile("wfe");
+        asm volatile("mov %0, x0" : "=r"(time));
+        // do our print
+        // uart_printf(CONSOLE, "time: %u", time);
+        uart_printf(CONSOLE, "idle time ticks: %u / %u = %u \n\r", time, timerGetTick(), time / timerGetTick());
     }
 }
 

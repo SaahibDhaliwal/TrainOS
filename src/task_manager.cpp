@@ -13,6 +13,7 @@
 #include "timer.h"
 
 TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr) {
+    idle_tick = 0;
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -91,9 +92,23 @@ TaskDescriptor* TaskManager::schedule() {
     return nullptr;
 }
 
+// uint32_t idle_tick = 0; //global for now
+
 uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 value is returned when switching from user to kernel.
+
+    // check if id is the idle task, so we can do measurements?
+    if (task->getTid() == 0) {
+        task->setReturnValue(timerGetTick() - idle_tick);  // send how many ticks we have not been idling
+    } else if (task->getTid() == 1) {                      // so this is the first user task
+        idle_tick = timerGetTick();
+    }
+
     uint32_t ESR_EL1 = slowKernelToUser(&kernelContext, task->getMutableContext());
+
+    if (task->getTid() == 0) {
+        idle_tick = timerGetTick();  // track which tick we left idle
+    }
     return ESR_EL1 & 0xFFFFFF;
 }

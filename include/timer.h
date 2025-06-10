@@ -2,8 +2,9 @@
 #define __TIMER__
 #include <stdint.h>
 
-void timerInit();
-uint32_t timerGet();
+uint32_t timerInit();  // returns the time when the tick is initialized
+unsigned int timerGet();
+unsigned int timerGetTick();
 void timerSetNextTick();
 
 #endif
