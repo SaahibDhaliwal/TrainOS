@@ -165,20 +165,24 @@ kernelToUser:
 
 .global userToKernel
 userToKernel:
+    stp x6, x7, [sp, #-16]! //we store x7, even though we don't need to. Just to keep sp stack aligned
     // Restore kernelContext and userContext from kernel's stack (from when we did kernelToUser)
-    // x6 = userContext
-    // x7 = kernelContext
-    ldp x6, x7, [sp], #16
+    // x0 = userContext
+    // x1 = kernelContext
+    //add sp, sp, #16
+    ldp x6, x7, [sp, #16]
+    //ldp x6, x7, [sp], #16
+    //sub sp, sp, #16
+    //add sp , sp, #32
+    //ldr x0, [sp, #16] //get user context
 
     // Store callee-saved registers for userContext in the TD's context array
     store_callee_registers x6
 
-    // Also store any arguments the user passed 
-    str x0, [x6, #(8 * 0)]
-    str x1, [x6, #(8 * 1)]
-    str x2, [x6, #(8 * 2)]
-    str x3, [x6, #(8 * 3)]
-    str x4, [x6, #(8 * 4)]  // Message Send has 5 params
+    store_caller_registers x6
+
+    // Restore callee-saved registers from kernelContext
+    restore_callee_registers x7
 
     // Save SP_EL0
     mrs x2, sp_el0
@@ -192,9 +196,16 @@ userToKernel:
     mrs x2, spsr_el1
     str x2, [x6, #(8 * 33)]
 
-    // Restore callee-saved registers from kernelContext
-    restore_callee_registers x7
+    ldr x7, [sp, #(8 * 1)] 
+    str x7, [x6, #(8 * 7)]
 
+    ldr x7, [sp, #(8 * 0)]
+    str x7, [x6, #(8 * 6)]
+
+    //ldp x6, x7, [sp], #16
+    add sp, sp, #32
+    //store locals
+    //store_caller_registers x0
     mrs x0, esr_el1
 
     ret
@@ -214,11 +225,11 @@ slowUserToKernel:
 
     // Store callee-saved registers for userContext in the TD's context array
     store_callee_registers x6
+
     store_caller_registers x6
 
-        // Restore callee-saved registers from kernelContext
+    // Restore callee-saved registers from kernelContext
     restore_callee_registers x7
-
 
     // Save SP_EL0
     mrs x2, sp_el0

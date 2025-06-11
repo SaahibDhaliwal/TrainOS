@@ -41,7 +41,7 @@ void runContextSwitchTest() {
     dumpRegisters(buf);  // x0 is the buf, everything else should be the same as what we filled
     // for (uint64_t i = 10; i <= 10; --i) {
     //     if (!(buf[i] == (kernelRegValue + i))) {
-    //         uart_printf(CONSOLE, "Expr I value: %u\n\r", i);
+    //         uart_printf(CONSOLE, "Expr I value: %u\r\n", i);
     //     }
     //     ASSERT(buf[i] == (kernelRegValue + i));
     // }

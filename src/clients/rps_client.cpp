@@ -20,10 +20,10 @@ void RPS_Fixed_Client() {
     int numPlays = a2d(parentMsg[2]);
 
     if (Signup(serverTid) < 0) {
-        uart_printf(CONSOLE, "[Client %u ]: SIGNUP failed\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u ]: SIGNUP failed\r\n", sys::MyTid());
         sys::Exit();
     }
-    uart_printf(CONSOLE, "[Client %u ]: Signed up!\n\r", sys::MyTid());
+    uart_printf(CONSOLE, "[Client %u ]: Signed up!\r\n", sys::MyTid());
 
     for (int i = 0; i < numPlays; ++i) {
         int rngValue;
@@ -35,14 +35,14 @@ void RPS_Fixed_Client() {
 
         Move move = static_cast<Move>(rngValue);
         Reply reply = Play(serverTid, move);
-        uart_printf(CONSOLE, "[Client: %u ]: Played %s Result: %s\n\r", sys::MyTid(), moveToString(move),
+        uart_printf(CONSOLE, "[Client: %u ]: Played %s Result: %s\r\n", sys::MyTid(), moveToString(move),
                     replyToString(reply));
     }
 
     if (Quit(serverTid) < 0) {
-        uart_printf(CONSOLE, "[Client %u ]: Quit failed\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u ]: Quit failed\r\n", sys::MyTid());
     } else {
-        uart_printf(CONSOLE, "[Client %u ]: Successfully quit!\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u ]: Successfully quit!\r\n", sys::MyTid());
     }
     sys::Exit();
 }
@@ -50,15 +50,15 @@ void RPS_Fixed_Client() {
 void RPS_Random_Client() {
     int serverTid = name_server::WhoIs(RPS_SERVER_NAME);
     if (serverTid < 0) {
-        uart_printf(CONSOLE, "[Client %u]: Could not find  server\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Could not find  server\r\n", sys::MyTid());
         sys::Exit();
     }
 
     if (Signup(serverTid) < 0) {
-        uart_printf(CONSOLE, "[Client %u]: Signup failed!\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Signup failed!\r\n", sys::MyTid());
         sys::Exit();
     }
-    uart_printf(CONSOLE, "[Client %u]: Signed up!\n\r", sys::MyTid());
+    uart_printf(CONSOLE, "[Client %u]: Signed up!\r\n", sys::MyTid());
 
     int numPlays = 3;
     bool needResignup = false;
@@ -69,7 +69,7 @@ void RPS_Random_Client() {
 
         Reply reply = Play(serverTid, move);
 
-        uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s\n\r", sys::MyTid(), moveToString(move),
+        uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s\r\n", sys::MyTid(), moveToString(move),
                     replyToString(reply));
 
         if (reply == Reply::OPPONENT_QUIT) {
@@ -79,13 +79,13 @@ void RPS_Random_Client() {
     }
 
     if (needResignup) {
-        uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\r\n", sys::MyTid());
     }
 
     if (Quit(serverTid) < 0) {
-        uart_printf(CONSOLE, "[Client %u]: QUIT failed\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: QUIT failed\r\n", sys::MyTid());
     } else {
-        uart_printf(CONSOLE, "[Client %u]: Successfully quit\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Successfully quit\r\n", sys::MyTid());
     }
     sys::Exit();
 }
@@ -93,7 +93,7 @@ void RPS_Random_Client() {
 void RPS_Random_Client2() {
     int serverTid = name_server::WhoIs(RPS_SERVER_NAME);
     if (serverTid < 0) {
-        uart_printf(CONSOLE, "[Client %u]: Could not find  server\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Could not find  server\r\n", sys::MyTid());
         sys::Exit();
     }
 
@@ -102,30 +102,30 @@ void RPS_Random_Client2() {
 
     for (int cycle = 0; cycle < cycles; ++cycle) {
         if (Signup(serverTid) < 0) {
-            uart_printf(CONSOLE, "[Client %u]: Signup failed!\n\r", sys::MyTid());
+            uart_printf(CONSOLE, "[Client %u]: Signup failed!\r\n", sys::MyTid());
             sys::Exit();
         }
-        uart_printf(CONSOLE, "[Client %u]: Signed up!\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Signed up!\r\n", sys::MyTid());
 
         for (int i = 0; i < numPlays; ++i) {
             int rngVal = static_cast<int>((timerGet() % 10) % 3) + 1;
             Move move = static_cast<Move>(rngVal);
 
             Reply reply = Play(serverTid, move);
-            uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s \n\r", sys::MyTid(), moveToString(move),
+            uart_printf(CONSOLE, "[Client %u]: Played: %s, Result: %s \r\n", sys::MyTid(), moveToString(move),
                         replyToString(reply));
 
             if (reply == Reply::OPPONENT_QUIT) {
-                uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\n\r", sys::MyTid());
+                uart_printf(CONSOLE, "[Client: %u ]: My opponent quit. Signing up again...\r\n", sys::MyTid());
                 break;
             }
         }
     }
 
     if (Quit(serverTid) < 0) {
-        uart_printf(CONSOLE, "[Client %u]: QUIT failed\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: QUIT failed\r\n", sys::MyTid());
     } else {
-        uart_printf(CONSOLE, "[Client %u]: Successfully quit\n\r", sys::MyTid());
+        uart_printf(CONSOLE, "[Client %u]: Successfully quit\r\n", sys::MyTid());
     }
     sys::Exit();
 }

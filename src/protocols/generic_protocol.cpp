@@ -8,13 +8,13 @@ void handleSendResponse(int res, int clientTid) {
     if (res < 0) {
         switch (res) {
             case -1:
-                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id\n\r", clientTid);
+                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id\r\n", clientTid);
                 break;
             case -2:
-                uart_printf(CONSOLE, "[ERROR]: tid %u was not waiting for a reply\n\r", clientTid);
+                uart_printf(CONSOLE, "[ERROR]: tid %u was not waiting for a reply\r\n", clientTid);
                 break;
             default:
-                uart_printf(CONSOLE, "[ERROR]: Reply(%u) returned unexpected code %d\n\r", clientTid, res);
+                uart_printf(CONSOLE, "[ERROR]: Reply(%u) returned unexpected code %d\r\n", clientTid, res);
                 break;
         }
     }

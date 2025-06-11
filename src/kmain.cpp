@@ -1,6 +1,7 @@
 #include <array>
 
 #include "gic.h"
+#include "idle_time.h"
 #include "kernel_utils.h"
 #include "rpi.h"
 #include "servers/clock_server.h"
@@ -22,10 +23,10 @@ extern "C" int kmain() {
     kernel_util::initialize_bss();  // sets entire bss region to 0's
     kernel_util::run_init_array();  // call constructors
     vbar_init();                    // sets up exception vector
-    gicInit();
-    gpio_init();  // set up GPIO pins for both console and marklin uarts
+    gpio_init();                    // set up GPIO pins for both console and marklin uarts
 
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
+    gicInit();
 
 #if defined(TESTING)
     uart_getc(CONSOLE);

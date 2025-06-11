@@ -38,7 +38,7 @@ class RPSPlayer : public IntrusiveNode<RPSPlayer> {
 void RPS_Server() {
     int registerReturn = name_server::RegisterAs(RPS_SERVER_NAME);
     if (registerReturn == -1) {
-        uart_printf(CONSOLE, "UNABLE TO REACH NAME RPS Server \n\r");
+        uart_printf(CONSOLE, "UNABLE TO REACH NAME RPS Server \r\n");
         sys::Exit();
     }
 
@@ -65,14 +65,14 @@ void RPS_Server() {
         if (command == Command::PLAY) {
             uart_printf(CONSOLE, " %s", moveToString(move));
         }
-        uart_printf(CONSOLE, "\n\r");
+        uart_printf(CONSOLE, "\r\n");
 
         // parse info
         switch (command) {
             case Command::SIGNUP: {
                 // once two are on queue, reply and ask for first play
                 if (freelist.empty()) {
-                    uart_printf(CONSOLE, "No more space in free list!!\n\r");
+                    uart_printf(CONSOLE, "No more space in free list!!\r\n");
                 }
                 // get new rps player from slab
                 RPSPlayer* newPlayer = freelist.pop();
@@ -90,7 +90,7 @@ void RPS_Server() {
                 RPSPlayer* p2 = playerQueue.pop();
                 sys::Reply(p2->tid, "", 0);
 
-                uart_printf(CONSOLE, "[RPS Server]: [Client %u] is paired with [Client %u]\n\r", p1->tid, p2->tid);
+                uart_printf(CONSOLE, "[RPS Server]: [Client %u] is paired with [Client %u]\r\n", p1->tid, p2->tid);
 
                 p1->opponent = p2;
                 p2->opponent = p1;
@@ -103,7 +103,7 @@ void RPS_Server() {
                         RPSPlayer* opponent = playerSlabs[i].opponent;
                         if (!opponent) {
                             uart_printf(CONSOLE,
-                                        "[RPS Server]: ERROR! [Client %u] trying to play without signing up!\n\r",
+                                        "[RPS Server]: ERROR! [Client %u] trying to play without signing up!\r\n",
                                         clientTid);
                             break;
                         }
@@ -116,7 +116,7 @@ void RPS_Server() {
                         }
 
                         if (move != Move::ROCK && move != Move::PAPER && move != Move::SCISSORS) {
-                            uart_printf(CONSOLE, "[RPS Server]: UNKNOWN_MOVE from client %u\n\r", clientTid);
+                            uart_printf(CONSOLE, "[RPS Server]: UNKNOWN_MOVE from client %u\r\n", clientTid);
                             break;
                         }
 
@@ -195,7 +195,7 @@ void RPS_Server() {
                 break;
             }
             default: {
-                uart_printf(CONSOLE, "[RPS Server]: Unknown Command!\n\r");
+                uart_printf(CONSOLE, "[RPS Server]: Unknown Command!\r\n");
 
                 break;
             }

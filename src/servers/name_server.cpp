@@ -62,7 +62,7 @@ void NameServer() {
                 break;
             }
             default: {
-                uart_printf(CONSOLE, "[Name Server]: Unknown Command!\n\r");
+                uart_printf(CONSOLE, "[Name Server]: Unknown Command!\r\n");
 
                 break;
             }

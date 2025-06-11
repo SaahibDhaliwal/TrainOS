@@ -3,6 +3,7 @@
 #include "config.h"
 #include "cs_protocol.h"
 #include "generic_protocol.h"
+#include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "name_server.h"
@@ -33,8 +34,15 @@ class DelayedClockClient : public IntrusiveNode<DelayedClockClient> {
 }  // namespace
 
 void ClockFirstUserTask() {
-    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", sys::Create(49, &NameServer));
-    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\n\r", sys::Create(50, &ClockServer));
+    cursor_top_left();
+    clear_screen();
+    cursor_top_left();
+    WITH_HIDDEN_CURSOR(print_idle_percentage());
+    uart_printf(CONSOLE, "\r\r\n\n");
+    cursor_white();
+
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
+    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", sys::Create(50, &ClockServer));
 
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
 
@@ -61,7 +69,7 @@ void ClockFirstUserTask() {
     ASSERT(client_tid == client_4);
     sys::Reply(client_tid, "7103", 4);
 
-    uart_printf(CONSOLE, "First User Task: Done \n\r");
+    uart_printf(CONSOLE, "First User Task: Done\r\n");
 
     sys::Exit();
 }
@@ -91,8 +99,7 @@ void ClockClient() {
 
     for (int i = 0; i < delay_count; i++) {
         clock_server::Delay(clockServerTid, delay_interval);
-        uart_printf(CONSOLE, "[Clock Client %u]: Delay Interval: %u Completed Delays: %u \n\r", tid, delay_interval,
-                    i + 1);
+        uart_printf(CONSOLE, "[Client %u]: Interval: %u Complete: %u\r\n", tid, delay_interval, i + 1);
     }
 
     sys::Exit();
@@ -102,7 +109,7 @@ void ClockServer() {
     timerInit();
     int registerReturn = name_server::RegisterAs(CLOCK_SERVER_NAME);
     if (registerReturn == -1) {
-        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER \n\r");
+        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER\r\n");
         sys::Exit();
     }
 
@@ -168,7 +175,7 @@ void ClockServer() {
                     break;
                 }
                 default: {
-                    uart_printf(CONSOLE, "[Clock Server]: Unknown Command!\n\r");
+                    uart_printf(CONSOLE, "[Clock Server]: Unknown Command!\r\n");
 
                     break;
                 }

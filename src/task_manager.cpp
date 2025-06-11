@@ -60,7 +60,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
     if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
         timerSetNextTick();
         gicEndInterrupt(eventId);
-        // uart_printf(CONSOLE, "Current time: %u\n\r", timerGet());
+        // uart_printf(CONSOLE, "Current time: %u\r\n", timerGet());
 
         rescheduleTask(clockEventTask);
         clockEventTask = nullptr;
@@ -99,10 +99,10 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
 
     // check if id is the idle task, so we can do measurements?
     if (task->getTid() == 0) {
-        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \n\r", timerGetTick(), idle_tick, timerGetTick() -
+        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \r\n", timerGetTick(), idle_tick, timerGetTick() -
         // idle_tick);
         idle_tick_sum += timerGetTick() - idle_tick;  // will be some number of ticks
-        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \n\r", timerGetTick(), idle_tick, timerGetTick() -
+        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \r\n", timerGetTick(), idle_tick, timerGetTick() -
         task->setReturnValue(idle_tick_sum);  // send how many ticks we have not been idling since our last idle
     }
 
