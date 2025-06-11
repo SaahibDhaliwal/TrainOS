@@ -3,11 +3,11 @@
 
 #include "cursor.h"
 
-#define TEST_ASSERT(expr)                                                                          \
+#define ASSERT(expr)                                                                               \
     do {                                                                                           \
         if (!(expr)) {                                                                             \
             cursor_soft_red();                                                                     \
-            uart_printf(CONSOLE, "[%s][FAIL] %s:%d: %s\n\r", __func__, __FILE__, __LINE__, #expr); \
+            uart_printf(CONSOLE, "[%s][FAIL] %s:%d: %s\r\n", __func__, __FILE__, __LINE__, #expr); \
             cursor_white();                                                                        \
             for (;;) {                                                                             \
                 __asm__ volatile("wfi");                                                           \
@@ -17,10 +17,10 @@
 
 #define RUN_TEST(fn)                                            \
     do {                                                        \
-        uart_printf(CONSOLE, "[%s] Starting %s\n\r", #fn, #fn); \
+        uart_printf(CONSOLE, "[%s] Starting %s\r\n", #fn, #fn); \
         fn();                                                   \
         cursor_soft_green();                                    \
-        uart_printf(CONSOLE, "[%s] %s PASSED!\n\r", #fn, #fn);  \
+        uart_printf(CONSOLE, "[%s] %s PASSED!\r\n", #fn, #fn);  \
         cursor_white();                                         \
     } while (0)
 

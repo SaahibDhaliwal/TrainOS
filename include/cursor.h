@@ -3,13 +3,15 @@
 
 #include <stdbool.h>
 
-#define WITH_HIDDEN_CURSOR(console, statement)             \
+#include "rpi.h"
+
+#define WITH_HIDDEN_CURSOR(statement)                      \
     do {                                                   \
         bool wasVisible = get_cursor_visibility();         \
-        buffer_puts(console, "\033[s\033[?25l");           \
+        uart_printf(CONSOLE, "\033[s\033[?25l");           \
         statement;                                         \
-        buffer_puts(console, "\033[u");                    \
-        if (wasVisible) buffer_puts(console, "\033[?25h"); \
+        uart_printf(CONSOLE, "\033[u");                    \
+        if (wasVisible) uart_printf(CONSOLE, "\033[?25h"); \
     } while (0)
 
 bool get_cursor_visibility();

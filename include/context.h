@@ -12,6 +12,8 @@ struct __attribute__((packed)) Context {
 extern "C" {
 uint32_t kernelToUser(Context* kernelContext, Context* userTaskContext);
 uint32_t userToKernel(Context* kernelContext, Context* userTaskContext);
+uint32_t slowKernelToUser(Context* kernelContext, Context* userTaskContext);
+uint32_t slowUserToKernel(Context* kernelContext, Context* userTaskContext);
 }
 
 #endif /* context.h */

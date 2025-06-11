@@ -1,12 +1,33 @@
-#include "sys_call_handler.h"
+#include "kernel_utils.h"
 
 #include <algorithm>
 
+#include "gic.h"
 #include "rpi.h"
-#include "task_descriptor.h"
+#include "sys_call_handler.h"
 #include "task_manager.h"
 
-void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
+typedef void (*funcvoid0_t)();
+extern funcvoid0_t __init_array_start, __init_array_end;  // defined in linker script
+extern unsigned int __bss_start__, __bss_end__;           // defined in linker script
+
+namespace kernel_util {
+
+// calls constructors
+void run_init_array() {
+    for (funcvoid0_t* ctr = &__init_array_start; ctr < &__init_array_end; ctr += 1) {
+        (*ctr)();
+    }  // for
+}
+
+// zeros out the bss
+void initialize_bss() {
+    for (unsigned int* p = &__bss_start__; p < &__bss_end__; p += 1) {
+        *p = 0;
+    }  // for
+}
+
+void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
     switch (static_cast<SYSCALL_NUM>(N)) {
         case SYSCALL_NUM::CREATE: {
             uint64_t priority = curTask->getReg(0);
@@ -146,9 +167,31 @@ void SysCallHandler::handle(uint32_t N, TaskManager* taskManager, TaskDescriptor
 
             break;
         }
+        case SYSCALL_NUM::AWAIT_EVENT: {
+            int64_t eventId = curTask->getReg(0);
+            int ret = taskManager->awaitEvent(eventId, curTask);
+            if (ret == -1) {  // invalid event?
+                curTask->setReturnValue(-1);
+                taskManager->rescheduleTask(curTask);
+            }
+
+            break;
+        }
+        case SYSCALL_NUM::INTERRUPT: {
+            // read output compare register and add offset for next timer tick
+            uint32_t interruptId = gicGetInterrupt();
+
+            taskManager->handleInterrupt(interruptId);
+
+            taskManager->rescheduleTask(curTask);
+
+            break;
+        }
         default: {  // we can make this more extensive
             uart_printf(CONSOLE, "Unknown syscall: %u\n", N);
             break;
         }
     }  // switch
 }
+
+}  // namespace kernel_util

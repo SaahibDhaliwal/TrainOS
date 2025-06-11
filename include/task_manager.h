@@ -30,11 +30,17 @@ class TaskManager {
     TaskDescriptor taskSlabs[Config::MAX_TASKS];              // slabs of TaskDescriptor's
     Queue<TaskDescriptor> readyQueues[Config::MAX_PRIORITY];  // intrusive scheduling queue
 
+    TaskDescriptor* clockEventTask;
+    uint64_t nonIdleTime;
+    uint64_t totalNonIdleTime;
+
    public:
     TaskManager();
     uint32_t createTask(TaskDescriptor* parent, uint64_t priority, uint64_t entryPoint);  // creates user task
     void exitTask(TaskDescriptor* task);                                                  // exit user task
-    void rescheduleTask(TaskDescriptor* task);  // adds task back to ready queue
+    void rescheduleTask(TaskDescriptor* task);              // adds task back to ready queue
+    int awaitEvent(int64_t eventId, TaskDescriptor* task);  // waits for event
+    void handleInterrupt(int64_t eventId);                  // handles interrupt
 
     TaskDescriptor* schedule();
     uint32_t activate(TaskDescriptor* task);
