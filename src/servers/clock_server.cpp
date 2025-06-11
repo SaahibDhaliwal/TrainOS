@@ -170,9 +170,13 @@ void ClockServer() {
                     unsigned int endTicks;
                     a2ui(tickString, 10, &endTicks);
 
-                    DelayedClockClient* delayedClient = freelist.pop();
-                    delayedClient->initialize(clientTid, endTicks);
-                    client_count++;
+                    if (endTicks < ticks) {
+                        uIntReply(clientTid, -2);
+                    } else {
+                        DelayedClockClient* delayedClient = freelist.pop();
+                        delayedClient->initialize(clientTid, endTicks);
+                        client_count++;
+                    }
 
                     break;
                 }
