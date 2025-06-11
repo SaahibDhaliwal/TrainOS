@@ -3,17 +3,19 @@
 #include <string.h>
 
 #include <cstdint>
-#include <map>
 
-#include "clients/rps_client.h"
+#include "cursor.h"
 #include "fixed_map.h"
+#include "idle_time.h"
+#include "name_server.h"
 #include "queue.h"
 #include "rpi.h"
-#include "servers/name_server.h"
-#include "servers/rps_server.h"
+#include "rps_client.h"
+#include "rps_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
+#include "timer.h"
 #include "util.h"
 
 void FirstUserTask() {
@@ -22,27 +24,30 @@ void FirstUserTask() {
     const uint64_t higherPrio = 2 + 1;
 
     // create two tasks at a lower priority
-    uart_printf(CONSOLE, "Created: %u\n\r", sys::Create(lowerPrio, &TestTask));
-    uart_printf(CONSOLE, "Created: %u\n\r", sys::Create(lowerPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\r\n", sys::Create(lowerPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\r\n", sys::Create(lowerPrio, &TestTask));
 
     // // create two tasks at a higher priority
-    uart_printf(CONSOLE, "Created: %u\n\r", sys::Create(higherPrio, &TestTask));
-    uart_printf(CONSOLE, "Created: %u\n\r", sys::Create(higherPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\r\n", sys::Create(higherPrio, &TestTask));
+    uart_printf(CONSOLE, "Created: %u\r\n", sys::Create(higherPrio, &TestTask));
 
-    uart_printf(CONSOLE, "FirstUserTask: exiting\n\r");
+    uart_printf(CONSOLE, "FirstUserTask: exiting\r\n");
     sys::Exit();
 }
 
 void TestTask() {
-    uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", sys::MyTid(), sys::MyParentTid());
+    uart_printf(CONSOLE, "[Task %u] Parent: %u\r\n", sys::MyTid(), sys::MyParentTid());
     sys::Yield();
-    uart_printf(CONSOLE, "[Task %u] Parent: %u\n\r", sys::MyTid(), sys::MyParentTid());
+    uart_printf(CONSOLE, "[Task %u] Parent: %u\r\n", sys::MyTid(), sys::MyParentTid());
     sys::Exit();
 }
 
 void IdleTask() {
+    uint32_t volatile percentage = 0;
     while (true) {
-        asm volatile("wfe");
+        asm volatile("wfi");
+        asm volatile("mov %0, x0" : "=r"(percentage));
+        WITH_HIDDEN_CURSOR(update_idle_percentage(percentage));
     }
 }
 
@@ -56,12 +61,12 @@ void SenderTask() {
     int end = 0;
 
     char reply[Config::MAX_MESSAGE_LENGTH];
-    start = get_timer();
+    start = timerGet();
     for (int i = 0; i < Config::EXPERIMENT_COUNT; i++) {
         sys::Send(3, msg, Config::MAX_MESSAGE_LENGTH, reply, Config::MAX_MESSAGE_LENGTH);
     }
-    end = get_timer();
-    uart_printf(CONSOLE, "clock time diff %u \n\r", (end - start) / Config::EXPERIMENT_COUNT);
+    end = timerGet();
+    uart_printf(CONSOLE, "clock time diff %u \r\n", (end - start) / Config::EXPERIMENT_COUNT);
 
     sys::Exit();
 }
@@ -77,17 +82,18 @@ void ReceiverTask() {
 }
 
 void PerformanceMeasurement() {
-    uart_printf(CONSOLE, "[First Task]: Created Sender: %u\n\r", sys::Create(9, &SenderTask));
-    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\n\r", sys::Create(10, &ReceiverTask));
+    uart_printf(CONSOLE, "[First Task]: Created Sender: %u\r\n", sys::Create(9, &SenderTask));
+    uart_printf(CONSOLE, "[First Task]: Created Receiver: %u\r\n", sys::Create(10, &ReceiverTask));
     sys::Exit();
 }
 
 void RPSFirstUserTask() {
-    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\n\r", sys::Create(9, &NameServer));
-    uart_printf(CONSOLE, "[First Task]: Created RPS Server: %u\n\r", sys::Create(8, &RPS_Server));
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(9, &NameServer));
+    uart_printf(CONSOLE, "[First Task]: Created RPS Server: %u\r\n", sys::Create(8, &RPS_Server));
+    timerInit();
 
-    uart_printf(CONSOLE, "\n\r------  Starting first test: Both tie with Rock ---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Starting first test: Both tie with Rock ---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
     char reply = 0;
     int player1 = sys::Create(9, &RPS_Fixed_Client);
@@ -96,8 +102,8 @@ void RPSFirstUserTask() {
     int player2 = sys::Create(9, &RPS_Fixed_Client);
     sys::Send(player2, "F11", 3, &reply, 1);
 
-    uart_printf(CONSOLE, "\n\r------  Starting second test: Player 1 wins with Rock ---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Starting second test: Player 1 wins with Rock ---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
 
     player1 = sys::Create(9, &RPS_Fixed_Client);
@@ -107,8 +113,8 @@ void RPSFirstUserTask() {
     // Forced, Scissors, 1 iteration
     sys::Send(player2, "F31", 3, &reply, 1);
 
-    uart_printf(CONSOLE, "\n\r------  Starting third test: Player 1 wins with Paper ---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Starting third test: Player 1 wins with Paper ---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
 
     player1 = sys::Create(9, &RPS_Fixed_Client);
@@ -118,8 +124,8 @@ void RPSFirstUserTask() {
     // Forced, rock, 1 iteration
     sys::Send(player2, "F11", 3, &reply, 1);
 
-    uart_printf(CONSOLE, "\n\r------  Starting fourth test: Player 1 wins with Scissors ---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Starting fourth test: Player 1 wins with Scissors ---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
 
     player1 = sys::Create(9, &RPS_Fixed_Client);
@@ -129,8 +135,8 @@ void RPSFirstUserTask() {
     // Forced, rock, 1 iteration
     sys::Send(player2, "F21", 3, &reply, 1);
 
-    uart_printf(CONSOLE, "\n\r------  Starting fifth test: Random action choice for five rounds ---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Starting fifth test: Random action choice for five rounds ---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
 
     player1 = sys::Create(9, &RPS_Fixed_Client);
@@ -139,16 +145,16 @@ void RPSFirstUserTask() {
     sys::Send(player2, "005", 3, &reply, 1);
 
     uart_printf(CONSOLE,
-                "\n\r------  Starting sixth test: Random action choice for three rounds, with three clients () "
-                "---------\n\r");
-    uart_printf(CONSOLE, "------  Press any key to start ---------\n\r");
+                "\r\n------  Starting sixth test: Random action choice for three rounds, with three clients () "
+                "---------\r\n");
+    uart_printf(CONSOLE, "------  Press any key to start ---------\r\n");
     uart_getc(CONSOLE);
 
     sys::Create(9, &RPS_Random_Client);
     sys::Create(9, &RPS_Random_Client2);
     sys::Create(9, &RPS_Random_Client);
 
-    uart_printf(CONSOLE, "\n\r------  Tests have completed! ---------\n\r");
+    uart_printf(CONSOLE, "\r\n------  Tests have completed! ---------\r\n");
 
     sys::Exit();
 }

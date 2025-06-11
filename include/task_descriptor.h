@@ -15,7 +15,7 @@ enum class TaskState {
     WAITING_FOR_SEND,
     WAITING_FOR_RECEIVE,
     WAITING_FOR_REPLY,
-    EVENT_BLOCKED
+    WAITING_FOR_EVENT
 };
 
 class TaskDescriptor : public IntrusiveNode<TaskDescriptor> {
@@ -43,6 +43,7 @@ class TaskDescriptor : public IntrusiveNode<TaskDescriptor> {
     void setTid(int32_t tid);
     void setState(TaskState state);
     void enqueueSender(TaskDescriptor* sender);
+    void setRegister(uint32_t reg, uint64_t val);
 
     TaskDescriptor* dequeueSender();
 };

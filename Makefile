@@ -1,4 +1,4 @@
-XDIR:=/home/saahib/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-elf
+XDIR:=/u/cs452/public/xdev
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin
@@ -6,7 +6,7 @@ CXX:=$(XBINDIR)/$(TRIPLE)-g++
 OBJCOPY:=$(XBINDIR)/$(TRIPLE)-objcopy
 OBJDUMP:=$(XBINDIR)/$(TRIPLE)-objdump
 OUT_DIR := build
-TARGET := kernel1
+TARGET := kernel3
 
 MMU?=on
 OPT?=on
@@ -29,7 +29,7 @@ endif
 
 WARNINGS:=-Wall -Wextra -Wpedantic -Wno-unused-const-variable -Wno-stringop-overflow
 # I had to get rid of freestanding for the map. Says its fine on piazza
-CFLAGS:= -Isrc -Isrc/containers -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(WARNINGS)
+CFLAGS:= -Isrc -Isrc/containers -Iinclude/clients -Iinclude/servers -Iinclude/protocols -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(WARNINGS)
 
 # -Wl,option tells gcc to pass 'option' to the linker with commas replaced by spaces
 # doing this rather than calling the linker directly simplifies the compilation procedure

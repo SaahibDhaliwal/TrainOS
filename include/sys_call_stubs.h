@@ -24,6 +24,8 @@ int Send(uint32_t tid, const char *msg, int msglen, char *reply, int rplen);
 int Receive(uint32_t *tid, char *msg, int msglen);
 
 int Reply(uint32_t tid, const char *reply, int rplen);
+
+int AwaitEvent(int eventId);
 }
 }  // namespace sys
 

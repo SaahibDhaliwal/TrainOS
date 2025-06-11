@@ -3,14 +3,17 @@
 
 #include <cstdint>
 
-enum class SYSCALL_NUM { CREATE, MY_TID, MY_PARENT_TID, YIELD, EXIT, SEND, RECEIVE, REPLY };
-
-class TaskManager;
-class TaskDescriptor;
-
-class SysCallHandler {
-   public:
-    void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask);
+enum class SYSCALL_NUM {
+    CREATE,
+    MY_TID,
+    MY_PARENT_TID,
+    YIELD,
+    EXIT,
+    SEND,
+    RECEIVE,
+    REPLY,
+    AWAIT_EVENT,
+    INTERRUPT = 50,
 };
 
 #endif /* sys_call_handler.h */
