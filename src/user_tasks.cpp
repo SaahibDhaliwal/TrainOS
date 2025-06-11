@@ -44,7 +44,6 @@ void TestTask() {
 
 void IdleTask() {
     uint32_t volatile percentage = 0;
-    uint32_t volatile decimal = 0;
     while (true) {
         asm volatile("wfi");
         asm volatile("mov %0, x0" : "=r"(percentage));

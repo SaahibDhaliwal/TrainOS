@@ -44,8 +44,6 @@ void ClockFirstUserTask() {
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", sys::Create(50, &ClockServer));
 
-    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-
     uint32_t client_1 = sys::Create(20, &ClockClient);
     uint32_t client_2 = sys::Create(19, &ClockClient);
     uint32_t client_3 = sys::Create(18, &ClockClient);
@@ -116,7 +114,7 @@ void ClockServer() {
     }
 
     uint64_t ticks = 0;
-    int32_t clockNotifierTid = sys::Create(40, &ClockNotifier);
+    uint32_t clockNotifierTid = sys::Create(40, &ClockNotifier);
     int client_count = 0;
     timerInit();
     for (;;) {
@@ -171,7 +169,7 @@ void ClockServer() {
                     a2ui(tickString, 10, &endTicks);
 
                     if (endTicks < ticks) {
-                        uIntReply(clientTid, -2);
+                        intReply(clientTid, -2);
                     } else {
                         DelayedClockClient* delayedClient = freelist.pop();
                         delayedClient->initialize(clientTid, endTicks);

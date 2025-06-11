@@ -5,5 +5,6 @@
 int charReply(int clientTid, char reply);
 int emptySend(int clientTid);
 int uIntReply(int clientTid, uint64_t reply);
+int intReply(int clientTid, int64_t reply);
 
 #endif

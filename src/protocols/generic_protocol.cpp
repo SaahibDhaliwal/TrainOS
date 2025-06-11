@@ -40,7 +40,7 @@ int uIntReply(int clientTid, uint64_t reply) {
     return res;
 }
 
-int intReply(int clientTid, uint64_t reply) {
+int intReply(int clientTid, int64_t reply) {
     char buf[21];  // max digits is 20
     i2a(reply, buf);
     int res = sys::Reply(clientTid, buf, strlen(buf) + 1);
