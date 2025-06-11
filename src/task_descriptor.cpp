@@ -75,3 +75,7 @@ void TaskDescriptor::enqueueSender(TaskDescriptor* sender) {
 TaskDescriptor* TaskDescriptor::dequeueSender() {
     return senders.pop();
 }
+
+void TaskDescriptor::setRegister(uint32_t reg, uint64_t val) {
+    context.registers[reg] = val;
+}

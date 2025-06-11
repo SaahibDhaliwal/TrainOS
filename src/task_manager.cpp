@@ -12,9 +12,7 @@
 #include "test_utils.h"
 #include "timer.h"
 
-TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr) {
-    idle_tick = 0;
-    idle_tick_sum = 0;
+TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr), nonIdleTime(0), totalNonIdleTime(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -60,8 +58,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
     if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
         timerSetNextTick();
         gicEndInterrupt(eventId);
-        // uart_printf(CONSOLE, "Current time: %u\r\n", timerGet());
-
         rescheduleTask(clockEventTask);
         clockEventTask = nullptr;
     }
@@ -91,25 +87,22 @@ TaskDescriptor* TaskManager::schedule() {
     return nullptr;
 }
 
-// uint32_t idle_tick = 0; //global for now
-
 uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
-    // ESR_EL1 value is returned when switching from user to kernel.
+    // ESR_EL1 or interrupt code is returned when switching from user to kernel.
 
-    // check if id is the idle task, so we can do measurements?
-    if (task->getTid() == 0) {
-        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \r\n", timerGetTick(), idle_tick, timerGetTick() -
-        // idle_tick);
-        idle_tick_sum += timerGetTick() - idle_tick;  // will be some number of ticks
-        // uart_printf(CONSOLE, "Setting value: %d - %d = %d \r\n", timerGetTick(), idle_tick, timerGetTick() -
-        task->setReturnValue(idle_tick_sum);  // send how many ticks we have not been idling since our last idle
+    if (task->getTid() == 0 && nonIdleTime != 0) {
+        uint64_t currTime = timerGetRelativeTime();
+        totalNonIdleTime += currTime - nonIdleTime;  // will be some number of ticks
+        uint64_t percentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
+
+        task->setReturnValue(percentage);  // send how much time we have not been idling since our last idle
     }
 
-    uint32_t ESR_EL1 = slowKernelToUser(&kernelContext, task->getMutableContext());
+    uint32_t request = slowKernelToUser(&kernelContext, task->getMutableContext());
 
     if (task->getTid() == 0) {
-        idle_tick = timerGetTick();  // track which tick we left idle
+        nonIdleTime = timerGetRelativeTime();  // track which tick we left idle
     }
-    return ESR_EL1 & 0xFFFFFF;
+    return request & 0xFFFFFF;
 }

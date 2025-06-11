@@ -16,12 +16,4 @@ enum class SYSCALL_NUM {
     INTERRUPT = 50,
 };
 
-class TaskManager;
-class TaskDescriptor;
-
-class SysCallHandler {
-   public:
-    void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask);
-};
-
 #endif /* sys_call_handler.h */

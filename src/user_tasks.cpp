@@ -43,16 +43,11 @@ void TestTask() {
 }
 
 void IdleTask() {
-    uint32_t volatile sum_of_nonidle_ticks = 0;
+    uint32_t volatile percentage = 0;
+    uint32_t volatile decimal = 0;
     while (true) {
         asm volatile("wfi");
-        asm volatile("mov %0, x0" : "=r"(sum_of_nonidle_ticks));
-        uint32_t get_tick = timerGetTick();
-        uint32_t idle_ticks = get_tick - sum_of_nonidle_ticks;
-        uint32_t percentage = (idle_ticks * 100) / get_tick;
-
-        uart_printf(CONSOLE, "[ Idle Task ] Fraction of execution ticks: %d / %d \r\n", get_tick - sum_of_nonidle_ticks,
-                    get_tick);
+        asm volatile("mov %0, x0" : "=r"(percentage));
         WITH_HIDDEN_CURSOR(update_idle_percentage(percentage));
     }
 }

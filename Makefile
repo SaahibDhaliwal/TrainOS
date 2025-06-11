@@ -1,4 +1,4 @@
-XDIR:=/Applications/ArmGNUToolchain/14.2.rel1/aarch64-none-elf
+XDIR:=/u/cs452/public/xdev
 ARCH=cortex-a72
 TRIPLE=aarch64-none-elf
 XBINDIR:=$(XDIR)/bin

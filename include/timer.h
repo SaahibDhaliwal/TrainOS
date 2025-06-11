@@ -6,5 +6,6 @@ uint32_t timerInit();  // returns the time when the tick is initialized
 unsigned int timerGet();
 unsigned int timerGetTick();
 void timerSetNextTick();
+unsigned int timerGetRelativeTime();
 
 #endif

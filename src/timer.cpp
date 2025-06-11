@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "config.h"
+#include "gic.h"
 
 /*********** TIMER CONTROL ************************ ************/
 static char* const TIMER_BASE = (char*)(0xFE000000 + 0x3000);  // would need to change if MMIO_BASE changes
@@ -18,11 +19,17 @@ unsigned int timerGet() {
     return TIMER_REG(TIMER_LO);
 }
 
+unsigned int timerGetRelativeTime() {
+    return TIMER_REG(TIMER_LO) - (first_tick_time - Config::TICK_SIZE);
+}
+
 unsigned int timerGetTick() {
     return (TIMER_REG(TIMER_LO) - (first_tick_time - Config::TICK_SIZE)) / Config::TICK_SIZE;
 }
 
 unsigned int timerInit() {
+    gicInit();
+    gicEndInterrupt(97);  // ensures match is off
     first_tick_time = TIMER_REG(TIMER_LO) + Config::TICK_SIZE;
     TIMER_REG(TIMER_COMPARE_1) = first_tick_time;
     return first_tick_time;

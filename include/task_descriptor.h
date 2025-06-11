@@ -43,6 +43,7 @@ class TaskDescriptor : public IntrusiveNode<TaskDescriptor> {
     void setTid(int32_t tid);
     void setState(TaskState state);
     void enqueueSender(TaskDescriptor* sender);
+    void setRegister(uint32_t reg, uint64_t val);
 
     TaskDescriptor* dequeueSender();
 };

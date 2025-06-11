@@ -69,8 +69,6 @@ void ClockFirstUserTask() {
     ASSERT(client_tid == client_4);
     sys::Reply(client_tid, "7103", 4);
 
-    uart_printf(CONSOLE, "First User Task: Done\r\n");
-
     sys::Exit();
 }
 
@@ -83,9 +81,6 @@ void ClockNotifier() {
 }
 
 void ClockClient() {
-    // Send request for parameters
-    // char* param_msg = "Give me params";
-
     char reply[4] = {0};
     int reply_length = sys::Send(sys::MyParentTid(), "", 0, reply, 4);
     ASSERT(reply_length >= 4);
@@ -99,14 +94,13 @@ void ClockClient() {
 
     for (int i = 0; i < delay_count; i++) {
         clock_server::Delay(clockServerTid, delay_interval);
-        uart_printf(CONSOLE, "[Client %u]: Interval: %u Complete: %u\r\n", tid, delay_interval, i + 1);
+        uart_printf(CONSOLE, "[Client %u]:  Delay Interval: %u  Number of Delays: %u\r\n", tid, delay_interval, i + 1);
     }
 
     sys::Exit();
 }
 
 void ClockServer() {
-    timerInit();
     int registerReturn = name_server::RegisterAs(CLOCK_SERVER_NAME);
     if (registerReturn == -1) {
         uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER\r\n");
@@ -123,24 +117,29 @@ void ClockServer() {
 
     uint64_t ticks = 0;
     int32_t clockNotifierTid = sys::Create(40, &ClockNotifier);
-
+    int client_count = 0;
+    timerInit();
     for (;;) {
         uint32_t clientTid;
-        char msg[Config::MAX_MESSAGE_LENGTH];
-        int msgLen = sys::Receive(&clientTid, msg, 2);
+        char msg[22];
+        int msgLen = sys::Receive(&clientTid, msg, 21);
         msg[msgLen] = '\0';
 
         if (clientTid == clockNotifierTid) {
             ticks += 1;
             charReply(clockNotifierTid, '0');
 
-            for (int i = 0; i < Config::MAX_TASKS; i += 1) {
-                if (clockClientSlabs[i].active && ticks >= clockClientSlabs[i].releaseTime) {
-                    clockClientSlabs[i].active = false;
-                    freelist.push(&clockClientSlabs[i]);
-                    uIntReply(clockClientSlabs[i].tid, ticks);
+            if (client_count) {
+                for (int i = Config::MAX_TASKS - 1; i >= 0; i -= 1) {
+                    if (clockClientSlabs[i].active && ticks >= clockClientSlabs[i].releaseTime) {
+                        clockClientSlabs[i].active = false;
+                        freelist.push(&clockClientSlabs[i]);
+                        uIntReply(clockClientSlabs[i].tid, ticks);
+                        client_count--;
+                    }
                 }
             }
+
         } else {
             Command command = commandFromByte(msg[0]);
 
@@ -154,12 +153,14 @@ void ClockServer() {
                     char tickString[21];
                     strcpy(tickString, &msg[1]);
 
-                    unsigned int delayTicks;
+                    unsigned int delayTicks = 0;
                     a2ui(tickString, 10, &delayTicks);
 
                     DelayedClockClient* delayedClient = freelist.pop();
+
                     delayedClient->initialize(clientTid, ticks + delayTicks);
 
+                    client_count++;
                     break;
                 }
                 case Command::DELAY_UNTIL: {
@@ -171,6 +172,7 @@ void ClockServer() {
 
                     DelayedClockClient* delayedClient = freelist.pop();
                     delayedClient->initialize(clientTid, endTicks);
+                    client_count++;
 
                     break;
                 }
@@ -182,7 +184,4 @@ void ClockServer() {
             }
         }
     }
-    // create clock notifier, so i know the tid
-
-    // if a receive a message and tid is clock notifier i know what to do
 }
