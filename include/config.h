@@ -11,7 +11,7 @@ constexpr int NAME_SERVER_TID = 2;
 constexpr int NAME_SERVER_CAPACITY = 64;
 constexpr int MAX_MESSAGE_LENGTH = 256;
 constexpr int EXPERIMENT_COUNT = 2;
-constexpr uint32_t TICK_SIZE = 1000000;  // this could go in config
+constexpr uint32_t TICK_SIZE = 10000;  // this could go in config
 }  // namespace Config
 
 #endif /* config.h */

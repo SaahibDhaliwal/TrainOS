@@ -214,10 +214,11 @@ slowUserToKernel:
 
     // Store callee-saved registers for userContext in the TD's context array
     store_callee_registers x6
+    store_caller_registers x6
+
         // Restore callee-saved registers from kernelContext
     restore_callee_registers x7
 
-    store_caller_registers x6
 
     // Save SP_EL0
     mrs x2, sp_el0
@@ -241,8 +242,6 @@ slowUserToKernel:
     add sp, sp, #32
     //store locals
     //store_caller_registers x0
-    
-
 
     mov x0, #50
 

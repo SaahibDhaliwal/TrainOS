@@ -48,6 +48,7 @@ void NameServer() {
                     if (strcmp(name, nameTidPairs[i].name) == 0) {
                         char tmpBuffer[4];
                         ui2a(nameTidPairs[i].tid, 10, tmpBuffer);
+
                         sys::Reply(clientTid, tmpBuffer, 4);
                         found = true;
                         break;
