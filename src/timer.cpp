@@ -28,8 +28,8 @@ unsigned int timerGetTick() {
 }
 
 unsigned int timerInit() {
+    TIMER_REG(TIMER_CONTROL) |= (0x1 << 1);
     gicInit();
-    gicEndInterrupt(97);  // ensures match is off
     first_tick_time = TIMER_REG(TIMER_LO) + Config::TICK_SIZE;
     TIMER_REG(TIMER_COMPARE_1) = first_tick_time;
     return first_tick_time;
