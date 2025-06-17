@@ -2,6 +2,7 @@
 #define __RPI__
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define CONSOLE 1
 #define MARKLIN 2
@@ -21,5 +22,12 @@ void uartSetIMSC(size_t line, IMSC input);
 void uartClearIMSC(size_t line, IMSC input);
 int uartCheckMIS(size_t line);
 void uartClearICR(size_t line, IMSC input);
+bool uartCheckRX(size_t line);
+bool uartCheckTX(size_t line);
+void uartPutTX(size_t line, char c);
+unsigned char uartGetRX(size_t line);
+void uartPutConsoleC(uint32_t tid, char c);
+void uartPutConsoleS(uint32_t tid, const char *buf);
+void uartPrintf(uint32_t tid, const char *fmt, ...);
 
 #endif /* rpi.h */

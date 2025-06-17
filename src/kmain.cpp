@@ -5,6 +5,7 @@
 #include "kernel_utils.h"
 #include "rpi.h"
 #include "servers/clock_server.h"
+#include "servers/console_server.h"
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
@@ -35,8 +36,8 @@ extern "C" int kmain() {
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));            // idle task
-    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ClockFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));              // idle task
+    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ConsoleFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
         if (!curTask) break;

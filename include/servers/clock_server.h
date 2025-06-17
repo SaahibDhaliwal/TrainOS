@@ -9,10 +9,10 @@ void ClockServer();
 
 void ClockClient();
 
-int Time(int tid);
+// int Time(int tid);
 
-int Delay(int tid, int ticks);
+// int Delay(int tid, int ticks);
 
-int DelayUntil(int tid, int ticks);
+// int DelayUntil(int tid, int ticks);
 
 #endif

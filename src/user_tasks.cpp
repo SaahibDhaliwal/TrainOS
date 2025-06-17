@@ -8,10 +8,12 @@
 #include "fixed_map.h"
 #include "idle_time.h"
 #include "name_server.h"
+#include "protocols/ns_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "rps_client.h"
 #include "rps_server.h"
+#include "servers/console_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
@@ -47,7 +49,7 @@ void IdleTask() {
     while (true) {
         asm volatile("wfi");
         asm volatile("mov %0, x0" : "=r"(percentage));
-        WITH_HIDDEN_CURSOR(update_idle_percentage(percentage));
+        // WITH_HIDDEN_CURSOR(update_idle_percentage(percentage));
     }
 }
 

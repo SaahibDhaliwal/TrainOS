@@ -4,8 +4,10 @@
 #include <string.h>
 
 #include "cursor.h"
+#include "protocols/ns_protocol.h"
 #include "queue.h"
 #include "rpi.h"
+#include "servers/console_server.h"
 
 #define IDLE_START_ROW 0
 #define IDLE_START_COL 0
@@ -21,10 +23,11 @@ void print_idle_percentage() {
 }
 
 void update_idle_percentage(int percentage) {
-    uart_printf(CONSOLE, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
+    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+    uartPrintf(ctid, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
     // clear
-    uart_printf(CONSOLE, "\033[K");  // clear from cursor to end of line
+    uartPrintf(ctid, "\033[K");  // clear from cursor to end of line
 
-    uart_printf(CONSOLE, " %d.%d", percentage / 100, percentage % 100);
-    uart_putc(CONSOLE, '%');
+    uartPrintf(ctid, " %d.%d", percentage / 100, percentage % 100);
+    uartPutConsoleC(ctid, '%');
 }

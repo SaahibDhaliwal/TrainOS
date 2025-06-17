@@ -26,6 +26,12 @@ int emptySend(int clientTid) {
     return res;
 }
 
+int emptyReply(int clientTid) {
+    int res = sys::Reply(clientTid, nullptr, 0);
+    handleSendResponse(res, clientTid);
+    return res;
+}
+
 int charReply(int clientTid, char reply) {
     int res = sys::Reply(clientTid, &reply, 1);
     handleSendResponse(res, clientTid);

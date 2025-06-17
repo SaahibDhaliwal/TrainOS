@@ -3,7 +3,7 @@
 
 namespace clock_server {
 enum class Command : char { TIME, DELAY, DELAY_UNTIL, COUNT, UNKNOWN_COMMAND };
-enum class Reply : char { SUCCESS, COUNT, UNKNOWN_REPLY };
+enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);
 char toByte(Reply r);

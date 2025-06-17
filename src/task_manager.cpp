@@ -58,11 +58,21 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         ASSERT(consoleEventTask == nullptr);  // no other task should be waiting on the console
         task->setState(TaskState::WAITING_FOR_EVENT);
         consoleEventTask = task;
+
+        uartSetIMSC(CONSOLE, IMSC::RX);  // this could be more robust with additional EVENT_IDs
+        uartSetIMSC(CONSOLE, IMSC::TX);
+        // uartSetIMSC(CONSOLE, IMSC::RT);
+
         return 0;
     } else if (eventId == static_cast<int64_t>(EVENT_ID::BOX)) {
         ASSERT(marklinEventTask == nullptr);  // no other task should be waiting on the marklin
         task->setState(TaskState::WAITING_FOR_EVENT);
         marklinEventTask = task;
+
+        uartSetIMSC(CONSOLE, IMSC::RX);
+        uartSetIMSC(CONSOLE, IMSC::TX);
+        uartSetIMSC(CONSOLE, IMSC::CTS);
+
         return 0;
     } else {  // invalid event
         return -1;
@@ -101,22 +111,17 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             } else if (mis >= static_cast<int>(MIS::RX)) {
                 uartClearIMSC(CONSOLE, IMSC::RX);
                 uartClearICR(CONSOLE, IMSC::RX);
-            } else if (mis == static_cast<int>(MIS::CTS)) {
-                uartClearIMSC(CONSOLE, IMSC::CTS);
-                uartClearICR(CONSOLE, IMSC::CTS);
             } else {
                 // something broke
+                // uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
             }
-            consoleEventTask->setReturnValue(mis);
+            consoleEventTask->setReturnValue(mis);  // we gotta do the same stuff on the receiving end
             rescheduleTask(consoleEventTask);
         }
 
         mis = uartCheckMIS(MARKLIN);
         if (mis) {
-            if (mis >= static_cast<int>(MIS::RT)) {
-                uartClearIMSC(MARKLIN, IMSC::RT);
-                uartClearICR(MARKLIN, IMSC::RT);
-            } else if (mis >= static_cast<int>(MIS::TX)) {
+            if (mis >= static_cast<int>(MIS::TX)) {
                 uartClearIMSC(MARKLIN, IMSC::TX);
                 uartClearICR(MARKLIN, IMSC::TX);
             } else if (mis >= static_cast<int>(MIS::RX)) {
@@ -127,6 +132,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearICR(MARKLIN, IMSC::CTS);
             } else {
                 // something broke
+                // uart_printf(CONSOLE, "MIS Marklin Check broke! \n\r");
             }
             marklinEventTask->setReturnValue(mis);
             rescheduleTask(marklinEventTask);

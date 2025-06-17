@@ -3,6 +3,9 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+#include "protocols/co_protocol.h"
+#include "protocols/ns_protocol.h"
+#include "servers/console_server.h"
 #include "test_utils.h"
 #include "util.h"
 
@@ -156,6 +159,7 @@ int uartCheckMIS(size_t line) {
     // If odd, sub 1 and bit shift
     // If larger than 32, subtract 32 (RT) and continue
     // If not equal to 16, then subtract 16 and so on
+    // Goes: RT, TX, RX, junk, junk, CTS
 }
 
 // Thankfully the offsets are the same so we can use the predefined IMSC
@@ -183,6 +187,77 @@ void uartClearICR(size_t line, IMSC input) {
         }
 }
 
+// Returns true if there's something in RX, false if empty
+bool uartCheckRX(size_t line) {
+    return !(UART_REG(line, UART_FR) & UART_FR_RXFE);
+}
+
+// Returns true if the TX has room to send, false if fifo/register is full
+bool uartCheckTX(size_t line) {
+    return !(UART_REG(line, UART_FR) & UART_FR_TXFF);
+}
+
+void uartPutTX(size_t line, char c) {
+    UART_REG(line, UART_DR) = c;
+}
+
+unsigned char uartGetRX(size_t line) {
+    return UART_REG(line, UART_DR);
+}
+
+void uartPutConsoleC(uint32_t tid, char c) {
+    int response = console_server::Putc(tid, 0, c);
+    if (response != 0) {  // for clarity
+        uart_printf(CONSOLE, "uart PUTC Cannot reach TID %d\r\n", response);
+    }
+}
+
+void uartPutConsoleS(uint32_t tid, char* buf) {
+    while (*buf) {
+        uartPutConsoleC(tid, *buf);
+        buf++;
+    }
+}
+
+void uartPrintf(uint32_t tid, const char* fmt, ...) {
+    va_list va;
+    char ch, buf[32];
+
+    va_start(va, fmt);
+    while ((ch = *(fmt++))) {
+        if (ch != '%')
+            uartPutConsoleC(tid, ch);
+        else {
+            ch = *(fmt++);
+            switch (ch) {
+                case 'u':
+                    ui2a(va_arg(va, unsigned int), 10, buf);
+                    uartPutConsoleS(tid, buf);
+                    break;
+                case 'd':
+                    i2a(va_arg(va, int), buf);
+                    uartPutConsoleS(tid, buf);
+                    break;
+                case 'x':
+                    ui2a(va_arg(va, unsigned int), 16, buf);
+                    uartPutConsoleS(tid, buf);
+                    break;
+                case 'c':
+                    uartPutConsoleC(tid, (char)va_arg(va, int));
+                    break;
+                case 's':
+                    uartPutConsoleS(tid, va_arg(va, char*));
+                    break;
+                case '%':
+                    uartPutConsoleC(tid, ch);
+                    break;
+                case '\0':
+                    return;
+            }
+        }
+    }
+    va_end(va);
+}
 // Configure the line properties (e.g, parity, baud rate) of a UART and ensure that it is enabled
 void uart_config_and_enable(size_t line) {
     uint32_t baud_ival, baud_fval;
