@@ -14,4 +14,12 @@ void uart_putl(size_t line, const char *buf, size_t blen);
 void uart_puts(size_t line, const char *buf);
 void uart_printf(size_t line, const char *fmt, ...);
 
+enum class IMSC { CTS, RX, TX, RT, COUNT };
+enum class MIS { CTS = 1, RX = 8, TX = 16, RT = 32 };  // 111001
+
+void uartSetIMSC(size_t line, IMSC input);
+void uartClearIMSC(size_t line, IMSC input);
+int uartCheckMIS(size_t line);
+void uartClearICR(size_t line, IMSC input);
+
 #endif /* rpi.h */

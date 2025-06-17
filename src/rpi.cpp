@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+#include "test_utils.h"
 #include "util.h"
 
 static char* const MMIO_BASE = (char*)0xFE000000;
@@ -75,6 +76,9 @@ static const uint32_t UART_IBRD = 0x24;
 static const uint32_t UART_FBRD = 0x28;
 static const uint32_t UART_LCRH = 0x2c;
 static const uint32_t UART_CR = 0x30;
+static const uint32_t UART_IMSC = 0x38;
+static const uint32_t UART_MIS = 0x40;
+static const uint32_t UART_ICR = 0x44;
 
 // masks for specific fields in the UART registers
 static const uint32_t UART_FR_BUSY = 0x08;
@@ -97,6 +101,87 @@ static const uint32_t UART_LCRH_STP2 = 0x8;
 static const uint32_t UART_LCRH_FEN = 0x10;
 static const uint32_t UART_LCRH_WLEN_LOW = 0x20;
 static const uint32_t UART_LCRH_WLEN_HIGH = 0x40;
+
+static const uint32_t UART_IMSC_CTS = 0x02;  // 0x02 -> 0010 so AND would isolate that bit
+static const uint32_t UART_IMSC_RX = 0x10;
+static const uint32_t UART_IMSC_TX = 0x20;
+static const uint32_t UART_IMSC_RT = 0x40;  // receive timeout
+
+void uartSetIMSC(size_t line, IMSC input) {
+    switch (input) {
+        case IMSC::CTS:
+            UART_REG(line, UART_IMSC) |= UART_IMSC_CTS;
+            break;
+        case IMSC::RX:
+            UART_REG(line, UART_IMSC) |= UART_IMSC_RX;
+            break;
+        case IMSC::TX:
+            UART_REG(line, UART_IMSC) |= UART_IMSC_TX;
+            break;
+        case IMSC::RT:
+            UART_REG(line, UART_IMSC) |= UART_IMSC_RT;
+            break;
+        default:
+            // print some error
+            break;
+    }
+}
+
+void uartClearIMSC(size_t line, IMSC input) {
+    if (UART_REG(line, UART_IMSC)) switch (input) {
+            case IMSC::CTS:
+                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_CTS);  // it must be enabled for us to disable
+                UART_REG(line, UART_IMSC) ^= UART_IMSC_CTS;
+                break;
+            case IMSC::RX:
+                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RX);
+                UART_REG(line, UART_IMSC) ^= UART_IMSC_RX;
+                break;
+            case IMSC::TX:
+                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_TX);
+                UART_REG(line, UART_IMSC) ^= UART_IMSC_TX;
+                break;
+            case IMSC::RT:
+                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RT);
+                UART_REG(line, UART_IMSC) ^= UART_IMSC_RT;
+                break;
+            default:
+                // print some error
+                break;
+        }
+}
+
+int uartCheckMIS(size_t line) {
+    return (UART_REG(line, UART_MIS) & 0x72) << 1;  // AND 1110010 << to 111001
+    // If odd, sub 1 and bit shift
+    // If larger than 32, subtract 32 (RT) and continue
+    // If not equal to 16, then subtract 16 and so on
+}
+
+// Thankfully the offsets are the same so we can use the predefined IMSC
+void uartClearICR(size_t line, IMSC input) {
+    if (UART_REG(line, UART_ICR)) switch (input) {
+            case IMSC::CTS:
+                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_CTS);  // it must be enabled for us to disable
+                UART_REG(line, UART_ICR) ^= UART_IMSC_CTS;
+                break;
+            case IMSC::RX:
+                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RX);
+                UART_REG(line, UART_ICR) ^= UART_IMSC_RX;
+                break;
+            case IMSC::TX:
+                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_TX);
+                UART_REG(line, UART_ICR) ^= UART_IMSC_TX;
+                break;
+            case IMSC::RT:
+                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RT);
+                UART_REG(line, UART_ICR) ^= UART_IMSC_RT;
+                break;
+            default:
+                // print some error
+                break;
+        }
+}
 
 // Configure the line properties (e.g, parity, baud rate) of a UART and ensure that it is enabled
 void uart_config_and_enable(size_t line) {

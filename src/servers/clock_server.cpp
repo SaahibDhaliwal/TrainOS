@@ -73,7 +73,7 @@ void ClockFirstUserTask() {
 void ClockNotifier() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     for (;;) {
-        sys::AwaitEvent(static_cast<int>(INTERRUPT_NUM::CLOCK));
+        sys::AwaitEvent(static_cast<int>(EVENT_ID::CLOCK));
         emptySend(clockServerTid);
     }
 }

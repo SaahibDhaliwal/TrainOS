@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
-enum class INTERRUPT_NUM { CLOCK = 97, COUNT };
+enum class INTERRUPT_NUM { CLOCK = 97, UART = 153, COUNT };
+enum class EVENT_ID { CLOCK, TERMINAL, BOX, COUNT };
 
 #endif /* interrupt.h */

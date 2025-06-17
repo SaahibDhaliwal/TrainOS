@@ -31,6 +31,8 @@ class TaskManager {
     Queue<TaskDescriptor> readyQueues[Config::MAX_PRIORITY];  // intrusive scheduling queue
 
     TaskDescriptor* clockEventTask;
+    TaskDescriptor* consoleEventTask;
+    TaskDescriptor* marklinEventTask;
     uint64_t nonIdleTime;
     uint64_t totalNonIdleTime;
 

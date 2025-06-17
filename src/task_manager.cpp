@@ -12,7 +12,13 @@
 #include "test_utils.h"
 #include "timer.h"
 
-TaskManager::TaskManager() : nextTaskId(0), clockEventTask(nullptr), nonIdleTime(0), totalNonIdleTime(0) {
+TaskManager::TaskManager()
+    : nextTaskId(0),
+      clockEventTask(nullptr),
+      consoleEventTask(nullptr),
+      marklinEventTask(nullptr),
+      nonIdleTime(0),
+      totalNonIdleTime(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -43,11 +49,20 @@ void TaskManager::rescheduleTask(TaskDescriptor* task) {
 }
 
 int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
-    if (eventId == static_cast<int64_t>(INTERRUPT_NUM::CLOCK)) {
+    if (eventId == static_cast<int64_t>(EVENT_ID::CLOCK)) {
         ASSERT(clockEventTask == nullptr);  // no other task should be waiting on clock
-
         task->setState(TaskState::WAITING_FOR_EVENT);
         clockEventTask = task;
+        return 0;
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::TERMINAL)) {
+        ASSERT(consoleEventTask == nullptr);  // no other task should be waiting on the console
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        consoleEventTask = task;
+        return 0;
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::BOX)) {
+        ASSERT(marklinEventTask == nullptr);  // no other task should be waiting on the marklin
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        marklinEventTask = task;
         return 0;
     } else {  // invalid event
         return -1;
@@ -59,7 +74,66 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         timerSetNextTick();
         gicEndInterrupt(eventId);
         rescheduleTask(clockEventTask);
+        // since we push it on the priority queue, it's ok to set this back to null?
+        // so it will leave it's allocated space in the slab? No
         clockEventTask = nullptr;
+    } else if (eventId == static_cast<int64_t>(INTERRUPT_NUM::UART)) {
+        // read uart MIS to find out which interrupt(s)
+
+        // right now, it will only clear interrupts one at a time.
+        // So if we have multiple in one, we only disable and clear once interrupt per UART. So it will fire again.
+
+        // BUT! what if our notifier that we reschedule does not run in time?
+        // if we have TX, and then reschedule the listener, and then we interrupt again for RX, we can't reschedule the
+        // same task since it is on the queue and the pointer is empty
+        // do we need a buffer of items if we have
+
+        int mis = uartCheckMIS(CONSOLE);
+        if (mis) {
+            if (mis >= static_cast<int>(MIS::RT)) {
+                // disable interrupt at IMSC
+                uartClearIMSC(CONSOLE, IMSC::RT);
+                // clear interrupt with UART ICR
+                uartClearICR(CONSOLE, IMSC::RT);
+            } else if (mis >= static_cast<int>(MIS::TX)) {
+                uartClearIMSC(CONSOLE, IMSC::TX);
+                uartClearICR(CONSOLE, IMSC::TX);
+            } else if (mis >= static_cast<int>(MIS::RX)) {
+                uartClearIMSC(CONSOLE, IMSC::RX);
+                uartClearICR(CONSOLE, IMSC::RX);
+            } else if (mis == static_cast<int>(MIS::CTS)) {
+                uartClearIMSC(CONSOLE, IMSC::CTS);
+                uartClearICR(CONSOLE, IMSC::CTS);
+            } else {
+                // something broke
+            }
+            consoleEventTask->setReturnValue(mis);
+            rescheduleTask(consoleEventTask);
+        }
+
+        mis = uartCheckMIS(MARKLIN);
+        if (mis) {
+            if (mis >= static_cast<int>(MIS::RT)) {
+                uartClearIMSC(MARKLIN, IMSC::RT);
+                uartClearICR(MARKLIN, IMSC::RT);
+            } else if (mis >= static_cast<int>(MIS::TX)) {
+                uartClearIMSC(MARKLIN, IMSC::TX);
+                uartClearICR(MARKLIN, IMSC::TX);
+            } else if (mis >= static_cast<int>(MIS::RX)) {
+                uartClearIMSC(MARKLIN, IMSC::RX);
+                uartClearICR(MARKLIN, IMSC::RX);
+            } else if (mis == static_cast<int>(MIS::CTS)) {
+                uartClearIMSC(MARKLIN, IMSC::CTS);
+                uartClearICR(MARKLIN, IMSC::CTS);
+            } else {
+                // something broke
+            }
+            marklinEventTask->setReturnValue(mis);
+            rescheduleTask(marklinEventTask);
+        }
+
+        // write to GICC_EOIR when finished in kernel...?
+        gicEndInterrupt(eventId);
     }
 }
 
