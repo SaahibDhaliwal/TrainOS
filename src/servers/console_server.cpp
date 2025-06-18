@@ -24,16 +24,16 @@ void ConsoleNotifier() {
     // int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     int consoleServerTid = sys::MyParentTid();
     // emptySend(consoleServerTid);
-    uart_printf(CONSOLE, "reached notifier \n\r");
     for (;;) {
-        int interruptBits = sys::AwaitEvent(static_cast<int>(EVENT_ID::TERMINAL));
-        uart_printf(CONSOLE, "notifier MIS value: %d", interruptBits);
+        int interruptBits = sys::AwaitEvent(static_cast<int64_t>(EVENT_ID::TERMINAL));
+        // uart_printf(CONSOLE, "notifier MIS value: %d\n\r", interruptBits);
 
         ASSERT(interruptBits > 1);
         // check what interrupt it is. At most, we have two sends back to back
         if (interruptBits >= static_cast<int>(MIS::RT)) {
-            // We don't care if the receive buffer is full or hit... yet
-            // sys::Send(consoleServerTid, "RT", 3, nullptr, 0);
+            // We DO care if theres a receive timeout
+            const char sendBuf = toByte(Command::RT);
+            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
             interruptBits -= static_cast<int>(MIS::RT);
         }
         if (interruptBits >= static_cast<int>(MIS::TX)) {
@@ -77,14 +77,12 @@ void ConsoleServer() {
 
     // uart_printf(CONSOLE, "notifierTID: %u", notifierTid);
     uint32_t cmdUserTid = 0;
-    // bool notifiedFlag = true;
+    bool notifiedFlag = true;
 
     for (;;) {
         uint32_t clientTid;
         char msg[2] = {0};
         int msgLen = sys::Receive(&clientTid, msg, 2);
-
-        // uart_printf(CONSOLE, "Got msg\r\n");
 
         Command command = commandFromByte(msg[0]);
 
@@ -95,15 +93,34 @@ void ConsoleServer() {
                 uartPutTX(CONSOLE, next_char->c);
                 freelist.push(next_char);
                 // note that we DO NOT reply to the notifier until we want another interrupt to happen
+                // so we should check our queue and reply anyways, since we WANT another interrupt to happen so we can
+                // pop our queue
 
-            } else if (command == Command::RX && cmdUserTid != 0) {  // if someone actually wants it
-                charReply(cmdUserTid, uartGetRX(CONSOLE));           // reply to previous client
+                if (!characterQueue.empty()) {
+                    // let the notifier know we want another interrupt since our queue isnt empty
+                    emptyReply(notifierTid);
+                } else {
+                    // it is empty, so we can hold off on replying until we want another interrupt
+                    notifiedFlag = false;
+                }
+
+            } else if (cmdUserTid != 0) {  // if someone actually wants it
+                if (command == Command::RX || command == Command::RT) {
+                    charReply(cmdUserTid, uartGetRX(CONSOLE));  // reply to previous client
+                    cmdUserTid = 0;        // so that we don't get here again until we have someone asking for a getc
+                    notifiedFlag = false;  // hold off on replying to notifier until next time
+                } else {
+                    emptyReply(notifierTid);  // we still want a receive
+                }
+
+            } else if (cmdUserTid == 0) {
+                uart_printf(CONSOLE, "nobody waiting on receive rn\n\r");
             } else {
-                uart_printf(CONSOLE, "Something broke between the console server & notifier...\n\r");
+                uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
             }
-            // notifiedFlag = false;
+
         } else if (command == Command::PUT) {
-            // uart_printf(CONSOLE, "Got char: %c", msg[1]);
+            // uart_printf(CONSOLE, "Got msg: TX: %c\r\n", msg[1]);
             if (uartCheckTX(CONSOLE)) {
                 uartPutTX(CONSOLE, msg[1]);
             } else {
@@ -111,12 +128,12 @@ void ConsoleServer() {
                 CharNode* incoming_char = freelist.pop();
                 incoming_char->c = msg[1];
                 characterQueue.push(incoming_char);
-                // reply to notifier to signal we want interrupts enabled
-                // if (!notifiedFlag) {
-                // charReply(notifierTid, '0');
-                emptyReply(notifierTid);
-                //     notifiedFlag = true;
-                // }
+                // reply to notifier to signal we want interrupts enabled (if it's not notified already)
+                if (!notifiedFlag) {
+                    uart_printf(CONSOLE, "Replying to notifier...\r\n");
+                    emptyReply(notifierTid);
+                    notifiedFlag = true;
+                }
             }
             // reply to client regardless
             charReply(clientTid, static_cast<char>(Reply::SUCCESS));
@@ -128,11 +145,12 @@ void ConsoleServer() {
                 charReply(cmdUserTid, uartGetRX(CONSOLE));
             } else {
                 // reply to notifier to signal we want interrupts enabled
-                // if (!notifiedFlag) {
-                // charReply(notifierTid, '0');
-                emptyReply(notifierTid);
-                //     notifiedFlag = true;
-                // }
+                // uart_printf(CONSOLE, "Nothing in RX\r\n");
+                if (!notifiedFlag) {
+                    // uart_printf(CONSOLE, "Replying to notifier...\r\n");
+                    emptyReply(notifierTid);
+                    notifiedFlag = true;
+                }
             }
             // DO NOT REPLY TO CLIENT HERE
 
@@ -159,20 +177,24 @@ void ConsoleFirstUserTask() {
     int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     uart_printf(CONSOLE, "Done WHOIS\r\n");
     int response = 0;
-    for (;;) {
-        if (clock_server::Delay(clock, 2) == -1) {
-            uart_printf(CONSOLE, "DELAY Cannot reach TID\r\n");
-        }
-        response = console_server::Putc(ctid, 0, 'a');
-        if (response) {
-            uart_printf(CONSOLE, "PUTC Cannot reach TID\r\n");
-        }
-    }
-
-    // for (;;) {
-    //     const char c = Getc(ctid, 0);
-    //     uart_printf(CONSOLE, "%c", c);
+    // if (clock_server::Delay(clock, 10) == -1) {
+    //     uart_printf(CONSOLE, "DELAY Cannot reach TID\r\n");
     // }
+    // for (int i = 0; i < 100; i++) {
+    //     response = console_server::Putc(ctid, 0, 'a');
+    //     if (response) {
+    //         uart_printf(CONSOLE, "PUTC Cannot reach TID\r\n");
+    //     }
+    // }
+
+    for (;;) {
+        int c = console_server::Getc(ctid, 0);
+        if (c < 0) {
+            uart_printf(CONSOLE, "GETC Cannot reach TID\r\n");
+        }
+        console_server::Putc(ctid, 0, c);
+        // uart_printf(CONSOLE, "%c\n\r", c);
+    }
 
     sys::Exit();
 }

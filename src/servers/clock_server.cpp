@@ -116,7 +116,7 @@ void ClockServer() {
     uint64_t ticks = 0;
     uint32_t clockNotifierTid = sys::Create(40, &ClockNotifier);
     int client_count = 0;
-    timerInit();
+    timerInit();  // IMPORTANT: THIS IS WHERE THE GIC GETS ENABLED
     for (;;) {
         uint32_t clientTid;
         char msg[22];

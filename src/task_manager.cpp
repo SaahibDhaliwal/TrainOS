@@ -55,13 +55,14 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         clockEventTask = task;
         return 0;
     } else if (eventId == static_cast<int64_t>(EVENT_ID::TERMINAL)) {
+        // uart_printf(CONSOLE, "Got to await with task TID: %u\n\r", task->getTid());
         ASSERT(consoleEventTask == nullptr);  // no other task should be waiting on the console
         task->setState(TaskState::WAITING_FOR_EVENT);
         consoleEventTask = task;
 
         uartSetIMSC(CONSOLE, IMSC::RX);  // this could be more robust with additional EVENT_IDs
         uartSetIMSC(CONSOLE, IMSC::TX);
-        // uartSetIMSC(CONSOLE, IMSC::RT);
+        uartSetIMSC(CONSOLE, IMSC::RT);
 
         return 0;
     } else if (eventId == static_cast<int64_t>(EVENT_ID::BOX)) {
@@ -97,8 +98,8 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         // if we have TX, and then reschedule the listener, and then we interrupt again for RX, we can't reschedule the
         // same task since it is on the queue and the pointer is empty
         // do we need a buffer of items if we have
-
         int mis = uartCheckMIS(CONSOLE);
+        // uart_printf(CONSOLE, "MIS value: %d\n\r", mis);
         if (mis) {
             if (mis >= static_cast<int>(MIS::RT)) {
                 // disable interrupt at IMSC
@@ -113,10 +114,11 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearICR(CONSOLE, IMSC::RX);
             } else {
                 // something broke
-                // uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
+                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
             }
             consoleEventTask->setReturnValue(mis);  // we gotta do the same stuff on the receiving end
             rescheduleTask(consoleEventTask);
+            consoleEventTask = nullptr;
         }
 
         mis = uartCheckMIS(MARKLIN);
@@ -132,7 +134,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearICR(MARKLIN, IMSC::CTS);
             } else {
                 // something broke
-                // uart_printf(CONSOLE, "MIS Marklin Check broke! \n\r");
+                uart_printf(CONSOLE, "MIS Marklin Check broke! \n\r");
             }
             marklinEventTask->setReturnValue(mis);
             rescheduleTask(marklinEventTask);
@@ -177,6 +179,7 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
         uint64_t percentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
 
         task->setReturnValue(percentage);  // send how much time we have not been idling since our last idle
+        // uart_printf(CONSOLE, "STARTING IDLE TASK \n\r");
     }
 
     uint32_t request = slowKernelToUser(&kernelContext, task->getMutableContext());

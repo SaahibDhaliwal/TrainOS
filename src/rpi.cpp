@@ -111,11 +111,14 @@ static const uint32_t UART_IMSC_TX = 0x20;
 static const uint32_t UART_IMSC_RT = 0x40;  // receive timeout
 
 void uartSetIMSC(size_t line, IMSC input) {
+    // UART_REG(line, UART_IMSC) = 0x7FF;
     switch (input) {
         case IMSC::CTS:
             UART_REG(line, UART_IMSC) |= UART_IMSC_CTS;
             break;
         case IMSC::RX:
+            // uart_printf(CONSOLE, "attempting to set IMSC\n\r");
+            // so we do get here
             UART_REG(line, UART_IMSC) |= UART_IMSC_RX;
             break;
         case IMSC::TX:
@@ -125,37 +128,40 @@ void uartSetIMSC(size_t line, IMSC input) {
             UART_REG(line, UART_IMSC) |= UART_IMSC_RT;
             break;
         default:
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
             // print some error
             break;
     }
 }
 
+// since
 void uartClearIMSC(size_t line, IMSC input) {
-    if (UART_REG(line, UART_IMSC)) switch (input) {
-            case IMSC::CTS:
-                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_CTS);  // it must be enabled for us to disable
-                UART_REG(line, UART_IMSC) ^= UART_IMSC_CTS;
-                break;
-            case IMSC::RX:
-                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RX);
-                UART_REG(line, UART_IMSC) ^= UART_IMSC_RX;
-                break;
-            case IMSC::TX:
-                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_TX);
-                UART_REG(line, UART_IMSC) ^= UART_IMSC_TX;
-                break;
-            case IMSC::RT:
-                ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RT);
-                UART_REG(line, UART_IMSC) ^= UART_IMSC_RT;
-                break;
-            default:
-                // print some error
-                break;
-        }
+    switch (input) {
+        case IMSC::CTS:
+            ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_CTS);  // it must be enabled for us to disable
+            UART_REG(line, UART_IMSC) ^= UART_IMSC_CTS;
+            break;
+        case IMSC::RX:
+            ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RX);
+            UART_REG(line, UART_IMSC) ^= UART_IMSC_RX;
+            break;
+        case IMSC::TX:
+            ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_TX);
+            UART_REG(line, UART_IMSC) ^= UART_IMSC_TX;
+            break;
+        case IMSC::RT:
+            ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RT);
+            UART_REG(line, UART_IMSC) ^= UART_IMSC_RT;
+            break;
+        default:
+            // print some error
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
+            break;
+    }
 }
 
 int uartCheckMIS(size_t line) {
-    return (UART_REG(line, UART_MIS) & 0x72) << 1;  // AND 1110010 << to 111001
+    return (UART_REG(line, UART_MIS) & 0x72) >> 1;  // AND 1110010 >> to 111001
     // If odd, sub 1 and bit shift
     // If larger than 32, subtract 32 (RT) and continue
     // If not equal to 16, then subtract 16 and so on
@@ -164,27 +170,28 @@ int uartCheckMIS(size_t line) {
 
 // Thankfully the offsets are the same so we can use the predefined IMSC
 void uartClearICR(size_t line, IMSC input) {
-    if (UART_REG(line, UART_ICR)) switch (input) {
-            case IMSC::CTS:
-                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_CTS);  // it must be enabled for us to disable
-                UART_REG(line, UART_ICR) ^= UART_IMSC_CTS;
-                break;
-            case IMSC::RX:
-                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RX);
-                UART_REG(line, UART_ICR) ^= UART_IMSC_RX;
-                break;
-            case IMSC::TX:
-                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_TX);
-                UART_REG(line, UART_ICR) ^= UART_IMSC_TX;
-                break;
-            case IMSC::RT:
-                ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RT);
-                UART_REG(line, UART_ICR) ^= UART_IMSC_RT;
-                break;
-            default:
-                // print some error
-                break;
-        }
+    switch (input) {
+        case IMSC::CTS:
+            // ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_CTS);  // it must be enabled for us to disable
+            UART_REG(line, UART_ICR) = UART_IMSC_CTS;
+            break;
+        case IMSC::RX:
+            // ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RX);
+            UART_REG(line, UART_ICR) = UART_IMSC_RX;
+            break;
+        case IMSC::TX:
+            // ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_TX);
+            UART_REG(line, UART_ICR) = UART_IMSC_TX;
+            break;
+        case IMSC::RT:
+            // ASSERT(UART_REG(line, UART_ICR) & UART_IMSC_RT);
+            UART_REG(line, UART_ICR) = UART_IMSC_RT;
+            break;
+        default:
+            // print some error
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
+            break;
+    }
 }
 
 // Returns true if there's something in RX, false if empty
