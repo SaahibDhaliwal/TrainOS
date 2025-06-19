@@ -45,8 +45,6 @@ void TestTask() {
 }
 
 void IdleTask() {
-    uint32_t volatile percentage = 0;
-    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     while (true) {
         asm volatile("wfi");
     }

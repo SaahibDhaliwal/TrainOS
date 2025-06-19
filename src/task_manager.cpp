@@ -17,7 +17,9 @@ TaskManager::TaskManager()
       clockEventTask(nullptr),
       consoleTXEventTask(nullptr),
       consoleRXEventTask(nullptr),
-      marklinEventTask(nullptr),
+      marklinTXEventTask(nullptr),
+      marklinRXEventTask(nullptr),
+      marklinCTSEventTask(nullptr),
       nonIdleTime(0),
       totalNonIdleTime(0),
       idleTimePercentage(0) {
@@ -73,13 +75,26 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         uartSetIMSC(CONSOLE, IMSC::RT);
 
         return 0;
-    } else if (eventId == static_cast<int64_t>(EVENT_ID::BOX)) {
-        ASSERT(marklinEventTask == nullptr);  // no other task should be waiting on the marklin
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::MARKLIN_TX)) {
+        ASSERT(marklinTXEventTask == nullptr);  // no other task should be waiting on the marklin
         task->setState(TaskState::WAITING_FOR_EVENT);
-        marklinEventTask = task;
+        marklinTXEventTask = task;
+        uartSetIMSC(CONSOLE, IMSC::TX);
+
+        return 0;
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::MARKLIN_RX)) {
+        ASSERT(marklinRXEventTask == nullptr);  // no other task should be waiting on the marklin
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        marklinRXEventTask = task;
 
         uartSetIMSC(CONSOLE, IMSC::RX);
-        uartSetIMSC(CONSOLE, IMSC::TX);
+
+        return 0;
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::MARKLIN_CTS)) {
+        ASSERT(marklinCTSEventTask == nullptr);  // no other task should be waiting on the marklin
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        marklinCTSEventTask = task;
+
         uartSetIMSC(CONSOLE, IMSC::CTS);
 
         return 0;
