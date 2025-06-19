@@ -31,10 +31,12 @@ class TaskManager {
     Queue<TaskDescriptor> readyQueues[Config::MAX_PRIORITY];  // intrusive scheduling queue
 
     TaskDescriptor* clockEventTask;
-    TaskDescriptor* consoleEventTask;
+    TaskDescriptor* consoleTXEventTask;
+    TaskDescriptor* consoleRXEventTask;
     TaskDescriptor* marklinEventTask;
     uint64_t nonIdleTime;
     uint64_t totalNonIdleTime;
+    uint64_t idleTimePercentage;
 
    public:
     TaskManager();
@@ -50,6 +52,7 @@ class TaskManager {
 
     TaskDescriptor* getTask(uint32_t tid);
     Context getKernelContext();
+    uint64_t getIdle();
 };
 
 #endif /* task_manager.h */

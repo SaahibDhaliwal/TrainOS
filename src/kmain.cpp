@@ -6,6 +6,7 @@
 #include "rpi.h"
 #include "servers/clock_server.h"
 #include "servers/console_server.h"
+#include "servers/printer_server.h"
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
@@ -36,11 +37,20 @@ extern "C" int kmain() {
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));              // idle task
-    taskManager.createTask(nullptr, 4, reinterpret_cast<uint64_t>(ConsoleFirstUserTask));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));        // idle task
+    taskManager.createTask(nullptr, 10, reinterpret_cast<uint64_t>(PrinterServer));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
-        if (!curTask) break;
+        if (!curTask) {
+            // TODO:
+            // we end up here because we can't reschedule the idle task since it's waiting on a print
+            // need to move printing the idle time over to the UI print task
+            // Joey tip: make sure that you initialize the marklin control uart to CTS and TX high
+            // because an interrupt is generated on a change
+
+            // uart_printf(CONSOLE, "No task left to schedule. Exiting...\n\r");
+            break;
+        }
         uint32_t request = taskManager.activate(curTask);
         kernel_util::handle(request, &taskManager, curTask);
     }  // for

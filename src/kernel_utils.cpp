@@ -178,13 +178,14 @@ void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
             break;
         }
         case SYSCALL_NUM::INTERRUPT: {
-            // read output compare register and add offset for next timer tick
             uint32_t interruptId = gicGetInterrupt();
-
             taskManager->handleInterrupt(interruptId);
-
             taskManager->rescheduleTask(curTask);
-
+            break;
+        }
+        case SYSCALL_NUM::GET_IDLE: {
+            curTask->setReturnValue(taskManager->getIdle());
+            taskManager->rescheduleTask(curTask);
             break;
         }
         default: {  // we can make this more extensive

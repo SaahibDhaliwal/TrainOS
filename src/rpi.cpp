@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "protocols/co_protocol.h"
 #include "protocols/ns_protocol.h"
@@ -219,10 +220,9 @@ void uartPutConsoleC(uint32_t tid, char c) {
     }
 }
 
-void uartPutConsoleS(uint32_t tid, char* buf) {
-    while (*buf) {
-        uartPutConsoleC(tid, *buf);
-        buf++;
+void uartPutConsoleS(uint32_t tid, const char* buf) {
+    for (int i = 0; i < strlen(buf); i++) {
+        uartPutConsoleC(tid, buf[i]);
     }
 }
 

@@ -46,10 +46,9 @@ void TestTask() {
 
 void IdleTask() {
     uint32_t volatile percentage = 0;
+    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     while (true) {
         asm volatile("wfi");
-        asm volatile("mov %0, x0" : "=r"(percentage));
-        // WITH_HIDDEN_CURSOR(update_idle_percentage(percentage));
     }
 }
 

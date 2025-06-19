@@ -15,10 +15,12 @@
 TaskManager::TaskManager()
     : nextTaskId(0),
       clockEventTask(nullptr),
-      consoleEventTask(nullptr),
+      consoleTXEventTask(nullptr),
+      consoleRXEventTask(nullptr),
       marklinEventTask(nullptr),
       nonIdleTime(0),
-      totalNonIdleTime(0) {
+      totalNonIdleTime(0),
+      idleTimePercentage(0) {
     for (int i = 0; i < Config::MAX_TASKS; i += 1) {
         taskSlabs[i].setTid(i);
         freelist.push(&taskSlabs[i]);
@@ -54,14 +56,20 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         task->setState(TaskState::WAITING_FOR_EVENT);
         clockEventTask = task;
         return 0;
-    } else if (eventId == static_cast<int64_t>(EVENT_ID::TERMINAL)) {
-        // uart_printf(CONSOLE, "Got to await with task TID: %u\n\r", task->getTid());
-        ASSERT(consoleEventTask == nullptr);  // no other task should be waiting on the console
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::CONSOLE_TX)) {
+        ASSERT(consoleTXEventTask == nullptr);  // no other task should be waiting on the console
         task->setState(TaskState::WAITING_FOR_EVENT);
-        consoleEventTask = task;
+        consoleTXEventTask = task;
 
-        uartSetIMSC(CONSOLE, IMSC::RX);  // this could be more robust with additional EVENT_IDs
         uartSetIMSC(CONSOLE, IMSC::TX);
+
+        return 0;
+    } else if (eventId == static_cast<int64_t>(EVENT_ID::CONSOLE_RXRT)) {
+        ASSERT(consoleRXEventTask == nullptr);  // no other task should be waiting on the console
+        task->setState(TaskState::WAITING_FOR_EVENT);
+        consoleRXEventTask = task;
+
+        uartSetIMSC(CONSOLE, IMSC::RX);
         uartSetIMSC(CONSOLE, IMSC::RT);
 
         return 0;
@@ -100,27 +108,50 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         // do we need a buffer of items if we have
         int mis = uartCheckMIS(CONSOLE);
         // uart_printf(CONSOLE, "MIS value: %d\n\r", mis);
+
+        // FOR CONSOLE
         if (mis) {
-            if (mis >= static_cast<int>(MIS::RT)) {
+            int txCompare = static_cast<int>(MIS::TX);
+            int rxCompare = static_cast<int>(MIS::RX);
+            int rtCompare = static_cast<int>(MIS::RT);
+
+            if (mis >= rtCompare || (mis >= rxCompare && mis < txCompare)) {
                 // disable interrupt at IMSC
                 uartClearIMSC(CONSOLE, IMSC::RT);
                 // clear interrupt with UART ICR
                 uartClearICR(CONSOLE, IMSC::RT);
-            } else if (mis >= static_cast<int>(MIS::TX)) {
+
+                if ((mis >= rxCompare && mis < txCompare)) {  // in the event they are both on?
+                    uartClearIMSC(CONSOLE, IMSC::RX);
+                    uartClearICR(CONSOLE, IMSC::RX);
+                }
+
+                consoleRXEventTask->setReturnValue(mis);
+                rescheduleTask(consoleRXEventTask);
+                consoleRXEventTask = nullptr;
+
+            } else if (mis >= txCompare && mis <= rtCompare) {
                 uartClearIMSC(CONSOLE, IMSC::TX);
                 uartClearICR(CONSOLE, IMSC::TX);
-            } else if (mis >= static_cast<int>(MIS::RX)) {
+
+                consoleTXEventTask->setReturnValue(mis);
+                rescheduleTask(consoleTXEventTask);
+                consoleTXEventTask = nullptr;
+
+            } else if (mis >= rxCompare && mis < txCompare && consoleRXEventTask != nullptr) {
                 uartClearIMSC(CONSOLE, IMSC::RX);
                 uartClearICR(CONSOLE, IMSC::RX);
+
+                consoleRXEventTask->setReturnValue(mis);
+                rescheduleTask(consoleRXEventTask);
+                consoleRXEventTask = nullptr;
             } else {
                 // something broke
                 uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
             }
-            consoleEventTask->setReturnValue(mis);  // we gotta do the same stuff on the receiving end
-            rescheduleTask(consoleEventTask);
-            consoleEventTask = nullptr;
         }
 
+        // FOR MARKLIN
         mis = uartCheckMIS(MARKLIN);
         if (mis) {
             if (mis >= static_cast<int>(MIS::TX)) {
@@ -157,6 +188,10 @@ Context TaskManager::getKernelContext() {
     return kernelContext;
 }
 
+uint64_t TaskManager::getIdle() {
+    return idleTimePercentage;
+}
+
 TaskDescriptor* TaskManager::schedule() {
     for (int priority = Config::MAX_PRIORITY - 1; priority >= 0; priority -= 1) {
         if (!readyQueues[priority].empty()) {
@@ -173,19 +208,20 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
     // Kernel execution will pause here and resume when the task traps back into the kernel.
     // ESR_EL1 or interrupt code is returned when switching from user to kernel.
 
-    if (task->getTid() == 0 && nonIdleTime != 0) {
+    if (task->getTid() == 0 &&
+        nonIdleTime != 0) {  // ensuring we don't get here on the first time we idle. Will this still be needed?
         uint64_t currTime = timerGetRelativeTime();
         totalNonIdleTime += currTime - nonIdleTime;  // will be some number of ticks
-        uint64_t percentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
+        idleTimePercentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
 
-        task->setReturnValue(percentage);  // send how much time we have not been idling since our last idle
-        // uart_printf(CONSOLE, "STARTING IDLE TASK \n\r");
+        // task->setReturnValue(idleTimePercentage);  // send how much time we have not been idling since our last idle
+        //  uart_printf(CONSOLE, "STARTING IDLE TASK \n\r");
     }
 
     uint32_t request = slowKernelToUser(&kernelContext, task->getMutableContext());
 
     if (task->getTid() == 0) {
-        nonIdleTime = timerGetRelativeTime();  // track which tick we left idle
+        nonIdleTime = timerGetRelativeTime();  // track the timestamp we left our idle task
     }
     return request & 0xFFFFFF;
 }

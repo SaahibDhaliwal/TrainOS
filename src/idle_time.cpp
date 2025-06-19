@@ -22,16 +22,19 @@ void print_idle_percentage() {
     uart_printf(CONSOLE, IDLE_LABEL);
 }
 
-void update_idle_percentage(int percentage) {
-    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
-    // uartPrintf(ctid, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
-    uart_printf(CONSOLE, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
+void update_idle_percentage(int percentage, int printTid) {
+    // int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+
+    // uartPrintf(printTid, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
+    uartPutConsoleS(printTid, "\033[0;12H");
+    // uart_printf(CONSOLE, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
     // clear
-    // uartPrintf(ctid, "\033[K");  // clear from cursor to end of line
-    uart_printf(CONSOLE, "\033[K");  // clear from cursor to end of line
+    uartPutConsoleS(printTid, "\033[K");  // clear from cursor to end of line
+    // uart_printf(CONSOLE, "\033[K");  // clear from cursor to end of line
 
-    // uartPrintf(ctid, " %d.%d", percentage / 100, percentage % 100);
-    uart_printf(CONSOLE, " %d.%d", percentage / 100, percentage % 100);
+    uartPrintf(printTid, " %d.%d", percentage / 100, percentage % 100);
+    // uart_printf(CONSOLE, " %d.%d", percentage / 100, percentage % 100);
 
-    uart_putc(CONSOLE, '%');
+    uartPutConsoleC(printTid, '%');
+    // uart_putc(CONSOLE, '%');
 }

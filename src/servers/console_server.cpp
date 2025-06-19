@@ -20,31 +20,48 @@
 
 using namespace console_server;
 
-void ConsoleNotifier() {
-    // int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+// issue: the notifier will keep notifying about TX being available, even though we are waiting for RX.
+//  Ideally, we would disable TX if we didn't need it and only enable RX.
+//  But if we are in awaitEvent() for RX and then the server wants to transmit with TX, it will reply to the notifier
+//  who did not send
+void ConsoleRXNotifier() {
     int consoleServerTid = sys::MyParentTid();
-    // emptySend(consoleServerTid);
-    for (;;) {
-        int interruptBits = sys::AwaitEvent(static_cast<int64_t>(EVENT_ID::TERMINAL));
-        // uart_printf(CONSOLE, "notifier MIS value: %d\n\r", interruptBits);
+    uint32_t eventChoice = static_cast<uint32_t>(EVENT_ID::CONSOLE_RXRT);
 
+    int txCompare = static_cast<int>(MIS::TX);
+    int rxCompare = static_cast<int>(MIS::RX);
+    int rtCompare = static_cast<int>(MIS::RT);
+
+    for (;;) {
+        int interruptBits = sys::AwaitEvent(eventChoice);
         ASSERT(interruptBits > 1);
-        // check what interrupt it is. At most, we have two sends back to back
-        if (interruptBits >= static_cast<int>(MIS::RT)) {
-            // We DO care if theres a receive timeout
-            const char sendBuf = toByte(Command::RT);
-            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
-            interruptBits -= static_cast<int>(MIS::RT);
-        }
-        if (interruptBits >= static_cast<int>(MIS::TX)) {
-            const char sendBuf = toByte(Command::TX);
-            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
-            interruptBits -= static_cast<int>(MIS::TX);
-        }
-        if (interruptBits >= static_cast<int>(MIS::RX)) {
+        if (interruptBits >= rtCompare || (interruptBits >= rxCompare && interruptBits < txCompare)) {
+            // We DO care if theres a receive timeout or RX nonempty
             const char sendBuf = toByte(Command::RX);
             sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
-            interruptBits -= static_cast<int>(MIS::RX);
+        } else {
+            uart_printf(CONSOLE, "Error in RX notifier\n\r");
+        }
+    }
+}
+
+void ConsoleTXNotifier() {
+    // int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+    int consoleServerTid = sys::MyParentTid();
+    uint32_t eventChoice = static_cast<uint32_t>(EVENT_ID::CONSOLE_TX);
+
+    int txCompare = static_cast<int>(MIS::TX);
+    int rtCompare = static_cast<int>(MIS::RT);
+
+    for (;;) {
+        int interruptBits = sys::AwaitEvent(eventChoice);
+        ASSERT(interruptBits > 1);
+        if (interruptBits >= txCompare && interruptBits <= rtCompare) {
+            const char sendBuf = toByte(Command::TX);
+            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
+        } else {
+            // we get here if we got back from waiting on a TX event, but the MIS TX bit was not 1
+            uart_printf(CONSOLE, "Error in TX notifier\n\r");
         }
     }
 }
@@ -71,13 +88,20 @@ void ConsoleServer() {
     }
 
     // create notifiers
-    int notifierPriority = 60;  // should be higher priority than ConsoleServer
+    int notifierPriority = 60;  // should be higher priority than ConsoleServer (I think)
     // otherwise, we may go to receive and then try to reply to our notifier when it wasn't waiting for a reply?
-    uint32_t notifierTid = sys::Create(notifierPriority, ConsoleNotifier);
+    // update: this might not be the case anymore after the refactor
+    uint32_t txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
+    uint32_t rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
 
     // uart_printf(CONSOLE, "notifierTID: %u", notifierTid);
     uint32_t cmdUserTid = 0;
-    bool notifiedFlag = true;
+    bool txNotifierFlag = true;
+    bool rxNotifierFlag = true;
+
+    // const char requestAllChar = static_cast<char>(EVENT_ID::CONSOLE_ALL);
+    // const char requestTXChar = static_cast<char>(EVENT_ID::CONSOLE_TX);
+    // const char requestRXRTChar = static_cast<char>(EVENT_ID::CONSOLE_RXRT);
 
     for (;;) {
         uint32_t clientTid;
@@ -86,10 +110,13 @@ void ConsoleServer() {
 
         Command command = commandFromByte(msg[0]);
 
-        if (clientTid == notifierTid) {
+        if (clientTid == txNotifier) {
             if (command == Command::TX && !characterQueue.empty()) {
                 // pop from queue and print
                 CharNode* next_char = characterQueue.pop();
+                if (!uartCheckTX(CONSOLE)) {
+                    uart_printf(CONSOLE, "Notifier said it was free, but it wasn't\n\r");
+                }
                 uartPutTX(CONSOLE, next_char->c);
                 freelist.push(next_char);
                 // note that we DO NOT reply to the notifier until we want another interrupt to happen
@@ -98,41 +125,51 @@ void ConsoleServer() {
 
                 if (!characterQueue.empty()) {
                     // let the notifier know we want another interrupt since our queue isnt empty
-                    emptyReply(notifierTid);
+                    emptyReply(txNotifier);
                 } else {
                     // it is empty, so we can hold off on replying until we want another interrupt
-                    notifiedFlag = false;
+                    txNotifierFlag = false;
                 }
 
-            } else if (cmdUserTid != 0) {  // if someone actually wants it
-                if (command == Command::RX || command == Command::RT) {
-                    charReply(cmdUserTid, uartGetRX(CONSOLE));  // reply to previous client
-                    cmdUserTid = 0;        // so that we don't get here again until we have someone asking for a getc
-                    notifiedFlag = false;  // hold off on replying to notifier until next time
-                } else {
-                    emptyReply(notifierTid);  // we still want a receive
-                }
-
-            } else if (cmdUserTid == 0) {
-                uart_printf(CONSOLE, "nobody waiting on receive rn\n\r");
-            } else {
+            } else if (command != Command::TX) {
                 uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
+            } else {
+                // otherwise, the character queue is empty
+                //  why would we get here after the first loop? we should not
+                txNotifierFlag = false;
+            }
+
+        } else if (clientTid == rxNotifier) {
+            if (cmdUserTid != 0) {  // if someone actually wants it
+                if (command == Command::RX) {
+                    charReply(cmdUserTid, uartGetRX(CONSOLE));  // reply to previous client
+                    cmdUserTid = 0;          // so that we don't get here again until we have someone asking for a getc
+                    rxNotifierFlag = false;  // hold off on replying to notifier until next time
+                } else {
+                    uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
+                }
+            } else {
+                // we should never get here after the first loop
+                // uart_printf(CONSOLE, "Nobody waiting on receive\n\r");
+                rxNotifierFlag = false;
             }
 
         } else if (command == Command::PUT) {
-            // uart_printf(CONSOLE, "Got msg: TX: %c\r\n", msg[1]);
-            if (uartCheckTX(CONSOLE)) {
+            if (uartCheckTX(CONSOLE) && !txNotifierFlag) {
                 uartPutTX(CONSOLE, msg[1]);
             } else {
                 // pop from free list and add to queue
                 CharNode* incoming_char = freelist.pop();
                 incoming_char->c = msg[1];
                 characterQueue.push(incoming_char);
+                if (characterQueue.size() == Config::CONSOLE_PRINT_QUEUE) {
+                    uart_printf(CONSOLE, "QUEUE LIMIT HIT!!!!!!!!!!!!\n\r");
+                }
                 // reply to notifier to signal we want interrupts enabled (if it's not notified already)
-                if (!notifiedFlag) {
-                    uart_printf(CONSOLE, "Replying to notifier...\r\n");
-                    emptyReply(notifierTid);
-                    notifiedFlag = true;
+                if (!txNotifierFlag) {
+                    // uart_printf(CONSOLE, "Replying to notifier...\r\n");
+                    emptyReply(txNotifier);
+                    txNotifierFlag = true;
                 }
             }
             // reply to client regardless
@@ -145,14 +182,12 @@ void ConsoleServer() {
                 charReply(cmdUserTid, uartGetRX(CONSOLE));
             } else {
                 // reply to notifier to signal we want interrupts enabled
-                // uart_printf(CONSOLE, "Nothing in RX\r\n");
-                if (!notifiedFlag) {
-                    // uart_printf(CONSOLE, "Replying to notifier...\r\n");
-                    emptyReply(notifierTid);
-                    notifiedFlag = true;
+                if (!rxNotifierFlag) {
+                    emptyReply(rxNotifier);
+                    rxNotifierFlag = true;
                 }
             }
-            // DO NOT REPLY TO CLIENT HERE
+            // DO NOT REPLY TO CLIENT HERE. GETC MUST BE BLOCKING
 
         } else {
             uart_printf(CONSOLE, "Something broke in the console server...\n\r");
@@ -169,11 +204,12 @@ void ConsoleFirstUserTask() {
     cursor_white();
 
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
+    int clock = sys::Create(50, &ClockServer);
+    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
     uart_printf(CONSOLE, "[First Task]: Attempting to create ConsoleServer...\r\n");
     int console = sys::Create(49, &ConsoleServer);
     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
-    int clock = sys::Create(50, &ClockServer);
-    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
+
     int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     uart_printf(CONSOLE, "Done WHOIS\r\n");
     int response = 0;

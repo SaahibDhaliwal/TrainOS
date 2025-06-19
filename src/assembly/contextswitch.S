@@ -46,6 +46,11 @@ AwaitEvent:
     svc 8
     ret
 
+.global GetIdleTime
+GetIdleTime:
+    svc 9
+    ret
+
 .macro store_callee_registers context
     str x19, [\context, #(8 * 19)]
     str x20, [\context, #(8 * 20)]
