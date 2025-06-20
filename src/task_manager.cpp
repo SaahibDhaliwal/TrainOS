@@ -79,7 +79,7 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         ASSERT(marklinTXEventTask == nullptr);  // no other task should be waiting on the marklin
         task->setState(TaskState::WAITING_FOR_EVENT);
         marklinTXEventTask = task;
-        uartSetIMSC(CONSOLE, IMSC::TX);
+        uartSetIMSC(MARKLIN, IMSC::TX);
 
         return 0;
     } else if (eventId == static_cast<int64_t>(EVENT_ID::MARKLIN_RX)) {
@@ -87,7 +87,7 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         task->setState(TaskState::WAITING_FOR_EVENT);
         marklinRXEventTask = task;
 
-        uartSetIMSC(CONSOLE, IMSC::RX);
+        uartSetIMSC(MARKLIN, IMSC::RX);
 
         return 0;
     } else if (eventId == static_cast<int64_t>(EVENT_ID::MARKLIN_CTS)) {
@@ -95,7 +95,7 @@ int TaskManager::awaitEvent(int64_t eventId, TaskDescriptor* task) {
         task->setState(TaskState::WAITING_FOR_EVENT);
         marklinCTSEventTask = task;
 
-        uartSetIMSC(CONSOLE, IMSC::CTS);
+        uartSetIMSC(MARKLIN, IMSC::CTS);
 
         return 0;
     } else {  // invalid event
@@ -129,61 +129,81 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             int txCompare = static_cast<int>(MIS::TX);
             int rxCompare = static_cast<int>(MIS::RX);
             int rtCompare = static_cast<int>(MIS::RT);
+            int misOriginal = mis;
 
-            if (mis >= rtCompare || (mis >= rxCompare && mis < txCompare)) {
+            if (mis > 57 || mis < 8) {
+                // something broke
+                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
+            }
+
+            if (mis >= rtCompare) {
                 // disable interrupt at IMSC
                 uartClearIMSC(CONSOLE, IMSC::RT);
                 // clear interrupt with UART ICR
                 uartClearICR(CONSOLE, IMSC::RT);
-
-                if ((mis >= rxCompare && mis < txCompare)) {  // in the event they are both on?
-                    uartClearIMSC(CONSOLE, IMSC::RX);
-                    uartClearICR(CONSOLE, IMSC::RX);
-                }
-
-                consoleRXEventTask->setReturnValue(mis);
+                mis -= rtCompare;
+                consoleRXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(consoleRXEventTask);
                 consoleRXEventTask = nullptr;
-
-            } else if (mis >= txCompare && mis <= rtCompare) {
+            }
+            if (mis >= txCompare) {
                 uartClearIMSC(CONSOLE, IMSC::TX);
                 uartClearICR(CONSOLE, IMSC::TX);
-
-                consoleTXEventTask->setReturnValue(mis);
+                mis -= txCompare;
+                consoleTXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(consoleTXEventTask);
                 consoleTXEventTask = nullptr;
-
-            } else if (mis >= rxCompare && mis < txCompare && consoleRXEventTask != nullptr) {
+            }
+            if (mis == rxCompare && consoleRXEventTask != nullptr) {
                 uartClearIMSC(CONSOLE, IMSC::RX);
                 uartClearICR(CONSOLE, IMSC::RX);
-
-                consoleRXEventTask->setReturnValue(mis);
-                rescheduleTask(consoleRXEventTask);
-                consoleRXEventTask = nullptr;
-            } else {
-                // something broke
-                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
+                // so that if we already got an RT interrupt, we don't need to reschedule the RX task
+                // since it's already been done
+                // but we DO want to clear the interrupt at IMSC if it's high
+                if (consoleRXEventTask != nullptr) {
+                    consoleRXEventTask->setReturnValue(misOriginal);
+                    rescheduleTask(consoleRXEventTask);
+                    consoleRXEventTask = nullptr;
+                }
             }
         }
 
         // FOR MARKLIN
         mis = uartCheckMIS(MARKLIN);
         if (mis) {
+            int txCompare = static_cast<int>(MIS::TX);
+            int rxCompare = static_cast<int>(MIS::RX);
+            int ctsCompare = static_cast<int>(MIS::CTS);
+            int misOriginal = mis;
+
+            if (mis > 25 || mis <= 0) {
+                // something broke
+                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
+            }
+
             if (mis >= static_cast<int>(MIS::TX)) {
                 uartClearIMSC(MARKLIN, IMSC::TX);
                 uartClearICR(MARKLIN, IMSC::TX);
-            } else if (mis >= static_cast<int>(MIS::RX)) {
+                mis -= txCompare;
+                marklinTXEventTask->setReturnValue(misOriginal);
+                rescheduleTask(marklinTXEventTask);
+                marklinTXEventTask = nullptr;
+            }
+            if (mis >= static_cast<int>(MIS::RX)) {
                 uartClearIMSC(MARKLIN, IMSC::RX);
                 uartClearICR(MARKLIN, IMSC::RX);
-            } else if (mis == static_cast<int>(MIS::CTS)) {
+                mis -= rxCompare;
+                marklinRXEventTask->setReturnValue(misOriginal);
+                rescheduleTask(marklinRXEventTask);
+                marklinRXEventTask = nullptr;
+            }
+            if (mis == static_cast<int>(MIS::CTS)) {
                 uartClearIMSC(MARKLIN, IMSC::CTS);
                 uartClearICR(MARKLIN, IMSC::CTS);
-            } else {
-                // something broke
-                uart_printf(CONSOLE, "MIS Marklin Check broke! \n\r");
+                marklinCTSEventTask->setReturnValue(mis);  // this is not original
+                rescheduleTask(marklinCTSEventTask);
+                marklinCTSEventTask = nullptr;
             }
-            marklinEventTask->setReturnValue(mis);
-            rescheduleTask(marklinEventTask);
         }
 
         // write to GICC_EOIR when finished in kernel...?

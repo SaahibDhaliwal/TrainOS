@@ -88,7 +88,7 @@ void ConsoleServer() {
     }
 
     // create notifiers
-    int notifierPriority = 60;  // should be higher priority than ConsoleServer (I think)
+    int notifierPriority = 32;  // should be higher priority than ConsoleServer (I think)
     // otherwise, we may go to receive and then try to reply to our notifier when it wasn't waiting for a reply?
     // update: this might not be the case anymore after the refactor
     uint32_t txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);

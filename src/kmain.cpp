@@ -28,6 +28,7 @@ extern "C" int kmain() {
     gpio_init();                    // set up GPIO pins for both console and marklin uarts
 
     uart_config_and_enable(CONSOLE);  // not strictly necessary, since console is configured during boot
+    uart_config_and_enable(MARKLIN);
 
 #if defined(TESTING)
     uart_getc(CONSOLE);

@@ -42,7 +42,7 @@ class StateMachine {
    public:
     StateMachine();
     bool checkState();
-    bool changeState(interrupt_t move);
+    void changeState(interrupt_t move);
 };
 
 StateMachine::StateMachine()
@@ -53,9 +53,10 @@ bool StateMachine::checkState() {
     if (currentState == GOOD_TO_TRANSMIT) {
         return true;
     }
+    return false;
 }
 
-bool StateMachine::changeState(interrupt_t move) {
+void StateMachine::changeState(interrupt_t move) {
     switch (currentState) {
         case GOOD_TO_TRANSMIT: {
             if (move == TX_LOW) {  // make sure to transmit this after we check the state and transmit
@@ -64,6 +65,7 @@ bool StateMachine::changeState(interrupt_t move) {
                 // panic
                 uart_printf(CONSOLE, "Bad state change: GOOD_TO_TRANSMIT and move is not TX_LOW");
             }
+            break;
         }
         case WAITING_ON_BOX: {
             switch (move) {
@@ -72,6 +74,7 @@ bool StateMachine::changeState(interrupt_t move) {
                     break;
                 case TX_HIGH:
                     currentState = SLOW_BOX;
+                    break;
                 default:
                     uart_printf(CONSOLE, "Bad state change: WAITING_ON_BOX with incorrect move");
                     break;
@@ -85,6 +88,7 @@ bool StateMachine::changeState(interrupt_t move) {
                 // panic
                 uart_printf(CONSOLE, "Bad state change: BOTH_SLOW and move is not TX_HIGH");
             }
+            break;
         }
         case SLOW_BOX: {
             if (move == CTS_LOW) {
@@ -93,6 +97,7 @@ bool StateMachine::changeState(interrupt_t move) {
                 // panic
                 uart_printf(CONSOLE, "Bad state change: SLOW_BOX and move is not CTS_LOW");
             }
+            break;
         }
         case BOX_PROCESSING: {
             if (move == CTS_HIGH) {
@@ -101,7 +106,11 @@ bool StateMachine::changeState(interrupt_t move) {
                 // panic
                 uart_printf(CONSOLE, "Bad state change: BOX_PROCESSING and move is not CTS_HIGH");
             }
+            break;
         }
+        default:
+            uart_printf(CONSOLE, "State machine is in impossible state\n\r");
+            break;
     }
 }
 
@@ -132,12 +141,14 @@ void MarklinTXNotifier() {
 
     int txCompare = static_cast<int>(MIS::TX);
     int rtCompare = static_cast<int>(MIS::RT);
+    const char sendBuf = toByte(Command::TX);
 
+    sys::Send(marklinServerTid, &sendBuf, 1, nullptr, 0);  // a fake send??
     for (;;) {
         int interruptBits = sys::AwaitEvent(eventChoice);
         ASSERT(interruptBits > 1);
-        if (interruptBits >= txCompare && interruptBits <= rtCompare) {
-            const char sendBuf = toByte(Command::TX);
+        if (interruptBits >= txCompare &&
+            interruptBits <= rtCompare) {  // this comparison could change and remove misoriginal
             sys::Send(marklinServerTid, &sendBuf, 1, nullptr, 0);
         } else {
             // we get here if we got back from waiting on a TX event, but the MIS TX bit was not 1
@@ -157,11 +168,11 @@ void MarklinCTSNotifier() {
     for (;;) {
         int interruptBits = sys::AwaitEvent(eventChoice);
         ASSERT(interruptBits >= 1);
-        if (interruptBits < txCompare && interruptBits <= rtCompare) {
-            const char sendBuf = toByte(Command::TX);
+        if (interruptBits == 1) {
+            const char sendBuf = toByte(Command::CTS);
             sys::Send(marklinServerTid, &sendBuf, 1, nullptr, 0);
         } else {
-            // we get here if we got back from waiting on a TX event, but the MIS TX bit was not 1
+            // we get here if we got back from waiting on a CTS event, but the MIS CTS bit was not 1
             uart_printf(CONSOLE, "Error in CTS notifier\n\r");
         }
     }
@@ -189,22 +200,19 @@ void MarklinServer() {
     }
 
     // create notifiers
-    int notifierPriority = 60;  // should be higher priority than ConsoleServer (I think)
+    int notifierPriority = 32;  // should be higher priority than MarklinServer (I think)
     // otherwise, we may go to receive and then try to reply to our notifier when it wasn't waiting for a reply?
     // update: this might not be the case anymore after the refactor
     uint32_t txNotifier = sys::Create(notifierPriority, MarklinTXNotifier);
     uint32_t rxNotifier = sys::Create(notifierPriority, MarklinRXNotifier);
     uint32_t ctsNotifier = sys::Create(notifierPriority, MarklinCTSNotifier);
 
-    // uart_printf(CONSOLE, "notifierTID: %u", notifierTid);
-    uint32_t cmdUserTid = 0;
+    uint32_t getcClient = 0;
     bool txNotifierFlag = true;
     bool rxNotifierFlag = true;
-
-    // const char requestAllChar = static_cast<char>(EVENT_ID::CONSOLE_ALL);
-    // const char requestTXChar = static_cast<char>(EVENT_ID::CONSOLE_TX);
-    // const char requestRXRTChar = static_cast<char>(EVENT_ID::CONSOLE_RXRT);
-
+    bool ctsState = true;
+    StateMachine ourStateMachine;
+    uart_printf(CONSOLE, "Marklin: Done init\n\r");
     for (;;) {
         uint32_t clientTid;
         char msg[2] = {0};
@@ -212,40 +220,73 @@ void MarklinServer() {
 
         Command command = commandFromByte(msg[0]);
 
-        if (clientTid == txNotifier) {
-            if (command == Command::TX && !characterQueue.empty()) {
-                // pop from queue and print
-                CharNode* next_char = characterQueue.pop();
-                if (!uartCheckTX(MARKLIN)) {
-                    uart_printf(CONSOLE, "Notifier said it was free, but it wasn't\n\r");
-                }
-                uartPutTX(MARKLIN, next_char->c);
-                freelist.push(next_char);
-                // note that we DO NOT reply to the notifier until we want another interrupt to happen
-                // so we should check our queue and reply anyways, since we WANT another interrupt to happen so we can
-                // pop our queue
+        if (clientTid == txNotifier || clientTid == ctsNotifier) {
+            // Advance state machine on CTS notification
+            if (command == Command::CTS) {
+                // see
+                // https://stackoverflow.com/questions/17024355/is-there-a-logical-boolean-xor-function-in-c-or-c-standard-library
+                // ctsState != true;
+                // if (ctsState) {
+                //     ourStateMachine.changeState(CTS_HIGH);
+                // } else {
+                //     ourStateMachine.changeState(CTS_LOW);
+                // }
 
-                if (!characterQueue.empty()) {
-                    // let the notifier know we want another interrupt since our queue isnt empty
-                    emptyReply(txNotifier);
+                // compiler is throwing a warning ("has no effect") so i'm gonna do it manually
+                if (ctsState) {
+                    ctsState = false;
+                    ourStateMachine.changeState(CTS_LOW);
                 } else {
-                    // it is empty, so we can hold off on replying until we want another interrupt
-                    txNotifierFlag = false;
+                    ctsState = true;
+                    ourStateMachine.changeState(CTS_HIGH);
                 }
 
-            } else if (command != Command::TX) {
-                uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
+                // check if we are in a good state to print after that CTS
+                // and only print if we have more stuff to send. Otherwise we can just remain in our good state
+                if (ourStateMachine.checkState() && !characterQueue.empty()) {
+                    // pop from queue and print
+                    CharNode* next_char = characterQueue.pop();
+                    if (!uartCheckTX(MARKLIN)) {
+                        uart_printf(CONSOLE, "Marklin state machine said we are good to TX, but actually not\n\r");
+                    }
+                    // rare case this breaks if something else is sending to this register that isn't us
+                    // and we interrupt here. Impossible with our design rn.
+                    uartPutTX(MARKLIN, next_char->c);
+                    freelist.push(next_char);
+                    // since we just transmitted, we need to update state machine
+                    ourStateMachine.changeState(TX_LOW);
+                    // and reply to the notifier to get the next tx interrupt
+                    // can the Tx notifier not be waiting on a reply? ideally not after we moved to a good state
+                    emptyReply(txNotifier);
+                }
+                // either way, we reply to the CTS notifier
+                // Note: this assumes that CTS will not change while we are in the "good" state.
+                // If that assumption breaks then: do not reply when the state is good
+                // and only reply after deciding to transmit a char
+                emptyReply(ctsNotifier);
+
+            } else if (command == Command::TX) {
+                if (ourStateMachine.checkState()) {
+                    // we get here upon the first interrupt from initialization
+                    // so just make sure not to update the state machine
+                    continue;
+                }
+
+                // advance state machine
+                ourStateMachine.changeState(TX_HIGH);
+
+                // note that we DO NOT reply to the tx notifier until we want another interrupt to happen
+                // that is only determined upon transmission of a character, dictated by a CTS interrupt OR a lucky PutC
+
             } else {
-                // otherwise, the character queue is empty
-                //  why would we get here after the first loop? we should not
-                txNotifierFlag = false;
+                uart_printf(CONSOLE, "Either marklin CTS or TX notifier did not send a valid command\n\r");
             }
 
         } else if (clientTid == rxNotifier) {
-            if (cmdUserTid != 0) {  // if someone actually wants it
+            if (getcClient != 0) {  // if someone actually wants it
                 if (command == Command::RX) {
-                    charReply(cmdUserTid, uartGetRX(MARKLIN));  // reply to previous client
-                    cmdUserTid = 0;          // so that we don't get here again until we have someone asking for a getc
+                    charReply(getcClient, uartGetRX(MARKLIN));  // reply to previous client
+                    getcClient = 0;          // so that we don't get here again until we have someone asking for a getc
                     rxNotifierFlag = false;  // hold off on replying to notifier until next time
                 } else {
                     uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
@@ -257,31 +298,44 @@ void MarklinServer() {
             }
 
         } else if (command == Command::PUT) {
-            if (uartCheckTX(MARKLIN) && !txNotifierFlag) {
+            if (ourStateMachine.checkState()) {
+                if (!uartCheckTX(MARKLIN)) {
+                    uart_printf(CONSOLE, "Marklin state machine said we are good to TX, but actually not\n\r");
+                }
                 uartPutTX(MARKLIN, msg[1]);
+                // if state says ok, then great! put it in tx and then update state machine
+                ourStateMachine.changeState(TX_LOW);
+                // now we want to enable CTS and TX interrupts
+                emptyReply(txNotifier);
+                // emptyReply(ctsNotifier);
+                // what if we reply to the notifier that isn't expecting a reply since CTS would not have sent?
+                // on first character in a clean state, TX notifier is waiting on our reply while CTS is NOT.
+                // I think we will always reply to the CTS notifier
+
             } else {
-                // pop from free list and add to queue
+                // We are in the process of transmitting a different char
+                // so pop from free list and add to queue
                 CharNode* incoming_char = freelist.pop();
                 incoming_char->c = msg[1];
                 characterQueue.push(incoming_char);
                 if (characterQueue.size() == Config::MARKLIN_PRINT_QUEUE) {
                     uart_printf(CONSOLE, "QUEUE LIMIT HIT!!\n\r");
                 }
-                // reply to notifier to signal we want interrupts enabled (if it's not notified already)
-                if (!txNotifierFlag) {
-                    // uart_printf(CONSOLE, "Replying to notifier...\r\n");
-                    emptyReply(txNotifier);
-                    txNotifierFlag = true;
-                }
+                // // reply to notifier to signal we want interrupts enabled (if it's not notified already)
+                // if (!txNotifierFlag) {
+                //     // uart_printf(CONSOLE, "Replying to notifier...\r\n");
+                //     emptyReply(txNotifier);
+                //     txNotifierFlag = true;
+                // }
             }
             // reply to client regardless
             charReply(clientTid, static_cast<char>(Reply::SUCCESS));
 
         } else if (command == Command::GET) {
             // there should only ever be one person asking for getc
-            cmdUserTid = clientTid;
+            getcClient = clientTid;
             if (uartCheckRX(MARKLIN)) {
-                charReply(cmdUserTid, uartGetRX(MARKLIN));
+                charReply(getcClient, uartGetRX(MARKLIN));
             } else {
                 // reply to notifier to signal we want interrupts enabled
                 if (!rxNotifierFlag) {
@@ -292,7 +346,7 @@ void MarklinServer() {
             // DO NOT REPLY TO CLIENT HERE. GETC MUST BE BLOCKING
 
         } else {
-            uart_printf(CONSOLE, "Something broke in the console server...\n\r");
+            uart_printf(CONSOLE, "Something broke in the marklin server...\n\r");
         }
     }
 }

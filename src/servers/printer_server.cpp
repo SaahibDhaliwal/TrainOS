@@ -10,6 +10,8 @@
 #include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
+#include "marklin_server.h"
+#include "ms_protocol.h"
 #include "name_server.h"
 #include "ns_protocol.h"
 #include "queue.h"
@@ -59,36 +61,43 @@ void timerHelper(uint32_t consoleTid, int* lastminute) {
 
     // outputStr = "\033[?25l";
     // if (minutes != *lastminute) {
-    uartPutConsoleS(consoleTid, "\x1b[s");
     *lastminute = minutes;
-    char buff[12];
+    char buff[2];
     ui2a(minutes, 10, buff);
+    uartPutConsoleS(consoleTid, "\033[2;11H");
     if (minutes < 10) {
-        uartPutConsoleS(consoleTid, "\033[2;11H0");  // can replace with printf
-        uartPutConsoleS(consoleTid, "\033[2;12H");
-    } else {
-        uartPutConsoleS(consoleTid, "\033[2;11H");
+        uartPutConsoleS(consoleTid, "0");
     }
+    // if (minutes < 10) {
+    //     uartPutConsoleS(consoleTid, "\033[2;11H0");  // can replace with printf
+    //     uartPutConsoleS(consoleTid, "\033[2;12H");
+    // } else {
+    //     uartPutConsoleS(consoleTid, "\033[2;11H");
+    // }
     uartPutConsoleS(consoleTid, buff);
     // }
 
-    char buff2[12];
+    char buff2[2];
     ui2a(seconds, 10, buff2);
+    // if (seconds < 10) {
+    //     uartPutConsoleS(consoleTid, "\033[2;17H0");  // can replace with printf
+    //     uartPutConsoleS(consoleTid, "\033[2;18H");
+    // } else {
+    //     uartPutConsoleS(consoleTid, "\033[2;17H");
+    // }
+    uartPutConsoleS(consoleTid, " m  ");
     if (seconds < 10) {
-        uartPutConsoleS(consoleTid, "\033[2;17H0");  // can replace with printf
-        uartPutConsoleS(consoleTid, "\033[2;18H");
-    } else {
-        uartPutConsoleS(consoleTid, "\033[2;17H");
+        uartPutConsoleS(consoleTid, "0");
     }
     uartPutConsoleS(consoleTid, buff2);
+    uartPutConsoleS(consoleTid, ".");
 
     t = t / 100;
-    uartPutConsoleS(consoleTid, "\033[2;20H");
-    char buff3[12];
+    // uartPutConsoleS(consoleTid, "\033[2;20H");
+    char buff3[1];
     ui2a(t % 10, 10, buff3);
     uartPutConsoleS(consoleTid, buff3);
-
-    uartPutConsoleS(consoleTid, "\x1b[u");
+    uartPutConsoleS(consoleTid, " s");
 
     // uartPutConsoleS(printTid, "\033[?25h");  // show cursor
     // uartPutConsoleS(printTid, "\033[u");
@@ -109,11 +118,12 @@ void PrinterServer() {
     cursor_white();
     show_cursor();
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
-    int console = sys::Create(49, &ConsoleServer);
+    int console = sys::Create(30, &ConsoleServer);
     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
+    int marklin_tid = sys::Create(31, &MarklinServer);
+    uart_printf(CONSOLE, "[First Task]: Created Marklin Server: %u\r\n", marklin_tid);
     int clock = sys::Create(50, &ClockServer);
     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
-    // int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
 
     int registerReturn = name_server::RegisterAs(PRINTER_SERVER_NAME);
     if (registerReturn == -1) {
@@ -140,18 +150,32 @@ void PrinterServer() {
 
         if (clientTid == clockNotifierTid) {
             // update time since boot AND idle time percentage
-
+            uartPutConsoleS(consoleTid, "\x1b[s");
             // uartPutConsoleS(consoleTid, "\033[?25l");
             timerHelper(consoleTid, &lastminute);
             a2ui(msg, 10, &percentage);  // turn msg into an int
-            // update_idle_percentage(percentage, consoleTid);
+            update_idle_percentage(percentage, consoleTid);
             // uartPutConsoleS(consoleTid, "\033[?25h");
-            uartPutConsoleS(consoleTid, "\x1b[u");
-
+            uartPutConsoleS(consoleTid, "\x1b[u");  // reminder: try this change before uncommenting the percentage
             emptyReply(clockNotifierTid);
 
         } else if (clientTid == cmdNotifierTid) {
-            // uart_printf(CONSOLE, "got: %c", msg[0]);
+            if (msg[0] == 'S') {
+                // clock_server::Delay(clock, 100);
+                // uartPutConsoleS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklin_tid, 0, 16);  // speed STOP W LIGHTS
+                marklin_server::Putc(marklin_tid, 0, 15);  // train 14
+            } else if (msg[0] == 'G') {
+                // clock_server::Delay(clock, 100);
+                // uartPutConsoleS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklin_tid, 0, 16 + 7);  // speed 7 WITH LIGHTS
+                marklin_server::Putc(marklin_tid, 0, 15);      // train 14
+            } else if (msg[0] == 's') {
+                // clock_server::Delay(clock, 100);
+                // uartPutConsoleS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklin_tid, 0, 0);   // STOP W NO LIGHTS
+                marklin_server::Putc(marklin_tid, 0, 15);  // train 14
+            }
             console_server::Putc(consoleTid, 0, msg[0]);
             emptyReply(cmdNotifierTid);
         }
