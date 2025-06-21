@@ -5,7 +5,9 @@
 
 #include "rpi.h"
 
-#define WITH_HIDDEN_CURSOR(statement)                      \
+// blocking
+
+#define WITH_HIDDEN_CURSOR_BLOCKING(statement)             \
     do {                                                   \
         bool wasVisible = get_cursor_visibility();         \
         uart_printf(CONSOLE, "\033[s\033[?25l");           \
@@ -36,5 +38,39 @@ void cursor_sharp_blue();
 void cursor_sharp_pink();
 
 void print_ascii_art();
+
+// not blocking
+
+#define WITH_HIDDEN_CURSOR(console, statement)            \
+    do {                                                  \
+        bool wasVisible = get_cursor_visibility();        \
+        uartPrintf(console, "\033[s\033[?25l");           \
+        statement;                                        \
+        uartPrintf(console, "\033[u");                    \
+        if (wasVisible) uartPrintf(console, "\033[?25h"); \
+    } while (0)
+
+bool get_cursor_visibility();
+void backspace(int console);
+void clear_current_line(int console);
+void clear_screen(int console);
+void hide_cursor(int console);
+void show_cursor(int console);
+void cursor_top_left(int console);
+void cursor_down_one(int console);
+
+void cursor_white(int console);
+void cursor_soft_blue(int console);
+void cursor_soft_pink(int console);
+void cursor_soft_green(int console);
+void cursor_soft_red(int console);
+
+void cursor_sharp_green(int console);
+void cursor_sharp_yellow(int console);
+void cursor_sharp_orange(int console);
+void cursor_sharp_blue(int console);
+void cursor_sharp_pink(int console);
+
+void print_ascii_art(int console);
 
 #endif  // cursor.h

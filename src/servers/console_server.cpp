@@ -196,12 +196,15 @@ void ConsoleServer() {
 }
 
 void ConsoleFirstUserTask() {
-    cursor_top_left();
-    clear_screen();
-    cursor_top_left();
-    WITH_HIDDEN_CURSOR(print_idle_percentage());
+    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+    uart_printf(CONSOLE, "Done WHOIS\r\n");
+
+    cursor_top_left(ctid);
+    clear_screen(ctid);
+    cursor_top_left(ctid);
+    WITH_HIDDEN_CURSOR(ctid, print_idle_percentage(ctid));
     uart_printf(CONSOLE, "\r\r\n\n");
-    cursor_white();
+    cursor_white(ctid);
 
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
     int clock = sys::Create(50, &ClockServer);
@@ -210,8 +213,6 @@ void ConsoleFirstUserTask() {
     int console = sys::Create(49, &ConsoleServer);
     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
 
-    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
-    uart_printf(CONSOLE, "Done WHOIS\r\n");
     int response = 0;
     // if (clock_server::Delay(clock, 10) == -1) {
     //     uart_printf(CONSOLE, "DELAY Cannot reach TID\r\n");

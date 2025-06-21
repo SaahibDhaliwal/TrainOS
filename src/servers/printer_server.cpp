@@ -20,6 +20,7 @@
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
+#include "uptime.h"
 
 // using namespace print_server;
 
@@ -56,15 +57,12 @@ void timerHelper(uint32_t consoleTid, int* lastminute) {
     int allseconds = t / 1000;
     int minutes = allseconds / 60;
     int seconds = allseconds % 60;
-    // char* outputStr = nullptr;
-    // outputStr = "\033[s";
+    int tenth = (t / 100) % 10;
 
-    // outputStr = "\033[?25l";
-    // if (minutes != *lastminute) {
-    *lastminute = minutes;
-    char buff[2];
-    ui2a(minutes, 10, buff);
-    uartPutConsoleS(consoleTid, "\033[2;11H");
+    uartPutConsoleS(consoleTid, "\x1b[s");
+    // *lastminute = minutes;
+    // char buff[12];
+    // ui2a(minutes, 10, buff);
     if (minutes < 10) {
         uartPutConsoleS(consoleTid, "0");
     }
@@ -76,24 +74,10 @@ void timerHelper(uint32_t consoleTid, int* lastminute) {
     // }
     uartPutConsoleS(consoleTid, buff);
     // }
-
-    char buff2[2];
-    ui2a(seconds, 10, buff2);
-    // if (seconds < 10) {
-    //     uartPutConsoleS(consoleTid, "\033[2;17H0");  // can replace with printf
-    //     uartPutConsoleS(consoleTid, "\033[2;18H");
-    // } else {
-    //     uartPutConsoleS(consoleTid, "\033[2;17H");
-    // }
-    uartPutConsoleS(consoleTid, " m  ");
-    if (seconds < 10) {
-        uartPutConsoleS(consoleTid, "0");
-    }
     uartPutConsoleS(consoleTid, buff2);
     uartPutConsoleS(consoleTid, ".");
 
     t = t / 100;
-    // uartPutConsoleS(consoleTid, "\033[2;20H");
     char buff3[1];
     ui2a(t % 10, 10, buff3);
     uartPutConsoleS(consoleTid, buff3);
@@ -108,13 +92,10 @@ void PrinterServer() {
     cursor_top_left();
     clear_screen();
     cursor_top_left();
-    WITH_HIDDEN_CURSOR(print_idle_percentage());
-    uart_printf(CONSOLE, "\r\n");
-    // 	ansi("2;1H", q);
-    // string2q(CONSOLE, " Uptime: 00 m  00.0 s", q);
+    WITH_HIDDEN_CURSOR_BLOCKING(print_idle_percentage());
+    WITH_HIDDEN_CURSOR_BLOCKING(print_uptime());
+    uart_printf(CONSOLE, "\033[%d;%dH", 3, 0);
 
-    uart_printf(CONSOLE, "  Uptime: 00 m  00.0 s");
-    uart_printf(CONSOLE, "\r\n");
     cursor_white();
     show_cursor();
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
@@ -152,11 +133,14 @@ void PrinterServer() {
             // update time since boot AND idle time percentage
             uartPutConsoleS(consoleTid, "\x1b[s");
             // uartPutConsoleS(consoleTid, "\033[?25l");
-            timerHelper(consoleTid, &lastminute);
+            // WITH_HIDDEN_CURSOR(consoleTid, update_uptime(consoleTid, timerGet()));
+
+            update_uptime(consoleTid, timerGet());
             a2ui(msg, 10, &percentage);  // turn msg into an int
-            update_idle_percentage(percentage, consoleTid);
+            // WITH_HIDDEN_CURSOR(consoleTid, update_idle_percentage(percentage, consoleTid));
             // uartPutConsoleS(consoleTid, "\033[?25h");
-            uartPutConsoleS(consoleTid, "\x1b[u");  // reminder: try this change before uncommenting the percentage
+            // uartPutConsoleS(consoleTid, "\x1b[u");
+
             emptyReply(clockNotifierTid);
 
         } else if (clientTid == cmdNotifierTid) {
