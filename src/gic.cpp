@@ -21,15 +21,8 @@ static const uint32_t GICC_EOIR = 0x10;
 #define GICC_REG(offset) (*(volatile uint32_t*)(GICC_BASE + offset))
 #define GICD_REG(offset) (*(volatile uint32_t*)(GICD_BASE + offset))
 
-//     volatile uint32_t* interrupt_register =
-//         reinterpret_cast<uint32_t*>(GICD_BASE + GICD_ITARGETSR + (interrupt_id / 4));  // gets our register (figure
-//                                                                                        // 4-14))
-//     *interrupt_register |= 0x1 << ((interrupt_id % 4) * 8);                            // bitwise or assignment
-// }
-void gicTarget(int interrupt_id) {
-    char* interrupt_register = GICD_BASE + GICD_ITARGETSR + (4 * (interrupt_id / 4));  // gets our register (figure
-                                                                                       // 4-14))
-    *(interrupt_register + interrupt_id % 4) |= 0x1;                                   // bitwise or assignment
+void gicTarget(uint32_t interrupt_id) {
+    *(GICD_BASE + GICD_ITARGETSR + interrupt_id) |= 1;  // (figure 4-14))
 }
 
 void gicEnable(int interrupt_id) {

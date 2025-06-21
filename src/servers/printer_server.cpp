@@ -52,40 +52,40 @@ void PrinterCmdNotifier() {
     }
 }
 
-void timerHelper(uint32_t consoleTid, int* lastminute) {
-    unsigned int t = timerGet() / 1000;
-    int allseconds = t / 1000;
-    int minutes = allseconds / 60;
-    int seconds = allseconds % 60;
-    int tenth = (t / 100) % 10;
+// void timerHelper(uint32_t consoleTid, int* lastminute) {
+//     unsigned int t = timerGet() / 1000;
+//     int allseconds = t / 1000;
+//     int minutes = allseconds / 60;
+//     int seconds = allseconds % 60;
+//     int tenth = (t / 100) % 10;
 
-    uartPutConsoleS(consoleTid, "\x1b[s");
-    // *lastminute = minutes;
-    // char buff[12];
-    // ui2a(minutes, 10, buff);
-    if (minutes < 10) {
-        uartPutConsoleS(consoleTid, "0");
-    }
-    // if (minutes < 10) {
-    //     uartPutConsoleS(consoleTid, "\033[2;11H0");  // can replace with printf
-    //     uartPutConsoleS(consoleTid, "\033[2;12H");
-    // } else {
-    //     uartPutConsoleS(consoleTid, "\033[2;11H");
-    // }
-    uartPutConsoleS(consoleTid, buff);
-    // }
-    uartPutConsoleS(consoleTid, buff2);
-    uartPutConsoleS(consoleTid, ".");
+//     uartPutConsoleS(consoleTid, "\x1b[s");
+//     // *lastminute = minutes;
+//     // char buff[12];
+//     // ui2a(minutes, 10, buff);
+//     if (minutes < 10) {
+//         uartPutConsoleS(consoleTid, "0");
+//     }
+//     // if (minutes < 10) {
+//     //     uartPutConsoleS(consoleTid, "\033[2;11H0");  // can replace with printf
+//     //     uartPutConsoleS(consoleTid, "\033[2;12H");
+//     // } else {
+//     //     uartPutConsoleS(consoleTid, "\033[2;11H");
+//     // }
+//     uartPutConsoleS(consoleTid, buff);
+//     // }
+//     uartPutConsoleS(consoleTid, buff2);
+//     uartPutConsoleS(consoleTid, ".");
 
-    t = t / 100;
-    char buff3[1];
-    ui2a(t % 10, 10, buff3);
-    uartPutConsoleS(consoleTid, buff3);
-    uartPutConsoleS(consoleTid, " s");
+//     t = t / 100;
+//     char buff3[1];
+//     ui2a(t % 10, 10, buff3);
+//     uartPutConsoleS(consoleTid, buff3);
+//     uartPutConsoleS(consoleTid, " s");
 
-    // uartPutConsoleS(printTid, "\033[?25h");  // show cursor
-    // uartPutConsoleS(printTid, "\033[u");
-}
+//     // uartPutConsoleS(printTid, "\033[?25h");  // show cursor
+//     // uartPutConsoleS(printTid, "\033[u");
+// }
 
 void PrinterServer() {
     // do some initial print here:
