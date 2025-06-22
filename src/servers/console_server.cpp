@@ -70,7 +70,7 @@ void ConsoleServer() {
 
     uint32_t rxClientTid = -1;  // assumption is one command task
 
-    RingBuffer<char, Config::CONSOLE_QUEUE_SIZE> charQueue2;
+    RingBuffer<char, 100000> charQueue2;
 
     bool waitForTx = false;
 
