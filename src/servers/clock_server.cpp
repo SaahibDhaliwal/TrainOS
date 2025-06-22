@@ -178,6 +178,10 @@ void ClockServer() {
 
                     break;
                 }
+                case Command::KILL: {
+                    emptyReply(clientTid);
+                    sys::Exit();
+                }
                 default: {
                     uart_printf(CONSOLE, "[Clock Server]: Unknown Command!\r\n");
 

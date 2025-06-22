@@ -1,7 +1,7 @@
 #ifndef __NAME_SERVER__
 #define __NAME_SERVER__
 
-#include <cstdint>
+#include <stdint.h>
 
 #include "config.h"
 

@@ -1,7 +1,7 @@
 #ifndef __TASK_DESCRIPTOR__
 #define __TASK_DESCRIPTOR__
 
-#include <cstdint>
+#include <stdint.h>
 
 #include "context.h"
 #include "intrusive_node.h"

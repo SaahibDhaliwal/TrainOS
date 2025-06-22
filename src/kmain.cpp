@@ -38,8 +38,8 @@ extern "C" int kmain() {
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
 
-    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));        // idle task
-    taskManager.createTask(nullptr, 10, reinterpret_cast<uint64_t>(PrinterServer));  // spawn parent task
+    taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));             // idle task
+    taskManager.createTask(nullptr, 10, reinterpret_cast<uint64_t>(FinalFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
         if (!curTask) {

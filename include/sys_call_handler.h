@@ -1,7 +1,7 @@
 #ifndef __SYS_CALL_HANDLER__
 #define __SYS_CALL_HANDLER__
 
-#include <cstdint>
+#include <stdint.h>
 
 enum class SYSCALL_NUM {
     CREATE,

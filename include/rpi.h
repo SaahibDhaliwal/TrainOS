@@ -26,8 +26,8 @@ bool uartRXEmpty(size_t line);
 bool uartTXFull(size_t line);
 void uartPutTX(size_t line, char c);
 unsigned char uartGetRX(size_t line);
-void uartPutConsoleC(uint32_t tid, char c);
-void uartPutConsoleS(uint32_t tid, const char *buf);
+void uartPutC(uint32_t tid, char c);
+void uartPutS(uint32_t tid, const char *buf);
 void uartPrintf(uint32_t tid, const char *fmt, ...);
 
 #endif /* rpi.h */

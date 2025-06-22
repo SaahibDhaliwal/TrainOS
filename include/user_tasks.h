@@ -5,6 +5,8 @@
 
 void FirstUserTask();
 
+void FinalFirstUserTask();
+
 void TestTask();
 
 void IdleTask();

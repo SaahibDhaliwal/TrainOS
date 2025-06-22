@@ -108,21 +108,9 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         timerSetNextTick();
         gicEndInterrupt(eventId);
         rescheduleTask(clockEventTask);
-        // since we push it on the priority queue, it's ok to set this back to null?
-        // so it will leave it's allocated space in the slab? No
         clockEventTask = nullptr;
     } else if (eventId == static_cast<int64_t>(INTERRUPT_NUM::UART)) {
-        // read uart MIS to find out which interrupt(s)
-
-        // right now, it will only clear interrupts one at a time.
-        // So if we have multiple in one, we only disable and clear once interrupt per UART. So it will fire again.
-
-        // BUT! what if our notifier that we reschedule does not run in time?
-        // if we have TX, and then reschedule the listener, and then we interrupt again for RX, we can't reschedule the
-        // same task since it is on the queue and the pointer is empty
-        // do we need a buffer of items if we have
         int mis = uartCheckMIS(CONSOLE);
-        // uart_printf(CONSOLE, "MIS value: %d\n\r", mis);
 
         // FOR CONSOLE
         if (mis) {
@@ -136,33 +124,49 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
             }
 
-            if (mis >= rtCompare) {
-                // disable interrupt at IMSC
+            if ((mis & (rxCompare | rtCompare)) != 0) {
+                uartClearIMSC(CONSOLE, IMSC::RX);
+                uartClearICR(CONSOLE, IMSC::RX);
                 uartClearIMSC(CONSOLE, IMSC::RT);
-                // clear interrupt with UART ICR
                 uartClearICR(CONSOLE, IMSC::RT);
-                mis -= rtCompare;
                 rescheduleTask(consoleRXEventTask);
                 consoleRXEventTask = nullptr;
             }
-            if (mis >= txCompare) {
+
+            if (mis & txCompare) {
                 uartClearIMSC(CONSOLE, IMSC::TX);
                 uartClearICR(CONSOLE, IMSC::TX);
-                mis -= txCompare;
                 rescheduleTask(consoleTXEventTask);
                 consoleTXEventTask = nullptr;
             }
-            if (mis == rxCompare && consoleRXEventTask != nullptr) {
-                uartClearIMSC(CONSOLE, IMSC::RX);
-                uartClearICR(CONSOLE, IMSC::RX);
-                // so that if we already got an RT interrupt, we don't need to reschedule the RX task
-                // since it's already been done
-                // but we DO want to clear the interrupt at IMSC if it's high
-                if (consoleRXEventTask != nullptr) {
-                    rescheduleTask(consoleRXEventTask);
-                    consoleRXEventTask = nullptr;
-                }
-            }
+
+            // if (mis >= rtCompare) {
+            //     // disable interrupt at IMSC
+            //     uartClearIMSC(CONSOLE, IMSC::RT);
+            //     // clear interrupt with UART ICR
+            //     uartClearICR(CONSOLE, IMSC::RT);
+            //     mis -= rtCompare;
+            //     rescheduleTask(consoleRXEventTask);
+            //     consoleRXEventTask = nullptr;
+            // }
+            // if (mis >= txCompare) {
+            //     uartClearIMSC(CONSOLE, IMSC::TX);
+            //     uartClearICR(CONSOLE, IMSC::TX);
+            //     mis -= txCompare;
+            //     rescheduleTask(consoleTXEventTask);
+            //     consoleTXEventTask = nullptr;
+            // }
+            // if (mis == rxCompare && consoleRXEventTask != nullptr) {
+            //     uartClearIMSC(CONSOLE, IMSC::RX);
+            //     uartClearICR(CONSOLE, IMSC::RX);
+            //     // so that if we already got an RT interrupt, we don't need to reschedule the RX task
+            //     // since it's already been done
+            //     // but we DO want to clear the interrupt at IMSC if it's high
+            //     if (consoleRXEventTask != nullptr) {
+            //         rescheduleTask(consoleRXEventTask);
+            //         consoleRXEventTask = nullptr;
+            //     }
+            // }
         }
 
         // FOR MARKLIN

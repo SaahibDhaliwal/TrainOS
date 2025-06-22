@@ -100,81 +100,79 @@ void print_ascii_art() {
 }
 
 void backspace(int console) {
-    uartPutConsoleC(console, '\b');
-    uartPutConsoleC(console, ' ');
-    uartPutConsoleC(console, '\b');
+    uartPutS(console, "\b \b");
 }
 
 void cursor_down_one(int console) {
-    uartPutConsoleS(console, "\033[1B");
+    uartPutS(console, "\033[1B");
 }
 
 void clear_current_line(int console) {
-    uartPutConsoleS(console, "\033[2K");
+    uartPutS(console, "\033[2K");
 }
 
 void clear_screen(int console) {
-    uartPutConsoleS(console, "\033[2J");
+    uartPutS(console, "\033[2J");
 }
 
 void hide_cursor(int console) {
-    uartPutConsoleS(console, "\033[?25l");
+    uartPutS(console, "\033[?25l");
     g_isCursorVisible = false;
 }
 
 void show_cursor(int console) {
-    uartPutConsoleS(console, "\033[?25h");
+    uartPutS(console, "\033[?25h");
     g_isCursorVisible = true;
 }
 
 void cursor_top_left(int console) {
-    uartPutConsoleS(console, "\033[H");
+    uartPutS(console, "\033[H");
 }
 
 void cursor_white(int console) {
-    uartPutConsoleS(console, "\033[0m");
+    uartPutS(console, "\033[0m");
 }
 
 void cursor_soft_blue(int console) {
-    uartPutConsoleS(console, "\033[38;5;153m");
+    uartPutS(console, "\033[38;5;153m");
 }
 
 void cursor_soft_pink(int console) {
-    uartPutConsoleS(console, "\033[38;5;218m");
+    uartPutS(console, "\033[38;5;218m");
 }
 
 void cursor_soft_green(int console) {
-    uartPutConsoleS(console, "\033[38;5;34m");
+    uartPutS(console, "\033[38;5;34m");
 }
 
 void cursor_soft_red(int console) {
-    uartPutConsoleS(console, "\033[38;5;160m");
+    uartPutS(console, "\033[38;5;160m");
 }
 
 void cursor_sharp_green(int console) {
-    uartPutConsoleS(console, "\033[38;5;46m");
+    uartPutS(console, "\033[38;5;46m");
 }
 
 void cursor_sharp_yellow(int console) {
-    uartPutConsoleS(console, "\033[38;5;226m");
+    uartPutS(console, "\033[38;5;226m");
 }
 
 void cursor_sharp_orange(int console) {
-    uartPutConsoleS(console, "\033[38;5;202m");
+    uartPutS(console, "\033[38;5;202m");
 }
 
 void cursor_sharp_blue(int console) {
-    uartPutConsoleS(console, "\033[38;5;45m");
+    uartPutS(console, "\033[38;5;45m");
 }
 
 void cursor_sharp_pink(int console) {
-    uartPutConsoleS(console, "\033[38;5;201m");
+    uartPutS(console, "\033[38;5;201m");
 }
 
 void print_ascii_art(int console) {
     cursor_soft_pink(console);
     // clang-format off
-	uartPutConsoleS(console,
+	uartPutS(console,
 	"__| |________________________________________________________________________________| |__\n\r"
 	"__   ________________________________________________________________________________   __\n\r"
 	"  | |                _____                        _                                  | |  \n\r"

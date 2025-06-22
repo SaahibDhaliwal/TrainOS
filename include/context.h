@@ -1,6 +1,6 @@
 #ifndef __CONTEXT__
 #define __CONTEXT__
-#include <cstdint>
+#include <stdint.h>
 
 struct __attribute__((packed)) Context {
     int64_t registers[31];

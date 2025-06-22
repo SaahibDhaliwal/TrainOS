@@ -9,7 +9,7 @@
 #include "rpi.h"
 #include "servers/console_server.h"
 
-#define IDLE_START_ROW 0
+#define IDLE_START_ROW 13
 #define IDLE_START_COL 0
 #define IDLE_LABEL "Idle Time: "
 
@@ -18,18 +18,11 @@ static char* const TIMER_BASE = (char*)(0xfe003000);
 #define TIMER_REG(offset) (*(volatile uint32_t*)(TIMER_BASE + offset))
 
 void print_idle_percentage(int printTid) {
-    uartPrintf(printTid, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL);
-    uartPrintf(printTid, IDLE_LABEL);
-}
-
-void print_idle_percentage() {
-    uart_printf(CONSOLE, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL);
-    uart_printf(CONSOLE, IDLE_LABEL);
+    uartPrintf(printTid, "\033[s\033[%d;%dH%s\033[u", IDLE_START_ROW, IDLE_START_COL, IDLE_LABEL);
 }
 
 void update_idle_percentage(int percentage, int printTid) {
-    uartPrintf(printTid, "\033[%d;%dH", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL));
-    uartPutConsoleS(printTid, "\033[K");  // clear from cursor to end of line
-    uartPrintf(printTid, " %d.%d", percentage / 100, percentage % 100);
-    uartPutConsoleC(printTid, '%');
+    uartPrintf(printTid, "\033[s\033[%d;%dH%d.%d%%  \033[u", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL),
+               percentage / 100,
+               percentage % 100);  // padded to get rid of excess
 }

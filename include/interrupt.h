@@ -1,7 +1,7 @@
 #ifndef __INTERRUPT__
 #define __INTERRUPT__
 
-#include <cstdint>
+#include <stdint.h>
 
 enum class INTERRUPT_NUM { CLOCK = 97, UART = 153, COUNT };
 enum class EVENT_ID {

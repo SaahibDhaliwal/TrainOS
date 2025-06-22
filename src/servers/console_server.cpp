@@ -43,6 +43,19 @@ void ConsoleTXNotifier() {
     }
 }
 
+void ConsoleBufferDumper() {
+    int consoleServerTid = sys::MyParentTid();
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    int registerReturn = name_server::RegisterAs("console_dump");
+
+    uint32_t* sender;
+    emptyReceive(sender);
+    charSend(clockServerTid, toByte(clock_server::Command::KILL));
+    charSend(consoleServerTid, toByte(Command::PRINT));
+    ASSERT(1 == 2);
+    sys::Exit();
+}
+
 void ConsoleServer() {
     int registerReturn = name_server::RegisterAs(CONSOLE_SERVER_NAME);
     ASSERT(registerReturn != -1, "UNABLE TO REGISTER CONSOLE SERVER\r\n");
@@ -53,13 +66,18 @@ void ConsoleServer() {
 
     uint32_t txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
     uint32_t rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
+    sys::Create(notifierPriority, ConsoleBufferDumper);
 
     uint32_t rxClientTid = -1;  // assumption is one command task
 
+    RingBuffer<char, Config::CONSOLE_QUEUE_SIZE> charQueue2;
+
+    bool waitForTx = false;
+
     for (;;) {
         uint32_t clientTid;
-        char msg[2] = {0};
-        int msgLen = sys::Receive(&clientTid, msg, 2);
+        char msg[Config::MAX_MESSAGE_LENGTH] = {0};
+        int msgLen = sys::Receive(&clientTid, msg, Config::MAX_MESSAGE_LENGTH - 1);
 
         Command command = commandFromByte(msg[0]);
 
@@ -69,17 +87,10 @@ void ConsoleServer() {
                 break;
             }
             case Command::TX: {
-                ASSERT(!charQueue.empty(), "TX WAS ENABLED WHEN WE HAD NO CHARS TO PROCESS");
+                // ASSERT(!charQueue.empty(), "TX WAS ENABLED WHEN WE HAD NO CHARS TO PROCESS");
                 ASSERT(!uartTXFull(CONSOLE), "TX SUPPOSED TO BE FREE");
 
-                do {
-                    uartPutTX(CONSOLE, *charQueue.pop());
-                } while (!charQueue.empty() && !uartTXFull(CONSOLE));  // drain as much as we can into the TX buffer
-
-                if (!charQueue.empty()) {
-                    emptyReply(txNotifier);  // re-enable TX interrupts
-                }
-
+                waitForTx = false;
                 break;
             }
             case Command::RX: {
@@ -91,15 +102,18 @@ void ConsoleServer() {
                 break;
             }
             case Command::PUT: {
-                if (!uartTXFull(CONSOLE) && charQueue.empty()) {
-                    uartPutTX(CONSOLE, msg[1]);
-                } else {
-                    ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
-                    charQueue.push(msg[1]);
+                ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
+                charQueue.push(msg[1]);
 
-                    if (charQueue.size() == 1) {  // first pending char will enable TX interrupt
-                        emptyReply(txNotifier);
-                    }
+                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
+                break;
+            }
+            case Command::PUTS: {
+                int msgIdx = 1;
+                while (msgIdx < msgLen - 1) {
+                    ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
+                    charQueue.push(msg[msgIdx]);
+                    msgIdx += 1;
                 }
 
                 charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
@@ -115,9 +129,42 @@ void ConsoleServer() {
 
                 break;
             }
+            case Command::PRINT: {
+                while (!charQueue2.empty()) {
+                    char ch = *charQueue2.pop();
+                    if (ch == '\033') {
+                        uart_printf(CONSOLE, "Printed: \\033");  // ESC
+                    } else if (ch == '\r') {
+                        uart_printf(CONSOLE, "Printed: \\r");
+                    } else if (ch == '\n') {
+                        uart_printf(CONSOLE, "Printed: \\n");
+                    } else if (ch == '\t') {
+                        uart_printf(CONSOLE, "Printed: \\t");
+                    } else if (ch < 32 || ch > 126) {
+                        uart_printf(CONSOLE, "Printed: (non-printable: 0x%x)", (unsigned char)ch);
+                    } else {
+                        uart_printf(CONSOLE, "Printed: %c", ch);
+                    }
+                    uart_printf(CONSOLE, "\r\n");
+                }
+                ASSERT(1 == 2);
+
+                break;
+            }
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
             }
+        }
+
+        while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
+            char ch = *charQueue.pop();
+            charQueue2.push(ch);
+            uartPutTX(CONSOLE, ch);
+        }
+
+        if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT) {
+            emptyReply(txNotifier);  // re-enable TX interrupts
+            waitForTx = true;
         }
     }
 }

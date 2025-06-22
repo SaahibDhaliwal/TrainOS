@@ -51,4 +51,19 @@ int Putc(int tid, int channel, unsigned char ch) {
     }
 }
 
+int Puts(int tid, int channel, const char* str) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::PUTS);
+    strcpy(sendBuf + 1, str);
+
+    char reply = 0;
+    int response = sys::Send(tid, sendBuf, strlen(str) + 2, &reply, 1);
+
+    if (response < 0) {  // if Send() cannot reach the TID
+        return response;
+    } else {
+        return 0;
+    }
+}
+
 }  // namespace console_server

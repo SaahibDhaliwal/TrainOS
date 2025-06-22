@@ -2,7 +2,7 @@
 #define __CS_PROTOCOL__
 
 namespace clock_server {
-enum class Command : char { TIME, DELAY, DELAY_UNTIL, COUNT, UNKNOWN_COMMAND };
+enum class Command : char { TIME, DELAY, DELAY_UNTIL, KILL, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);

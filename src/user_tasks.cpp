@@ -1,57 +1,179 @@
 #include "user_tasks.h"
 
+#include <stdint.h>
 #include <string.h>
 
-#include <cstdint>
-
 #include "clock_server.h"
+#include "co_protocol.h"
+#include "command.h"
+#include "console_server.h"
+#include "cs_protocol.h"
 #include "cursor.h"
 #include "fixed_map.h"
+#include "generic_protocol.h"
 #include "idle_time.h"
 #include "marklin_server.h"
+#include "ms_protocol.h"
 #include "name_server.h"
-#include "protocols/ns_protocol.h"
+#include "ns_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "rps_client.h"
 #include "rps_server.h"
-#include "servers/console_server.h"
+#include "sensor.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
 #include "timer.h"
+#include "turnout.h"
 #include "uptime.h"
 #include "util.h"
 
-// void FinalFirstUserTask() {
-//     // do some initial print here:
-//     cursor_top_left();
-//     clear_screen();
-//     cursor_top_left();
-//     WITH_HIDDEN_CURSOR_BLOCKING(print_idle_percentage());
-//     WITH_HIDDEN_CURSOR_BLOCKING(print_uptime());
-//     uart_printf(CONSOLE, "\033[%d;%dH", 3, 0);
+void startup_print(int consoleTid, Turnout* turnouts) {
+    hide_cursor(consoleTid);
+    clear_screen(consoleTid);
+    cursor_top_left(consoleTid);
 
-//     cursor_white();
-//     show_cursor();
-//     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
-//     int console = sys::Create(30, &ConsoleServer);
-//     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
-//     int marklin_tid = sys::Create(31, &MarklinServer);
-//     uart_printf(CONSOLE, "[First Task]: Created Marklin Server: %u\r\n", marklin_tid);
-//     int clock = sys::Create(50, &ClockServer);
-//     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
+    print_ascii_art(consoleTid);
 
-//     uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
-//     // create notifiers
-//     uint32_t clockNotifierTid = sys::Create(20, &PrinterClockNotifier);
-//     uint32_t cmdNotifierTid = sys::Create(20, &PrinterCmdNotifier);
+    cursor_white(consoleTid);
+    // uartPutS(consoleTid, "Press 'q' to reboot\n");
+    print_uptime(consoleTid);
+    print_idle_percentage(consoleTid);
 
-//     uint32_t percentage = 0;
-//     int lastminute = 0;
+    print_turnout_table(turnouts, consoleTid);
+    print_sensor_table(consoleTid);
 
-//     sys::Exit();
-// }
+    cursor_soft_pink(consoleTid);
+    print_command_prompt_blocked(consoleTid);
+    cursor_white(consoleTid);
+}
+
+void PrinterClockNotifier() {
+    uint32_t clockTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    uint32_t printerTid = sys::MyParentTid();
+
+    for (;;) {
+        clock_server::Delay(clockTid, 10);
+        char idleString[21] = {0};
+        ui2a(sys::GetIdleTime(), 10, idleString);
+        sys::Send(printerTid, idleString, strlen(idleString) + 1, nullptr, 0);
+    }
+}
+
+void PrinterCmdNotifier() {
+    uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+    // uint32_t printerTid = sys::MyParentTid();
+
+    char userInput[256];
+    int userInputIdx = 0;
+    for (;;) {
+        char ch = console_server::Getc(consoleTid, 0);
+
+        if (ch >= 0) {
+            // if (ch == 'q' || ch == 'Q') {
+            //     return 0;
+            // }
+
+            // if (isInitializing) continue;
+
+            if (ch == '\r') {
+                print_clear_command_prompt(consoleTid);
+                userInput[userInputIdx] = '\0';  // mark end of user input command
+
+                if (userInput[0] == 'd' && userInput[1] == 'u' && userInput[2] == 'm' && userInput[3] == 'p') {
+                    int tid = name_server::WhoIs("console_dump");
+                    emptySend(tid);
+                }
+
+                // if nothing was added to queue, it must have been an invalid command
+                // int curQueueSize = queue_size(&marklinQueue);
+                // process_input_command(userInput, &marklinQueue, trains, currenTimeMillis);
+                // bool validCommand = curQueueSize != queue_size(&marklinQueue);
+                // WITH_HIDDEN_CURSOR(&consoleQueue, print_command_feedback(&consoleQueue, validCommand));
+
+                userInputIdx = 0;
+            } else if (ch == '\b' || ch == 0x7F) {
+                if (userInputIdx > 0) {
+                    backspace(consoleTid);
+                    userInputIdx -= 1;
+                }
+            } else if (ch >= 0x20 && ch <= 0x7E && userInputIdx < 254) {
+                userInput[userInputIdx++] = ch;
+                console_server::Putc(consoleTid, 0, ch);
+            }  // if
+        }  // if
+    }
+}
+
+void FinalFirstUserTask() {
+    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
+
+    int clockTid = sys::Create(50, &ClockServer);
+    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clockTid);
+
+    int consoleTid = sys::Create(30, &ConsoleServer);
+    uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", consoleTid);
+
+    int marklinTid = sys::Create(31, &MarklinServer);
+    uart_printf(CONSOLE, "[First Task]: Created Marklin Server: %u\r\n", marklinTid);
+
+    // uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+
+    Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];  // turnouts
+    // initialize_turnouts(turnouts, &marklinQueue);
+
+    startup_print(consoleTid, turnouts);  // initial display
+                                          // create notifiers
+
+    uint32_t clockNotifierTid = sys::Create(20, &PrinterClockNotifier);
+    uint32_t cmdNotifierTid = sys::Create(20, &PrinterCmdNotifier);
+
+    uint32_t percentage = 0;
+    int lastminute = 0;
+
+    if (clock_server::Delay(clockTid, 10) == -1) {
+        uart_printf(CONSOLE, "DELAY Cannot reach TID\r\n");
+    }
+
+    for (;;) {
+        uint32_t clientTid;
+        char msg[22] = {0};  // change this
+        int msgLen = sys::Receive(&clientTid, msg, 22);
+
+        if (clientTid == clockNotifierTid) {
+            update_uptime(consoleTid, timerGet());
+
+            a2ui(msg, 10, &percentage);
+            update_idle_percentage(percentage, consoleTid);
+
+            emptyReply(clockNotifierTid);
+
+        } else if (clientTid == cmdNotifierTid) {
+            if (msg[0] == 'S') {
+                // clock_server::Delay(clock, 100);
+                // uartPutS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklinTid, 0, 16);  // speed STOP W LIGHTS
+                marklin_server::Putc(marklinTid, 0, 15);  // train 14
+            } else if (msg[0] == 'G') {
+                // clock_server::Delay(clock, 100);
+                // uartPutS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklinTid, 0, 16 + 7);  // speed 7 WITH LIGHTS
+                marklin_server::Putc(marklinTid, 0, 15);      // train 14
+            } else if (msg[0] == 's') {
+                // clock_server::Delay(clock, 100);
+                // uartPutS(consoleTid, "DelayDone");
+                marklin_server::Putc(marklinTid, 0, 0);   // STOP W NO LIGHTS
+                marklin_server::Putc(marklinTid, 0, 15);  // train 14
+            }
+
+            console_server::Putc(consoleTid, 0, msg[0]);
+            emptyReply(cmdNotifierTid);
+        }
+    }
+
+    sys::Exit();
+}
 
 void FirstUserTask() {
     //  Assumes FirstUserTask is at Priority 2

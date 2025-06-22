@@ -1,12 +1,13 @@
-#include <map>
 #include <cstdint>
-//these should't be actually needed... right?
-//#include <cassert>
-//#include <new> 
+#include <map>
+// these should't be actually needed... right?
+// #include <cassert>
+// #include <new>
 #include <type_traits>
+
 #include "rpi.h"
 
-//WARNING: THIS MAY RUIN US LATER
+// WARNING: THIS MAY RUIN US LATER
 
 // SERIOUSLY, I AM UNSURE OF THE REPERCUSSIONS FOR DOING THIS
 // extern "C" {
@@ -22,12 +23,11 @@
 //   int _lseek(int fd, int ptr, int dir) { return 0; }
 // }
 
-
 template <std::size_t BlockSize, std::size_t Capacity>
 struct Pool {
-    //properly aligns T with our memory block
-    //alignof is the align requirements of T
-    //alignas will align the storage with the requirements of T
+    // properly aligns T with our memory block
+    // alignof is the align requirements of T
+    // alignas will align the storage with the requirements of T
     alignas(std::max_align_t) char storage[BlockSize * Capacity];
     bool used[Capacity] = {};
 
@@ -38,7 +38,7 @@ struct Pool {
                 return static_cast<void*>(&storage[i * BlockSize]);
             }
         }
-        //todo: replace w assert
+        // todo: replace w assert
         uart_printf(CONSOLE, "ERROR: bad alloc");
     }
 
@@ -46,9 +46,9 @@ struct Pool {
         auto base = reinterpret_cast<std::uintptr_t>(storage);
         auto p = reinterpret_cast<std::uintptr_t>(ptr);
         std::size_t index = (p - base) / BlockSize;
-        //should be replaced w assert
-        //  assert(index < Capacity);
-        if(index>=Capacity){
+        // should be replaced w assert
+        //   assert(index < Capacity);
+        if (index >= Capacity) {
             uart_printf(CONSOLE, "ERROR: pool index >= capacity");
         }
         used[index] = false;
@@ -61,14 +61,15 @@ struct PoolAllocator {
 
     Pool<BlockSize, Capacity>* pool;
 
-    PoolAllocator(Pool<BlockSize, Capacity>* p = nullptr) : pool(p) {}
+    PoolAllocator(Pool<BlockSize, Capacity>* p = nullptr) : pool(p) {
+    }
 
     template <typename U>
-    PoolAllocator(const PoolAllocator<U, BlockSize, Capacity>& other) noexcept
-        : pool(other.pool) {}
+    PoolAllocator(const PoolAllocator<U, BlockSize, Capacity>& other) noexcept : pool(other.pool) {
+    }
 
     T* allocate(std::size_t n) {
-        if(n != 1){
+        if (n != 1) {
             uart_printf(CONSOLE, "ERROR: multi-allocation");
         }
         return static_cast<T*>(pool->allocate());

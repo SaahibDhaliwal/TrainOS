@@ -1,8 +1,7 @@
 #ifndef __SYS_CALL_STUBS__
 #define __SYS_CALL_STUBS__
+#include <stdint.h>
 #include <string.h>
-
-#include <cstdint>
 
 #include "util.h"
 

@@ -1,7 +1,7 @@
 #ifndef __KERNEL_UTILS__
 #define __KERNEL_UTILS__
 
-#include <cstdint>
+#include <stdint.h>
 
 class TaskManager;
 class TaskDescriptor;
