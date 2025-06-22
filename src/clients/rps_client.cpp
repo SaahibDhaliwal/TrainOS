@@ -1,8 +1,8 @@
-#include "protocols/generic_protocol.h"
-#include "protocols/ns_protocol.h"
-#include "protocols/rps_protocol.h"
+#include "generic_protocol.h"
+#include "name_server_protocol.h"
 #include "rpi.h"
-#include "servers/rps_server.h"
+#include "rps_protocol.h"
+#include "rps_server.h"
 #include "sys_call_stubs.h"
 #include "timer.h"
 

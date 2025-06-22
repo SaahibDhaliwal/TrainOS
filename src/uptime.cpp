@@ -4,10 +4,8 @@
 #include <string.h>
 
 #include "cursor.h"
-#include "protocols/ns_protocol.h"
 #include "queue.h"
 #include "rpi.h"
-#include "servers/console_server.h"
 
 #define UPTIME_START_ROW 13
 #define UPTIME_START_COL 45

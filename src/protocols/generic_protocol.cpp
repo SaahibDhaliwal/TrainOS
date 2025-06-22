@@ -1,5 +1,5 @@
 
-#include "protocols/generic_protocol.h"
+#include "generic_protocol.h"
 
 #include "rpi.h"
 #include "sys_call_stubs.h"

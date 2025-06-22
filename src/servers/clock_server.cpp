@@ -1,13 +1,13 @@
 #include "clock_server.h"
 
+#include "clock_server_protocol.h"
 #include "config.h"
-#include "cs_protocol.h"
 #include "generic_protocol.h"
 #include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "name_server.h"
-#include "ns_protocol.h"
+#include "name_server_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "stack.h"
@@ -100,10 +100,7 @@ void ClockClient() {
 
 void ClockServer() {
     int registerReturn = name_server::RegisterAs(CLOCK_SERVER_NAME);
-    if (registerReturn == -1) {
-        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER\r\n");
-        sys::Exit();
-    }
+    ASSERT(registerReturn != -1, "UNABLE TO REACH NAME SERVER\r\n");
 
     DelayedClockClient clockClientSlabs[Config::MAX_TASKS];
     Stack<DelayedClockClient> freelist;
@@ -183,7 +180,7 @@ void ClockServer() {
                     sys::Exit();
                 }
                 default: {
-                    uart_printf(CONSOLE, "[Clock Server]: Unknown Command!\r\n");
+                    ASSERT(0, "[Clock Server]: Unknown Command!\r\n");
 
                     break;
                 }

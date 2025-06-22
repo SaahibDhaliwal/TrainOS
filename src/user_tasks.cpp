@@ -4,18 +4,19 @@
 #include <string.h>
 
 #include "clock_server.h"
-#include "co_protocol.h"
+#include "clock_server_protocol.h"
 #include "command.h"
 #include "console_server.h"
-#include "cs_protocol.h"
+#include "console_server_protocol.h"
 #include "cursor.h"
 #include "fixed_map.h"
 #include "generic_protocol.h"
 #include "idle_time.h"
 #include "marklin_server.h"
-#include "ms_protocol.h"
+#include "marklin_server_protocol.h"
 #include "name_server.h"
-#include "ns_protocol.h"
+#include "name_server_protocol.h"
+#include "printer_proprietor.h"
 #include "queue.h"
 #include "rpi.h"
 #include "rps_client.h"
@@ -29,26 +30,6 @@
 #include "uptime.h"
 #include "util.h"
 
-void startup_print(int consoleTid, Turnout* turnouts) {
-    hide_cursor(consoleTid);
-    clear_screen(consoleTid);
-    cursor_top_left(consoleTid);
-
-    print_ascii_art(consoleTid);
-
-    cursor_white(consoleTid);
-    // uartPutS(consoleTid, "Press 'q' to reboot\n");
-    print_uptime(consoleTid);
-    print_idle_percentage(consoleTid);
-
-    print_turnout_table(turnouts, consoleTid);
-    print_sensor_table(consoleTid);
-
-    cursor_soft_pink(consoleTid);
-    print_command_prompt_blocked(consoleTid);
-    cursor_white(consoleTid);
-}
-
 void PrinterClockNotifier() {
     uint32_t clockTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     uint32_t printerTid = sys::MyParentTid();
@@ -61,7 +42,7 @@ void PrinterClockNotifier() {
     }
 }
 
-void PrinterCmdNotifier() {
+void CommandTask() {
     uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     // uint32_t printerTid = sys::MyParentTid();
 
@@ -107,7 +88,11 @@ void PrinterCmdNotifier() {
 }
 
 void FinalFirstUserTask() {
-    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
+    sys::Create(49, &PrinterProprietor);
+
+    int nameServerTid = sys::Create(49, &NameServer);
+
+    uart_printf(CONSOLE, "[First Task]: Created Name Server: %u\r\n", sys::Create(49, &NameServer));
 
     int clockTid = sys::Create(50, &ClockServer);
     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clockTid);
@@ -123,11 +108,11 @@ void FinalFirstUserTask() {
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];  // turnouts
     // initialize_turnouts(turnouts, &marklinQueue);
 
-    startup_print(consoleTid, turnouts);  // initial display
-                                          // create notifiers
+    // startup_print(consoleTid, turnouts);  // initial display
+    // create notifiers
 
     uint32_t clockNotifierTid = sys::Create(20, &PrinterClockNotifier);
-    uint32_t cmdNotifierTid = sys::Create(20, &PrinterCmdNotifier);
+    uint32_t cmdNotifierTid = sys::Create(20, &CommandTask);
 
     uint32_t percentage = 0;
     int lastminute = 0;

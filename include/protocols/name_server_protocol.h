@@ -1,5 +1,5 @@
-#ifndef __NS_PROTOCOL__
-#define __NS_PROTOCOL__
+#ifndef __NAME_SERVER_PROTOCOL__
+#define __NAME_SERVER_PROTOCOL__
 
 namespace name_server {
 enum class Command : char { REGISTER, WHO_IS, COUNT, UNKNOWN_COMMAND };

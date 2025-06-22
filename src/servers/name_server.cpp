@@ -1,9 +1,10 @@
 #include "name_server.h"
 
 #include "generic_protocol.h"
-#include "ns_protocol.h"
+#include "name_server_protocol.h"
 #include "rpi.h"
 #include "sys_call_stubs.h"
+#include "test_utils.h"
 
 using namespace name_server;
 
@@ -62,8 +63,7 @@ void NameServer() {
                 break;
             }
             default: {
-                uart_printf(CONSOLE, "[Name Server]: Unknown Command!\r\n");
-
+                ASSERT(0, "[Name Server]: Unknown Command!\r\n");
                 break;
             }
         }

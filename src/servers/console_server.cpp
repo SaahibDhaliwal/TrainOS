@@ -1,19 +1,19 @@
 
 #include "console_server.h"
 
-#include "co_protocol.h"
 #include "config.h"
+#include "console_server_protocol.h"
 #include "generic_protocol.h"
 #include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "name_server.h"
-#include "ns_protocol.h"
+#include "name_server_protocol.h"
 #include "queue.h"
 // #include "rpi.h"
-#include "protocols/cs_protocol.h"
+#include "clock_server.h"
+#include "clock_server_protocol.h"
 #include "ring_buffer.h"
-#include "servers/clock_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
@@ -110,7 +110,7 @@ void ConsoleServer() {
             }
             case Command::PUTS: {
                 int msgIdx = 1;
-                while (msgIdx < msgLen - 1) {
+                while (msgIdx < msgLen) {
                     ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
                     charQueue.push(msg[msgIdx]);
                     msgIdx += 1;

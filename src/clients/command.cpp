@@ -7,7 +7,7 @@
 #include "rpi.h"
 #include "train.h"
 
-const Command Base_Command = {.operation = 0, .address = 0, .msDelay = 20, .partialCompletion = false};
+// const Command Base_Command = {.operation = 0, .address = 0, .msDelay = 20, .partialCompletion = false};
 
 #define COMMAND_PROMPT_START_ROW 29
 #define COMMAND_PROMPT_START_COL 0

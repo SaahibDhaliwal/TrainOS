@@ -1,10 +1,10 @@
-#include "protocols/ms_protocol.h"
+#include "console_server_protocol.h"
 
 #include "config.h"
 #include "sys_call_stubs.h"
 #include "util.h"
 
-namespace marklin_server {
+namespace console_server {
 
 char toByte(Command c) {
     return static_cast<char>(c);
@@ -39,6 +39,7 @@ int Putc(int tid, int channel, unsigned char ch) {
     char sendBuf[2] = {0};
     sendBuf[0] = toByte(Command::PUT);
     sendBuf[1] = ch;
+    if (ch == '\0') return 0;  // don't send a char if it's just the end of a string
 
     char reply = 0;
     int response = sys::Send(tid, sendBuf, 2, &reply, 1);
@@ -65,4 +66,4 @@ int Puts(int tid, int channel, const char* str) {
     }
 }
 
-}  // namespace marklin_server
+}  // namespace console_server

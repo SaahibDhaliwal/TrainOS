@@ -27,15 +27,6 @@ typedef enum {
     SENSOR_READ_ALL = 0x85,
 } Command_Byte;
 
-typedef struct {
-    char operation;
-    uint8_t address;
-    uint64_t msDelay;
-    bool partialCompletion;
-} Command;
-
-extern const Command Base_Command;
-
 typedef struct Train Train;
 
 // void process_input_command(char* command, Queue* marklinQueue, Train* trains, uint64_t currentTimeMillis);

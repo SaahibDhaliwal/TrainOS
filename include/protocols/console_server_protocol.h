@@ -1,5 +1,5 @@
-#ifndef __CO_PROTOCOL__
-#define __CO_PROTOCOL__
+#ifndef __CONSOLE_SERVER_PROTOCOL__
+#define __CONSOLE_SERVER_PROTOCOL__
 
 namespace console_server {
 enum class Command : char { GET, PUT, PUTS, TX, RX, RT, TX_CONNECT, RX_CONNECT, PRINT, COUNT, UNKNOWN_COMMAND };

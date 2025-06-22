@@ -6,7 +6,7 @@
 #include "rpi.h"
 #include "servers/clock_server.h"
 #include "servers/console_server.h"
-#include "servers/printer_server.h"
+#include "servers/printer_proprietor.h"
 #include "servers/rps_server.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"

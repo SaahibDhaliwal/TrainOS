@@ -1,5 +1,5 @@
-#ifndef __MS_PROTOCOL__
-#define __MS_PROTOCOL__
+#ifndef __MARKLIN_SERVER_PROTOCOL__
+#define __MARKLIN_SERVER_PROTOCOL__
 
 namespace marklin_server {
 enum class Command : char { GET, PUT, PUTS, TX, RX, CTS, COUNT, UNKNOWN_COMMAND };

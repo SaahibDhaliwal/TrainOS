@@ -1,4 +1,4 @@
-#include "protocols/cs_protocol.h"
+#include "clock_server_protocol.h"
 
 #include "config.h"
 #include "sys_call_stubs.h"

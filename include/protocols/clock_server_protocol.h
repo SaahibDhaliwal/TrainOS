@@ -1,5 +1,5 @@
-#ifndef __CS_PROTOCOL__
-#define __CS_PROTOCOL__
+#ifndef __CLOCK_SERVER_PROTOCOL__
+#define __CLOCK_SERVER_PROTOCOL__
 
 namespace clock_server {
 enum class Command : char { TIME, DELAY, DELAY_UNTIL, KILL, COUNT, UNKNOWN_COMMAND };

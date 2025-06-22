@@ -1,4 +1,4 @@
-#include "protocols/ns_protocol.h"
+#include "name_server_protocol.h"
 
 #include "config.h"
 #include "sys_call_stubs.h"

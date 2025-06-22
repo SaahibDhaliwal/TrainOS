@@ -6,7 +6,7 @@
 #include "generic_protocol.h"
 #include "intrusive_node.h"
 #include "name_server.h"
-#include "ns_protocol.h"
+#include "name_server_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "rps_protocol.h"

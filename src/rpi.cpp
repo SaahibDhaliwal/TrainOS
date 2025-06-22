@@ -5,9 +5,9 @@
 #include <string.h>
 
 #include "config.h"
-#include "protocols/co_protocol.h"
-#include "protocols/ns_protocol.h"
-#include "servers/console_server.h"
+#include "console_server.h"
+#include "console_server_protocol.h"
+#include "name_server_protocol.h"
 #include "test_utils.h"
 #include "util.h"
 
