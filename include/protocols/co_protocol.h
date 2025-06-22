@@ -2,7 +2,7 @@
 #define __CO_PROTOCOL__
 
 namespace console_server {
-enum class Command : char { GET, PUT, TX, RX, RT, COUNT, UNKNOWN_COMMAND };
+enum class Command : char { GET, PUT, TX, RX, RT, TX_CONNECT, RX_CONNECT, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);

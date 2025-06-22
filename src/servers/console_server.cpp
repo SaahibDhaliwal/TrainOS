@@ -12,6 +12,7 @@
 #include "queue.h"
 // #include "rpi.h"
 #include "protocols/cs_protocol.h"
+#include "ring_buffer.h"
 #include "servers/clock_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
@@ -20,88 +21,40 @@
 
 using namespace console_server;
 
-// issue: the notifier will keep notifying about TX being available, even though we are waiting for RX.
-//  Ideally, we would disable TX if we didn't need it and only enable RX.
-//  But if we are in awaitEvent() for RX and then the server wants to transmit with TX, it will reply to the notifier
-//  who did not send
 void ConsoleRXNotifier() {
     int consoleServerTid = sys::MyParentTid();
     uint32_t eventChoice = static_cast<uint32_t>(EVENT_ID::CONSOLE_RXRT);
 
-    int txCompare = static_cast<int>(MIS::TX);
-    int rxCompare = static_cast<int>(MIS::RX);
-    int rtCompare = static_cast<int>(MIS::RT);
-
+    charSend(consoleServerTid, toByte(Command::RX_CONNECT));
     for (;;) {
-        int interruptBits = sys::AwaitEvent(eventChoice);
-        ASSERT(interruptBits > 1);
-        if (interruptBits >= rtCompare || (interruptBits >= rxCompare && interruptBits < txCompare)) {
-            // We DO care if theres a receive timeout or RX nonempty
-            const char sendBuf = toByte(Command::RX);
-            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
-        } else {
-            uart_printf(CONSOLE, "Error in RX notifier\n\r");
-        }
+        sys::AwaitEvent(eventChoice);
+        charSend(consoleServerTid, toByte(Command::RX));
     }
 }
 
 void ConsoleTXNotifier() {
-    // int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     int consoleServerTid = sys::MyParentTid();
     uint32_t eventChoice = static_cast<uint32_t>(EVENT_ID::CONSOLE_TX);
 
-    int txCompare = static_cast<int>(MIS::TX);
-    int rtCompare = static_cast<int>(MIS::RT);
-
+    charSend(consoleServerTid, toByte(Command::TX_CONNECT));
     for (;;) {
-        int interruptBits = sys::AwaitEvent(eventChoice);
-        ASSERT(interruptBits > 1);
-        if (interruptBits >= txCompare && interruptBits <= rtCompare) {
-            const char sendBuf = toByte(Command::TX);
-            sys::Send(consoleServerTid, &sendBuf, 1, nullptr, 0);
-        } else {
-            // we get here if we got back from waiting on a TX event, but the MIS TX bit was not 1
-            uart_printf(CONSOLE, "Error in TX notifier\n\r");
-        }
+        sys::AwaitEvent(eventChoice);
+        charSend(consoleServerTid, toByte(Command::TX));
     }
 }
 
-class CharNode : public IntrusiveNode<CharNode> {
-   public:
-    char c;
-};
-
 void ConsoleServer() {
     int registerReturn = name_server::RegisterAs(CONSOLE_SERVER_NAME);
-    if (registerReturn == -1) {
-        uart_printf(CONSOLE, "UNABLE TO REACH NAME SERVER\r\n");
-        sys::Exit();
-    }
-    // initialize character queue and client queue
-    Queue<CharNode> characterQueue;
+    ASSERT(registerReturn != -1, "UNABLE TO REGISTER CONSOLE SERVER\r\n");
 
-    CharNode consoleClientSlabs[Config::CONSOLE_PRINT_QUEUE];
-    Stack<CharNode> freelist;
+    RingBuffer<char, Config::CONSOLE_QUEUE_SIZE> charQueue;
 
-    for (int i = 0; i < Config::CONSOLE_PRINT_QUEUE; i += 1) {
-        freelist.push(&consoleClientSlabs[i]);
-    }
+    int notifierPriority = 63;  // TODO: think about this prio
 
-    // create notifiers
-    int notifierPriority = 32;  // should be higher priority than ConsoleServer (I think)
-    // otherwise, we may go to receive and then try to reply to our notifier when it wasn't waiting for a reply?
-    // update: this might not be the case anymore after the refactor
     uint32_t txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
     uint32_t rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
 
-    // uart_printf(CONSOLE, "notifierTID: %u", notifierTid);
-    uint32_t cmdUserTid = 0;
-    bool txNotifierFlag = true;
-    bool rxNotifierFlag = true;
-
-    // const char requestAllChar = static_cast<char>(EVENT_ID::CONSOLE_ALL);
-    // const char requestTXChar = static_cast<char>(EVENT_ID::CONSOLE_TX);
-    // const char requestRXRTChar = static_cast<char>(EVENT_ID::CONSOLE_RXRT);
+    uint32_t rxClientTid = -1;  // assumption is one command task
 
     for (;;) {
         uint32_t clientTid;
@@ -110,87 +63,61 @@ void ConsoleServer() {
 
         Command command = commandFromByte(msg[0]);
 
-        if (clientTid == txNotifier) {
-            if (command == Command::TX && !characterQueue.empty()) {
-                // pop from queue and print
-                CharNode* next_char = characterQueue.pop();
-                if (!uartCheckTX(CONSOLE)) {
-                    uart_printf(CONSOLE, "Notifier said it was free, but it wasn't\n\r");
-                }
-                uartPutTX(CONSOLE, next_char->c);
-                freelist.push(next_char);
-                // note that we DO NOT reply to the notifier until we want another interrupt to happen
-                // so we should check our queue and reply anyways, since we WANT another interrupt to happen so we can
-                // pop our queue
+        switch (command) {
+            case Command::TX_CONNECT:
+            case Command::RX_CONNECT: {  // initial notifier connection (TX or RX)
+                break;
+            }
+            case Command::TX: {
+                ASSERT(!charQueue.empty(), "TX WAS ENABLED WHEN WE HAD NO CHARS TO PROCESS");
+                ASSERT(!uartTXFull(CONSOLE), "TX SUPPOSED TO BE FREE");
 
-                if (!characterQueue.empty()) {
-                    // let the notifier know we want another interrupt since our queue isnt empty
-                    emptyReply(txNotifier);
+                do {
+                    uartPutTX(CONSOLE, *charQueue.pop());
+                } while (!charQueue.empty() && !uartTXFull(CONSOLE));  // drain as much as we can into the TX buffer
+
+                if (!charQueue.empty()) {
+                    emptyReply(txNotifier);  // re-enable TX interrupts
+                }
+
+                break;
+            }
+            case Command::RX: {
+                ASSERT(rxClientTid != -1, "RX WAS ENABLED WHEN WE HAD NO WAITING CLIENT");
+                ASSERT(!uartRXEmpty(CONSOLE), "RX SUPPOSED TO HAVE DATA");
+
+                charReply(rxClientTid, uartGetRX(CONSOLE));  // unblock client
+                rxClientTid = -1;
+                break;
+            }
+            case Command::PUT: {
+                if (!uartTXFull(CONSOLE) && charQueue.empty()) {
+                    uartPutTX(CONSOLE, msg[1]);
                 } else {
-                    // it is empty, so we can hold off on replying until we want another interrupt
-                    txNotifierFlag = false;
+                    ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
+                    charQueue.push(msg[1]);
+
+                    if (charQueue.size() == 1) {  // first pending char will enable TX interrupt
+                        emptyReply(txNotifier);
+                    }
                 }
 
-            } else if (command != Command::TX) {
-                uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
-            } else {
-                // otherwise, the character queue is empty
-                //  why would we get here after the first loop? we should not
-                txNotifierFlag = false;
+                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
+                break;
             }
-
-        } else if (clientTid == rxNotifier) {
-            if (cmdUserTid != 0) {  // if someone actually wants it
-                if (command == Command::RX) {
-                    charReply(cmdUserTid, uartGetRX(CONSOLE));  // reply to previous client
-                    cmdUserTid = 0;          // so that we don't get here again until we have someone asking for a getc
-                    rxNotifierFlag = false;  // hold off on replying to notifier until next time
+            case Command::GET: {
+                rxClientTid = clientTid;
+                if (!uartRXEmpty(CONSOLE)) {  // already have something to give?
+                    charReply(rxClientTid, uartGetRX(CONSOLE));
                 } else {
-                    uart_printf(CONSOLE, "Notifier did not send a valid command\n\r");
+                    emptyReply(rxNotifier);  // enable RX interrupt
                 }
-            } else {
-                // we should never get here after the first loop
-                // uart_printf(CONSOLE, "Nobody waiting on receive\n\r");
-                rxNotifierFlag = false;
-            }
 
-        } else if (command == Command::PUT) {
-            if (uartCheckTX(CONSOLE) && !txNotifierFlag) {
-                uartPutTX(CONSOLE, msg[1]);
-            } else {
-                // pop from free list and add to queue
-                CharNode* incoming_char = freelist.pop();
-                incoming_char->c = msg[1];
-                characterQueue.push(incoming_char);
-                if (characterQueue.size() == Config::CONSOLE_PRINT_QUEUE) {
-                    uart_printf(CONSOLE, "QUEUE LIMIT HIT!!!!!!!!!!!!\n\r");
-                }
-                // reply to notifier to signal we want interrupts enabled (if it's not notified already)
-                if (!txNotifierFlag) {
-                    // uart_printf(CONSOLE, "Replying to notifier...\r\n");
-                    emptyReply(txNotifier);
-                    txNotifierFlag = true;
-                }
+                break;
             }
-            // reply to client regardless
-            charReply(clientTid, static_cast<char>(Reply::SUCCESS));
-
-        } else if (command == Command::GET) {
-            // there should only ever be one person asking for getc
-            cmdUserTid = clientTid;
-            if (uartCheckRX(CONSOLE)) {
-                charReply(cmdUserTid, uartGetRX(CONSOLE));
-            } else {
-                // reply to notifier to signal we want interrupts enabled
-                if (!rxNotifierFlag) {
-                    emptyReply(rxNotifier);
-                    rxNotifierFlag = true;
-                }
+            default: {
+                ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
             }
-            // DO NOT REPLY TO CLIENT HERE. GETC MUST BE BLOCKING
-
-        } else {
-            uart_printf(CONSOLE, "Something broke in the console server...\n\r");
         }
     }
 }
@@ -214,15 +141,6 @@ void ConsoleFirstUserTask() {
     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
 
     int response = 0;
-    // if (clock_server::Delay(clock, 10) == -1) {
-    //     uart_printf(CONSOLE, "DELAY Cannot reach TID\r\n");
-    // }
-    // for (int i = 0; i < 100; i++) {
-    //     response = console_server::Putc(ctid, 0, 'a');
-    //     if (response) {
-    //         uart_printf(CONSOLE, "PUTC Cannot reach TID\r\n");
-    //     }
-    // }
 
     for (;;) {
         int c = console_server::Getc(ctid, 0);

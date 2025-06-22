@@ -99,7 +99,7 @@ void PrinterServer() {
     cursor_white();
     show_cursor();
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
-    int console = sys::Create(30, &ConsoleServer);
+    int console = sys::Create(60, &ConsoleServer);
     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
     int marklin_tid = sys::Create(31, &MarklinServer);
     uart_printf(CONSOLE, "[First Task]: Created Marklin Server: %u\r\n", marklin_tid);
@@ -130,16 +130,10 @@ void PrinterServer() {
         int msgLen = sys::Receive(&clientTid, msg, 22);
 
         if (clientTid == clockNotifierTid) {
-            // update time since boot AND idle time percentage
-            uartPutConsoleS(consoleTid, "\x1b[s");
-            // uartPutConsoleS(consoleTid, "\033[?25l");
-            // WITH_HIDDEN_CURSOR(consoleTid, update_uptime(consoleTid, timerGet()));
+            WITH_HIDDEN_CURSOR(consoleTid, update_uptime(consoleTid, timerGet()));
 
-            update_uptime(consoleTid, timerGet());
-            a2ui(msg, 10, &percentage);  // turn msg into an int
-            // WITH_HIDDEN_CURSOR(consoleTid, update_idle_percentage(percentage, consoleTid));
-            // uartPutConsoleS(consoleTid, "\033[?25h");
-            // uartPutConsoleS(consoleTid, "\x1b[u");
+            a2ui(msg, 10, &percentage);
+            WITH_HIDDEN_CURSOR(consoleTid, update_idle_percentage(percentage, consoleTid));
 
             emptyReply(clockNotifierTid);
 

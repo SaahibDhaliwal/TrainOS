@@ -4,9 +4,11 @@
 
 #include <cstdint>
 
+#include "clock_server.h"
 #include "cursor.h"
 #include "fixed_map.h"
 #include "idle_time.h"
+#include "marklin_server.h"
 #include "name_server.h"
 #include "protocols/ns_protocol.h"
 #include "queue.h"
@@ -18,7 +20,38 @@
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
 #include "timer.h"
+#include "uptime.h"
 #include "util.h"
+
+// void FinalFirstUserTask() {
+//     // do some initial print here:
+//     cursor_top_left();
+//     clear_screen();
+//     cursor_top_left();
+//     WITH_HIDDEN_CURSOR_BLOCKING(print_idle_percentage());
+//     WITH_HIDDEN_CURSOR_BLOCKING(print_uptime());
+//     uart_printf(CONSOLE, "\033[%d;%dH", 3, 0);
+
+//     cursor_white();
+//     show_cursor();
+//     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
+//     int console = sys::Create(30, &ConsoleServer);
+//     uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
+//     int marklin_tid = sys::Create(31, &MarklinServer);
+//     uart_printf(CONSOLE, "[First Task]: Created Marklin Server: %u\r\n", marklin_tid);
+//     int clock = sys::Create(50, &ClockServer);
+//     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
+
+//     uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+//     // create notifiers
+//     uint32_t clockNotifierTid = sys::Create(20, &PrinterClockNotifier);
+//     uint32_t cmdNotifierTid = sys::Create(20, &PrinterCmdNotifier);
+
+//     uint32_t percentage = 0;
+//     int lastminute = 0;
+
+//     sys::Exit();
+// }
 
 void FirstUserTask() {
     //  Assumes FirstUserTask is at Priority 2

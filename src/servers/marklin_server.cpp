@@ -192,10 +192,10 @@ void MarklinServer() {
     // initialize character queue and client queue
     Queue<CharNode> characterQueue;
 
-    CharNode marklinClientSlabs[Config::MARKLIN_PRINT_QUEUE];
+    CharNode marklinClientSlabs[Config::MARKLIN_QUEUE_SIZE];
     Stack<CharNode> freelist;
 
-    for (int i = 0; i < Config::MARKLIN_PRINT_QUEUE; i += 1) {
+    for (int i = 0; i < Config::MARKLIN_QUEUE_SIZE; i += 1) {
         freelist.push(&marklinClientSlabs[i]);
     }
 
@@ -246,7 +246,7 @@ void MarklinServer() {
                 if (ourStateMachine.checkState() && !characterQueue.empty()) {
                     // pop from queue and print
                     CharNode* next_char = characterQueue.pop();
-                    if (!uartCheckTX(MARKLIN)) {
+                    if (uartTXFull(MARKLIN)) {
                         uart_printf(CONSOLE, "Marklin state machine said we are good to TX, but actually not\n\r");
                     }
                     // rare case this breaks if something else is sending to this register that isn't us
@@ -299,7 +299,7 @@ void MarklinServer() {
 
         } else if (command == Command::PUT) {
             if (ourStateMachine.checkState()) {
-                if (!uartCheckTX(MARKLIN)) {
+                if (uartTXFull(MARKLIN)) {
                     uart_printf(CONSOLE, "Marklin state machine said we are good to TX, but actually not\n\r");
                 }
                 uartPutTX(MARKLIN, msg[1]);
@@ -318,7 +318,7 @@ void MarklinServer() {
                 CharNode* incoming_char = freelist.pop();
                 incoming_char->c = msg[1];
                 characterQueue.push(incoming_char);
-                if (characterQueue.size() == Config::MARKLIN_PRINT_QUEUE) {
+                if (characterQueue.size() == Config::MARKLIN_QUEUE_SIZE) {
                     uart_printf(CONSOLE, "QUEUE LIMIT HIT!!\n\r");
                 }
                 // // reply to notifier to signal we want interrupts enabled (if it's not notified already)
@@ -334,7 +334,7 @@ void MarklinServer() {
         } else if (command == Command::GET) {
             // there should only ever be one person asking for getc
             getcClient = clientTid;
-            if (uartCheckRX(MARKLIN)) {
+            if (!uartRXEmpty(MARKLIN)) {
                 charReply(getcClient, uartGetRX(MARKLIN));
             } else {
                 // reply to notifier to signal we want interrupts enabled

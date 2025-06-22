@@ -37,8 +37,6 @@ void broken_print(int consoleTid, uint64_t micros) {
     const int baseRow = UPTIME_START_ROW;
     const int baseCol = UPTIME_START_COL + strlen(UPTIME_LABEL);
 
-    uartPutConsoleS(consoleTid, "\x1b[s");
-
     // Print minutes
     uartPrintf(consoleTid, "\033[%d;%dH", baseRow, baseCol);
     if (minutes < 10) uartPutConsoleS(consoleTid, "0");
@@ -57,8 +55,6 @@ void broken_print(int consoleTid, uint64_t micros) {
 
     // Print tenths
     uartPrintf(consoleTid, "\033[%d;%dH%d", baseRow, baseCol + 6, tenth);
-
-    uartPutConsoleS(consoleTid, "\x1b[u");
 }
 
 void update_uptime(int printTid, uint64_t micros) {

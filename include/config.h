@@ -12,8 +12,8 @@ constexpr int NAME_SERVER_CAPACITY = 64;
 constexpr int MAX_MESSAGE_LENGTH = 256;
 constexpr int EXPERIMENT_COUNT = 2;
 constexpr uint32_t TICK_SIZE = 10000;
-constexpr int MARKLIN_PRINT_QUEUE = 64;
-constexpr int CONSOLE_PRINT_QUEUE = 5012;
+constexpr int MARKLIN_QUEUE_SIZE = 5012;
+constexpr int CONSOLE_QUEUE_SIZE = 5012;
 }  // namespace Config
 
 #endif /* config.h */

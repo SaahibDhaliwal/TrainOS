@@ -195,14 +195,12 @@ void uartClearICR(size_t line, IMSC input) {
     }
 }
 
-// Returns true if there's something in RX, false if empty
-bool uartCheckRX(size_t line) {
-    return !(UART_REG(line, UART_FR) & UART_FR_RXFE);
+bool uartRXEmpty(size_t line) {
+    return (UART_REG(line, UART_FR) & UART_FR_RXFE);
 }
 
-// Returns true if the TX has room to send, false if fifo/register is full
-bool uartCheckTX(size_t line) {
-    return !(UART_REG(line, UART_FR) & UART_FR_TXFF);
+bool uartTXFull(size_t line) {
+    return (UART_REG(line, UART_FR) & UART_FR_TXFF);
 }
 
 void uartPutTX(size_t line, char c) {

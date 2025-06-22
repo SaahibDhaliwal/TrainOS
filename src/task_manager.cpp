@@ -142,7 +142,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 // clear interrupt with UART ICR
                 uartClearICR(CONSOLE, IMSC::RT);
                 mis -= rtCompare;
-                consoleRXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(consoleRXEventTask);
                 consoleRXEventTask = nullptr;
             }
@@ -150,7 +149,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearIMSC(CONSOLE, IMSC::TX);
                 uartClearICR(CONSOLE, IMSC::TX);
                 mis -= txCompare;
-                consoleTXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(consoleTXEventTask);
                 consoleTXEventTask = nullptr;
             }
@@ -161,7 +159,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 // since it's already been done
                 // but we DO want to clear the interrupt at IMSC if it's high
                 if (consoleRXEventTask != nullptr) {
-                    consoleRXEventTask->setReturnValue(misOriginal);
                     rescheduleTask(consoleRXEventTask);
                     consoleRXEventTask = nullptr;
                 }

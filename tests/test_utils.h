@@ -3,11 +3,12 @@
 
 #include "cursor.h"
 
-#define ASSERT(expr)                                                                               \
+#define ASSERT(expr, ...)                                                                          \
     do {                                                                                           \
         if (!(expr)) {                                                                             \
             cursor_soft_red();                                                                     \
             uart_printf(CONSOLE, "[%s][FAIL] %s:%d: %s\r\n", __func__, __FILE__, __LINE__, #expr); \
+            uart_printf(CONSOLE, "" __VA_ARGS__);                                                  \
             cursor_white();                                                                        \
             for (;;) {                                                                             \
                 __asm__ volatile("wfi");                                                           \

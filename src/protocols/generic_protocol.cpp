@@ -26,9 +26,20 @@ int emptySend(int clientTid) {
     return res;
 }
 
+int charSend(int clientTid, const char msg) {
+    int res = sys::Send(clientTid, &msg, 1, nullptr, 0);
+    handleSendResponse(res, clientTid);
+    return res;
+}
+
 int emptyReply(int clientTid) {
     int res = sys::Reply(clientTid, nullptr, 0);
     handleSendResponse(res, clientTid);
+    return res;
+}
+
+int emptyReceive(uint32_t* outSenderTid) {
+    int res = sys::Receive(outSenderTid, nullptr, 0);
     return res;
 }
 
