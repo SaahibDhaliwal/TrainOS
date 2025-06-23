@@ -68,11 +68,11 @@ void FinalFirstUserTask() {
     int clockTid = sys::Create(50, &ClockServer);
     int consoleTid = sys::Create(30, &ConsoleServer);
     int marklinServerTid = sys::Create(30, &MarklinServer);
-
     int printerProprietorTid = sys::Create(49, &PrinterProprietor);
+
     startup_print(printerProprietorTid);
 
-    int commandServerTid = sys::Create(30, &CommandServer);
+    int commandServerTid = sys::Create(20, &CommandServer);
 
     sys::Exit();
 }

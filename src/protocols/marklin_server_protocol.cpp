@@ -11,6 +11,7 @@
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "util.h"
+
 namespace marklin_server {
 
 char toByte(Command_Byte c) {
@@ -50,6 +51,9 @@ int Putc(int tid, int channel, unsigned char ch) {
     char sendBuf[2] = {0};
     sendBuf[0] = toByte(Command::PUT);
     sendBuf[1] = ch;
+    if (ch > 127) {
+        sendBuf[0] = toByte(Command::SENSOR_READ);
+    }
 
     if (ch == '\0') return 0;  // don't send a char if it's just the end of a string
 
@@ -65,12 +69,6 @@ int Putc(int tid, int channel, unsigned char ch) {
 }
 
 int Puts(int tid, int channel, const char* str) {
-    for (int i = 0; i < strlen(str); i++) {
-        Putc(tid, 0, str[i]);
-    }
-
-    return 0;
-
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::PUTS);
     strcpy(sendBuf + 1, str);

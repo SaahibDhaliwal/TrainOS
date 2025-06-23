@@ -14,6 +14,7 @@
 #include "printer_proprietor_protocol.h"
 #include "ring_buffer.h"
 #include "rpi.h"
+#include "sensor_server.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "train.h"
@@ -198,6 +199,8 @@ void CommandTask() {
     ASSERT(commandServerTid >= 0, "UNABLE TO GET COMMAND_SERVER_NAME\r\n");
 
     print_clear_command_prompt(printerProprietorTid);
+
+    int sensorServerTid = sys::Create(20, &SensorServer);
 
     char userInput[Config::MAX_COMMAND_LENGTH];
     int userInputIdx = 0;

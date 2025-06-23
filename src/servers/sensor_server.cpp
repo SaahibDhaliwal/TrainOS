@@ -76,9 +76,9 @@ void print_sensor_table(uint32_t consoleTid) {
     draw_grid_frame(consoleTid);
 }
 
-static void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity) {
+void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity) {
     printer_proprietor::printF(tid, 0, "\033[%d;%dH", TABLE_START_ROW + 2 + sensorBufferIdx, TABLE_START_COL + 7);
-    printer_proprietor::printS(tid, 0, "\033[1m");
+    printer_proprietor::printS(tid, 0, "\033[1m");  // bold or increased intensity
 
     if (evenParity) {
         cursor_sharp_blue(tid);
@@ -87,19 +87,12 @@ static void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, b
     }
 
     printer_proprietor::printF(tid, 0, "%c%d ", sensor_buffer[sensorBufferIdx].box, sensor_buffer[sensorBufferIdx].num);
-    printer_proprietor::printS(tid, 0, "\033[22m");
+    printer_proprietor::printS(tid, 0, "\033[22m");  // normal intensity
 }
-
-// void read_sensors(Queue* marklin_queue) {
-//     Command readSensorsCmd = Base_Command;
-//     readSensorsCmd.operation = SENSOR_READ_ALL;
-//     readSensorsCmd.msDelay = 200;
-//     queue_push(marklin_queue, readSensorsCmd);
-// }
 
 // one is for their position in the array, the other is their position on the UI
 
-void process_sensor_byte(char* sensorBytes, int sensorByteIdx, Sensor* sensors, int* sensorBufferIdx,
+void process_sensor_byte(unsigned char* sensorBytes, int sensorByteIdx, Sensor* sensors, int* sensorBufferIdx,
                          bool* isSensorBufferParityEven, uint32_t printerTid) {
     char byte = sensorBytes[sensorByteIdx];
     int sensorByteCount = sensorByteIdx + 1;
@@ -129,38 +122,52 @@ void process_sensor_byte(char* sensorBytes, int sensorByteIdx, Sensor* sensors, 
 
 void SensorServer() {
     // uint32_t commandTid = sys::MyParentTid();
-    uint32_t printerTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
+    int printerTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
     ASSERT(printerTid >= 0, "UNABLE TO GET PRINTER_PROPRIETOR_NAME\r\n");
 
-    uint32_t clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    uint32_t marklinTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
+    int marklinTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
     ASSERT(marklinTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
+
+    // clock_server::Delay(clockServerTid, 200);  // some delay at the start
 
     Sensor sensorBytes[SENSOR_BYTE_SIZE];
     initialize_sensors(sensorBytes);
-    int nonSensorWindow = 10;
+    int nonSensorWindow = 5;
     unsigned char requestChar = 0x85;
-    int sensorByteIdx = 0;
+    // int sensorByteIdx = 0;
     int sensorBufferIdx = 0;
     bool isSensorBufferParityEven = true;
 
     for (;;) {
+        // uart_printf(CONSOLE, "Start delay ");
         // delay
         clock_server::Delay(clockServerTid, nonSensorWindow);
+        // uart_printf(CONSOLE, "Done delay ");
 
-        char sensorBase = 'A';
-        bool first8 = true;
-        unsigned char sensorVal = 1;
-
+        // uart_printf(CONSOLE, "Start sens req ");
         // marklin request
         marklin_server::Putc(marklinTid, 0, requestChar);
 
+        // uart_printf(CONSOLE, "Done sensor req ");
+
         // we expect to getC ten times. NO HANDLING OF TIMEOUT
-        for (int i = 0; i < 11; i++) {
-            char result = marklin_server::Getc(marklinTid, 0);
-            process_sensor_byte(&result, i, sensorBytes, &sensorBufferIdx, &isSensorBufferParityEven, printerTid);
+        for (int i = 0; i < 10; i++) {
+            unsigned char result = marklin_server::Getc(marklinTid, 0);
+            // uart_printf(CONSOLE, "%d ", result);
+            // printer_proprietor::printF(printerTid, "%d ", result);
+            // ASSERT(1 == 2, "got here");
+            if (result) {
+                // printer_proprietor::printF(printerTid, "nonzero: %d ", result);
+                // uart_printf(CONSOLE, "\n\r nonzero: %d", result);
+                process_sensor_byte(&result, i, sensorBytes, &sensorBufferIdx, &isSensorBufferParityEven, printerTid);
+                // clock_server::Delay(clockServerTid, nonSensorWindow);
+            }
         }
+        // uart_printf(CONSOLE, " got all sensors \n\r");
+        // ASSERT(1 == 2, "sensor server got all sensors");
+
     }  // for
 }  // for

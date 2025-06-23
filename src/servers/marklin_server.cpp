@@ -112,7 +112,7 @@ void MarklinTXNotifier() {
     int marklinServerTid = sys::MyParentTid();
     uint32_t eventChoice = static_cast<uint32_t>(EVENT_ID::MARKLIN_TX);
 
-    charSend(marklinServerTid, toByte(Command::TX_CONNECT));  // a fake send. dw about it.
+    charSend(marklinServerTid, toByte(Command::TX_CONNECT));
 
     for (;;) {
         sys::AwaitEvent(eventChoice);
@@ -135,7 +135,7 @@ void MarklinServer() {
     int registerReturn = name_server::RegisterAs(MARKLIN_SERVER_NAME);
     ASSERT(registerReturn != -1, "UNABLE TO REGISTER MARKLIN SERVER\r\n");
 
-    RingBuffer<char, Config::MARKLIN_QUEUE_SIZE> charQueue;
+    RingBuffer<unsigned char, Config::MARKLIN_QUEUE_SIZE> charQueue;
 
     // create notifiers
     int notifierPriority = 32;  // should be higher priority than MarklinServer (I think)
@@ -147,12 +147,14 @@ void MarklinServer() {
     uint32_t rxClientTid = 0;
 
     bool ctsState = true;
+    bool performingSensorReading = false;
+    int sensorCount = 0;
     StateMachine ourStateMachine;
 
     for (;;) {
         uint32_t clientTid;
-        char msg[2] = {0};
-        int msgLen = sys::Receive(&clientTid, msg, 2);
+        char msg[Config::MAX_MESSAGE_LENGTH] = {0};
+        int msgLen = sys::Receive(&clientTid, msg, Config::MAX_MESSAGE_LENGTH);
 
         Command command = commandFromByte(msg[0]);
 
@@ -162,7 +164,7 @@ void MarklinServer() {
                 break;
             }
             case Command::CTS: {
-                ASSERT(clientTid == txNotifier, "GOT CTS COMMAND NOT FROM NOTIFIER");
+                ASSERT(clientTid == ctsNotifier, "GOT CTS COMMAND NOT FROM NOTIFIER");
                 if (ctsState) {
                     ctsState = false;
                     ourStateMachine.changeState(CTS_LOW);
@@ -189,6 +191,7 @@ void MarklinServer() {
 
                 charReply(rxClientTid, uartGetRX(MARKLIN));  // unblock client
                 rxClientTid = 0;
+                sensorCount++;
                 break;
             }
             case Command::PUT: {
@@ -198,9 +201,16 @@ void MarklinServer() {
                 charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
                 break;
             }
+            case Command::SENSOR_READ: {
+                ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
+
+                charQueue.push(0x85);
+                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
+                break;
+            }
             case Command::PUTS: {
                 int msgIdx = 1;
-                while (msgIdx < msgLen) {
+                while (msgIdx < msgLen - 1) {
                     ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
                     charQueue.push(msg[msgIdx]);
                     msgIdx += 1;
@@ -213,6 +223,7 @@ void MarklinServer() {
                 rxClientTid = clientTid;
                 if (!uartRXEmpty(MARKLIN)) {  // already have something to give?
                     charReply(rxClientTid, uartGetRX(MARKLIN));
+                    sensorCount++;
                 } else {
                     emptyReply(rxNotifier);  // enable RX interrupt
                 }
@@ -224,10 +235,21 @@ void MarklinServer() {
             }
         }
 
+        if (sensorCount == 10) {
+            // ASSERT(1 == 2, "GOT ALL SENSORS");
+            sensorCount = 0;
+            performingSensorReading = false;
+        }
+
         // note: we can only do this once since we need to wait for our three interrupts
-        if (ourStateMachine.checkState() && !charQueue.empty()) {
+        // this is for PUSHING to marklin
+        if (ourStateMachine.checkState() && !charQueue.empty() && !performingSensorReading) {
             ASSERT(!uartTXFull(MARKLIN), "Marklin state machine said we are good to TX, but actually not");
-            uartPutTX(MARKLIN, *charQueue.pop());
+            unsigned char msgByte = *charQueue.pop();
+            if (msgByte == 0x85) {  // if we are about to transmit a sensor request
+                performingSensorReading = true;
+            }
+            uartPutTX(MARKLIN, msgByte);
             ourStateMachine.changeState(TX_LOW);
             emptyReply(txNotifier);  // re-enable TX interrupts
         }

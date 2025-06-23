@@ -172,7 +172,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             int txCompare = static_cast<int>(MIS::TX);
             int rxCompare = static_cast<int>(MIS::RX);
             int ctsCompare = static_cast<int>(MIS::CTS);
-            int misOriginal = mis;
+            // int misOriginal = mis;
 
             ASSERT(mis <= 25 && mis > 0, "MIS Console Check broke! \n\r");
 
@@ -180,7 +180,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearIMSC(MARKLIN, IMSC::TX);
                 uartClearICR(MARKLIN, IMSC::TX);
                 mis -= txCompare;
-                marklinTXEventTask->setReturnValue(misOriginal);
+                // marklinTXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(marklinTXEventTask);
                 marklinTXEventTask = nullptr;
             }
@@ -188,14 +188,14 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearIMSC(MARKLIN, IMSC::RX);
                 uartClearICR(MARKLIN, IMSC::RX);
                 mis -= rxCompare;
-                marklinRXEventTask->setReturnValue(misOriginal);
+                // marklinRXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(marklinRXEventTask);
                 marklinRXEventTask = nullptr;
             }
             if (mis == static_cast<int>(MIS::CTS)) {
                 uartClearIMSC(MARKLIN, IMSC::CTS);
                 uartClearICR(MARKLIN, IMSC::CTS);
-                marklinCTSEventTask->setReturnValue(mis);  // this is not original
+                // marklinCTSEventTask->setReturnValue(mis);  // this is not original
                 rescheduleTask(marklinCTSEventTask);
                 marklinCTSEventTask = nullptr;
             }
