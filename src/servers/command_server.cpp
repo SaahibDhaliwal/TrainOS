@@ -180,8 +180,6 @@ void CommandTask() {
 
     printer_proprietor::clearCommandPrompt(printerProprietorTid);
 
-    int sensorServerTid = sys::Create(20, &SensorServer);
-
     char userInput[Config::MAX_COMMAND_LENGTH];
     int userInputIdx = 0;
     for (;;) {
@@ -191,8 +189,6 @@ void CommandTask() {
             // if (ch == 'q' || ch == 'Q') {
             //     return 0;
             // }
-
-            // if (isInitializing) continue;
 
             if (ch == '\r') {
                 printer_proprietor::clearCommandPrompt(printerProprietorTid);
@@ -212,7 +208,7 @@ void CommandTask() {
                 userInputIdx = 0;
             } else if (ch == '\b' || ch == 0x7F) {
                 if (userInputIdx > 0) {
-                    backspace(printerProprietorTid);
+                    printer_proprietor::backspace(printerProprietorTid);
                     userInputIdx -= 1;
                 }
             } else if (ch >= 0x20 && ch <= 0x7E && userInputIdx < 254) {
@@ -245,6 +241,8 @@ void CommandServer() {
     RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
     int terminalTid = sys::Create(20, &CommandTask);
+    int sensorServerTid = sys::Create(20, &SensorServer);
+
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];

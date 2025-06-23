@@ -143,6 +143,13 @@ void clearCommandPrompt(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void backspace(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::BACKSPACE);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
 void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid) {
     ASSERT(command == Command_Byte::SWITCH_STRAIGHT || command == Command_Byte::SWITCH_CURVED,
            "INVALID TURNOUT COMMAND!\r\n");
@@ -152,6 +159,16 @@ void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid) {
     sendBuf[1] = command;
 
     ui2a(turnoutIdx, 10, sendBuf + 2);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateSensor(char sensorBox, unsigned int sensorNum, int tid) {
+    char sendBuf[24] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_SENSOR);
+    sendBuf[1] = sensorBox;
+
+    ui2a(sensorNum, 10, sendBuf + 2);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }

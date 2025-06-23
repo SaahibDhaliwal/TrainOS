@@ -3,6 +3,7 @@
     "*.embeddedhtml": "html",
     "cstdint": "cpp",
     "cassert": "cpp",
-    "thread": "cpp"
+    "thread": "cpp",
+    "ratio": "cpp"
   }
 }

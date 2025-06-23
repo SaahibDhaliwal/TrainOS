@@ -51,9 +51,6 @@ int Putc(int tid, int channel, unsigned char ch) {
     char sendBuf[2] = {0};
     sendBuf[0] = toByte(Command::PUT);
     sendBuf[1] = ch;
-    if (ch > 127) {
-        sendBuf[0] = toByte(Command::SENSOR_READ);
-    }
 
     if (ch == '\0') return 0;  // don't send a char if it's just the end of a string
 

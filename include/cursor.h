@@ -36,7 +36,7 @@ bool get_cursor_visibility();
 
 // not blocking
 
-void backspace(int console);
+void back_space(int console);
 void clear_current_line(int console);
 void clear_screen(int console);
 void hide_cursor(int console);

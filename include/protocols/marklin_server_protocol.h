@@ -25,20 +25,7 @@ namespace marklin_server {
 //     SENSOR_READ_ALL = 0x85,
 // };
 
-enum class Command : char {
-    GET,
-    PUT,
-    PUTS,
-    TX,
-    RX,
-    CTS,
-    TX_CONNECT,
-    RX_CONNECT,
-    CTS_CONNECT,
-    SENSOR_READ,
-    COUNT,
-    UNKNOWN_COMMAND
-};
+enum class Command : char { GET, PUT, PUTS, TX, RX, CTS, TX_CONNECT, RX_CONNECT, CTS_CONNECT, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 // char toByte(Command_Byte c);

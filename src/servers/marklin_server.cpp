@@ -201,13 +201,6 @@ void MarklinServer() {
                 charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
                 break;
             }
-            case Command::SENSOR_READ: {
-                ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
-
-                charQueue.push(0x85);
-                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
-                break;
-            }
             case Command::PUTS: {
                 int msgIdx = 1;
                 while (msgIdx < msgLen - 1) {

@@ -12,9 +12,11 @@ enum class Command : char {
     PRINTS,
     REFRESH_CLOCKS,
     CLEAR_COMMAND_PROMPT,
+    BACKSPACE,
     STARTUP_PRINT,
     COMMAND_FEEDBACK,
     UPDATE_TURNOUT,
+    UPDATE_SENSOR,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -32,7 +34,9 @@ void printF(uint32_t tid, const char* fmt, ...);
 void refreshClocks(int tid);
 void commandFeedback(command_server::Reply reply, int tid);
 void clearCommandPrompt(int tid);
+void backspace(int tid);
 void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid);
+void updateSensor(char sensorBox, unsigned int sensorNum, int tid);
 void startupPrint(int tid);
 
 }  // namespace printer_proprietor

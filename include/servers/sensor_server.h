@@ -15,11 +15,9 @@ typedef struct {
 
 void initialize_sensors(Sensor* sensorBuffer);
 void print_sensor_table(uint32_t consoleTid);
-// void read_sensors(Queue* marklinQueue);
-// void process_sensor_byte(char* sensorBytes, int sensorByteIdx, Sensor* sensors, int* sensorBufferIdx,
-//                          bool* sensorBufferParityEven, Queue* consoleTid);
 void print_sensor_time(uint32_t consoleTid);
 void update_sensor_total_time(uint64_t millis, uint32_t consoleTid);
+void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity);
 
 void SensorServer();
 

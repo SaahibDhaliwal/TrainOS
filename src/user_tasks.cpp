@@ -24,7 +24,6 @@
 #include "rpi.h"
 #include "rps_client.h"
 #include "rps_server.h"
-#include "sensor.h"
 #include "sensor_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"

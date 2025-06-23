@@ -101,7 +101,7 @@ void print_ascii_art() {
     // clang-format on
 }
 
-void backspace(int console) {
+void back_space(int console) {
     console_server::Puts(console, 0, "\b \b");
 }
 
