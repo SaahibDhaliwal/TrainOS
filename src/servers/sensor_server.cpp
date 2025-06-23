@@ -1,3 +1,5 @@
+#include "sensor_server.h"
+
 #include "config.h"
 #include "generic_protocol.h"
 #include "idle_time.h"
@@ -128,8 +130,13 @@ void process_sensor_byte(char* sensorBytes, int sensorByteIdx, Sensor* sensors, 
 void SensorServer() {
     // uint32_t commandTid = sys::MyParentTid();
     uint32_t printerTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
-    uint32_t clockTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(printerTid >= 0, "UNABLE TO GET PRINTER_PROPRIETOR_NAME\r\n");
+
+    uint32_t clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
     uint32_t marklinTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
+    ASSERT(marklinTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
 
     Sensor sensorBytes[SENSOR_BYTE_SIZE];
     initialize_sensors(sensorBytes);
@@ -141,7 +148,7 @@ void SensorServer() {
 
     for (;;) {
         // delay
-        clock_server::Delay(clockTid, nonSensorWindow);
+        clock_server::Delay(clockServerTid, nonSensorWindow);
 
         char sensorBase = 'A';
         bool first8 = true;

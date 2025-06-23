@@ -6,6 +6,8 @@
 #include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
+#include "command_server.h"
+#include "command_server_protocol.h"
 #include "console_server.h"
 #include "console_server_protocol.h"
 #include "cursor.h"
@@ -23,6 +25,7 @@
 #include "rps_client.h"
 #include "rps_server.h"
 #include "sensor.h"
+#include "sensor_server.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
 #include "task_descriptor.h"
@@ -39,51 +42,6 @@
 // step 4: clean up markin server like console server
 // step 5:
 // other tasks like sensor notifier
-
-void CommandTask() {
-    uint32_t printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
-    uint32_t consoleTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
-
-    char userInput[256];
-    int userInputIdx = 0;
-    for (;;) {
-        char ch = console_server::Getc(consoleTid, 0);
-
-        if (ch >= 0) {
-            // if (ch == 'q' || ch == 'Q') {
-            //     return 0;
-            // }
-
-            // if (isInitializing) continue;
-
-            if (ch == '\r') {
-                print_clear_command_prompt(printerProprietorTid);
-                userInput[userInputIdx] = '\0';  // mark end of user input command
-
-                if (userInput[0] == 'd') {
-                    int tid = name_server::WhoIs("console_dump");
-                    emptySend(tid);
-                }
-
-                // if nothing was added to queue, it must have been an invalid command
-                // int curQueueSize = queue_size(&marklinQueue);
-                // process_input_command(userInput, &marklinQueue, trains, currenTimeMillis);
-                // bool validCommand = curQueueSize != queue_size(&marklinQueue);
-                // WITH_HIDDEN_CURSOR(&consoleQueue, print_command_feedback(&consoleQueue, validCommand));
-
-                userInputIdx = 0;
-            } else if (ch == '\b' || ch == 0x7F) {
-                if (userInputIdx > 0) {
-                    backspace(printerProprietorTid);
-                    userInputIdx -= 1;
-                }
-            } else if (ch >= 0x20 && ch <= 0x7E && userInputIdx < 254) {
-                userInput[userInputIdx++] = ch;
-                printer_proprietor::printC(printerProprietorTid, 0, ch);
-            }  // if
-        }  // if
-    }
-}
 
 void startup_print(int consoleTid) {
     hide_cursor(consoleTid);
@@ -108,12 +66,13 @@ void startup_print(int consoleTid) {
 void FinalFirstUserTask() {
     sys::Create(49, &NameServer);
     int clockTid = sys::Create(50, &ClockServer);
-
     int consoleTid = sys::Create(30, &ConsoleServer);
+    int marklinServerTid = sys::Create(30, &MarklinServer);
+
     int printerProprietorTid = sys::Create(49, &PrinterProprietor);
     startup_print(printerProprietorTid);
 
-    uint32_t cmdNotifierTid = sys::Create(20, &CommandTask);
+    int commandServerTid = sys::Create(30, &CommandServer);
 
     sys::Exit();
 }

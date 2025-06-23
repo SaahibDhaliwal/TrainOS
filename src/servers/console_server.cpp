@@ -46,6 +46,8 @@ void ConsoleTXNotifier() {
 void ConsoleBufferDumper() {
     int consoleServerTid = sys::MyParentTid();
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
     int registerReturn = name_server::RegisterAs("console_dump");
 
     uint32_t* sender = 0;
@@ -150,6 +152,8 @@ void ConsoleServer() {
                     }
                 }
                 int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+                ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
                 clock_server::Delay(clockServerTid, 10000);
                 charSend(clockServerTid, toByte(clock_server::Command::KILL));
                 ASSERT(1 == 2);
@@ -161,16 +165,19 @@ void ConsoleServer() {
             }
         }
 
+        bool drainedAny = false;
         while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
             unsigned char ch = *charQueue.pop();
             uartPutTX(CONSOLE, ch);
             charQueue2.push(ch);  // onto our logger
+            drainedAny = true;
         }
 
         // TODO: FIX ME
-        if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT) {
+        if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT && drainedAny) {
             emptyReply(txNotifier);  // re-enable TX interrupts
             waitForTx = true;
+            drainedAny = false;
         }
     }
 }

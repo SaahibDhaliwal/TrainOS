@@ -21,11 +21,13 @@
 using namespace printer_proprietor;
 
 void displayRefresher() {
-    uint32_t clockTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    uint32_t clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
     uint32_t printerTid = sys::MyParentTid();
 
     for (;;) {
-        clock_server::Delay(clockTid, 10);
+        clock_server::Delay(clockServerTid, 10);
         update_idle_percentage(sys::GetIdleTime(), printerTid);
         update_uptime(printerTid, timerGet());
     }
@@ -38,6 +40,7 @@ void PrinterProprietor() {
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];  // turnouts
     // initialize_turnouts(turnouts, &marklinQueue);
     int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
+    ASSERT(consoleServerTid >= 0, "UNABLE TO GET CONSOLE_SERVER_NAME\r\n");
 
     uint32_t displayRefresherTid = sys::Create(20, &displayRefresher);
 

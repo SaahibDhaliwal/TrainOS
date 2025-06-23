@@ -1,22 +1,20 @@
 #include "train.h"
 
 #include "command.h"
+#include "marklin_command_protocol.h"
+#include "marklin_server_protocol.h"
 #include "queue.h"
+#include "rpi.h"
 
 static const int trainAddresses[MAX_TRAINS] = {14, 15, 16, 17, 18, 55};
 
-// void initialize_trains(Train* trains, Queue* marklinQueue) {
-//     for (int i = 0; i < MAX_TRAINS; i += 1) {
-//         Command cmd = Base_Command;
-//         cmd.operation = TRAIN_STOP;
-//         cmd.address = trainAddresses[i];
-
-//         trains[i].speed = 0;
-//         trains[i].reversing = false;
-//         trains[i].id = trainAddresses[i];
-//         queue_push(marklinQueue, cmd);
-//     }
-// }
+void initializeTrains(Train* trains, int marklinServerTid) {
+    for (int i = 0; i < MAX_TRAINS; i += 1) {
+        trains[i].speed = 0;
+        trains[i].id = trainAddresses[i];
+        marklin_server::setTrainSpeed(marklinServerTid, Command_Byte::TRAIN_STOP, trainAddresses[i]);
+    }
+}
 
 int trainNumToIndex(int trainNum) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {

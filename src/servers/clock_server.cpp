@@ -72,6 +72,7 @@ void ClockFirstUserTask() {
 
 void ClockNotifier() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
     for (;;) {
         sys::AwaitEvent(static_cast<int>(EVENT_ID::CLOCK));
         emptySend(clockServerTid);
@@ -87,6 +88,7 @@ void ClockClient() {
     int delay_count = a2d(reply[2]) * 10 + a2d(reply[3]);
 
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
     int tid = sys::MyTid();
 
