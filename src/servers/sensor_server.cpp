@@ -77,7 +77,7 @@ void print_sensor_table(uint32_t consoleTid) {
 }
 
 void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity) {
-    printer_proprietor::printF(tid, 0, "\033[%d;%dH", TABLE_START_ROW + 2 + sensorBufferIdx, TABLE_START_COL + 7);
+    printer_proprietor::printF(tid, "\033[%d;%dH", TABLE_START_ROW + 2 + sensorBufferIdx, TABLE_START_COL + 7);
     printer_proprietor::printS(tid, 0, "\033[1m");  // bold or increased intensity
 
     if (evenParity) {
@@ -86,15 +86,15 @@ void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool eve
         cursor_sharp_pink(tid);
     }
 
-    printer_proprietor::printF(tid, 0, "%c%d ", sensor_buffer[sensorBufferIdx].box, sensor_buffer[sensorBufferIdx].num);
+    printer_proprietor::printF(tid, "%c%d ", sensor_buffer[sensorBufferIdx].box, sensor_buffer[sensorBufferIdx].num);
     printer_proprietor::printS(tid, 0, "\033[22m");  // normal intensity
 }
 
 // one is for their position in the array, the other is their position on the UI
 
-void process_sensor_byte(unsigned char* sensorBytes, int sensorByteIdx, Sensor* sensors, int* sensorBufferIdx,
+void process_sensor_byte(unsigned char byte, int sensorByteIdx, Sensor* sensors, int* sensorBufferIdx,
                          bool* isSensorBufferParityEven, uint32_t printerTid) {
-    char byte = sensorBytes[sensorByteIdx];
+    // char byte = sensorBytes[sensorByteIdx];  // 0 - 9
     int sensorByteCount = sensorByteIdx + 1;
     char box = 'A' + (sensorByteCount - 1) / 2;
 
@@ -133,7 +133,7 @@ void SensorServer() {
 
     // clock_server::Delay(clockServerTid, 200);  // some delay at the start
 
-    Sensor sensorBytes[SENSOR_BYTE_SIZE];
+    Sensor sensorBytes[SENSOR_BUFFER_SIZE];
     initialize_sensors(sensorBytes);
     int nonSensorWindow = 5;
     unsigned char requestChar = 0x85;
@@ -150,21 +150,14 @@ void SensorServer() {
         // uart_printf(CONSOLE, "Start sens req ");
         // marklin request
         marklin_server::Putc(marklinTid, 0, requestChar);
-
-        // uart_printf(CONSOLE, "Done sensor req ");
-
-        // we expect to getC ten times. NO HANDLING OF TIMEOUT
         for (int i = 0; i < 10; i++) {
             unsigned char result = marklin_server::Getc(marklinTid, 0);
-            // uart_printf(CONSOLE, "%d ", result);
-            // printer_proprietor::printF(printerTid, "%d ", result);
-            // ASSERT(1 == 2, "got here");
-            if (result) {
-                // printer_proprietor::printF(printerTid, "nonzero: %d ", result);
-                // uart_printf(CONSOLE, "\n\r nonzero: %d", result);
-                process_sensor_byte(&result, i, sensorBytes, &sensorBufferIdx, &isSensorBufferParityEven, printerTid);
-                // clock_server::Delay(clockServerTid, nonSensorWindow);
-            }
+
+            // if (result) {
+
+            process_sensor_byte(result, i, sensorBytes, &sensorBufferIdx, &isSensorBufferParityEven, printerTid);
+            // clock_server::Delay(clockServerTid, nonSensorWindow);
+            // }
         }
         // uart_printf(CONSOLE, " got all sensors \n\r");
         // ASSERT(1 == 2, "sensor server got all sensors");
