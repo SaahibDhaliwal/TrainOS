@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "printer_proprietor_protocol.h"
 #include "rpi.h"
 
 // blocking
@@ -31,6 +32,18 @@ void cursor_sharp_pink();
 void print_ascii_art();
 
 bool get_cursor_visibility();
+
+// not blocking
+
+#define WITH_HIDDEN_CURSOR(console, statement)                            \
+    do {                                                                  \
+        bool wasVisible = get_cursor_visibility();                        \
+        printer_proprietor::printF(console, "\033[s\033[?25l");           \
+        statement;                                                        \
+        printer_proprietor::printF(console, "\033[u");                    \
+        if (wasVisible) printer_proprietor::printF(console, "\033[?25h"); \
+    } while (0)
+
 void backspace(int console);
 void clear_current_line(int console);
 void clear_screen(int console);

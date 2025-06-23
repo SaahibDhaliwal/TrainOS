@@ -6,14 +6,12 @@
 
 #define MAX_TRAINS 6
 
-typedef struct Train {
+struct Train {
     uint8_t speed;
-    bool reversing;
-    uint64_t reversingStartMillis;
     uint8_t id;
-} Train;
+};
 
-// void initialize_trains(Train* trains, Queue* merklinQueue);
+void initializeTrains(Train* trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
 
 #endif
