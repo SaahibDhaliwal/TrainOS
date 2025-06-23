@@ -8,7 +8,6 @@
 #include "console_server.h"
 #include "console_server_protocol.h"
 #include "name_server_protocol.h"
-#include "printer_proprietor_protocol.h"
 #include "test_utils.h"
 #include "util.h"
 
@@ -129,7 +128,7 @@ void uartSetIMSC(size_t line, IMSC input) {
             UART_REG(line, UART_IMSC) |= UART_IMSC_RT;
             break;
         default:
-            ASSERT(0, "Clear ICR imsc case failed\n\r");
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
             // print some error
             break;
     }
@@ -140,24 +139,23 @@ void uartClearIMSC(size_t line, IMSC input) {
     switch (input) {
         case IMSC::CTS:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_CTS);  // it must be enabled for us to disable
-            UART_REG(line, UART_IMSC) |= ~UART_IMSC_CTS;
+            UART_REG(line, UART_IMSC) &= ~UART_IMSC_CTS;
             break;
         case IMSC::RX:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RX);
-            UART_REG(line, UART_IMSC) |= ~UART_IMSC_RX;
+            UART_REG(line, UART_IMSC) &= ~UART_IMSC_RX;
             break;
         case IMSC::TX:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_TX);
-            UART_REG(line, UART_IMSC) |= ~UART_IMSC_TX;
+            UART_REG(line, UART_IMSC) &= ~UART_IMSC_TX;
             break;
         case IMSC::RT:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RT);
-            UART_REG(line, UART_IMSC) |= ~UART_IMSC_RT;
+            UART_REG(line, UART_IMSC) &= ~UART_IMSC_RT;
             break;
         default:
             // print some error
-            ASSERT(0, "Clear ICR imsc case failed\n\r");
-
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
             break;
     }
 }
@@ -191,7 +189,7 @@ void uartClearICR(size_t line, IMSC input) {
             break;
         default:
             // print some error
-            ASSERT(0, "Clear ICR imsc case failed\n\r");
+            uart_printf(CONSOLE, "Clear ICR imsc case failed\n\r");
             break;
     }
 }
@@ -210,6 +208,90 @@ void uartPutTX(size_t line, char c) {
 
 unsigned char uartGetRX(size_t line) {
     return UART_REG(line, UART_DR);
+}
+
+void uartPutC(uint32_t tid, char c) {
+    int response = console_server::Putc(tid, 0, c);
+    if (response != 0) {  // for clarity
+        uart_printf(CONSOLE, "uart PUTC Cannot reach TID %d\r\n", response);
+    }
+}
+
+void uartPutS(uint32_t tid, const char* buf) {
+    int response = console_server::Puts(tid, 0, buf);
+    if (response != 0) {  // for clarity
+        uart_printf(CONSOLE, "uart PUTS Cannot reach TID %d\r\n", response);
+    }
+}
+
+void uartPrintf(uint32_t tid, const char* fmt, ...) {
+    va_list va;
+    char buf[12];
+    char out[Config::MAX_MESSAGE_LENGTH];
+    int outPos = 0;
+
+    va_start(va, fmt);
+    while (*fmt && outPos < sizeof(out) - 1) {
+        if (*fmt != '%') {
+            out[outPos++] = *fmt++;
+            continue;
+        }
+
+        fmt++;  // skip '%'
+
+        if (*fmt == '\0') {
+            break;
+        }
+
+        int width = 0;
+        if (*fmt >= '0' && *fmt <= '9') {
+            width = a2d(*fmt++);
+        }
+
+        const char* str = buf;
+        switch (*fmt) {
+            case 'u':
+                ui2a(va_arg(va, unsigned int), 10, buf);
+                break;
+            case 'd':
+                i2a(va_arg(va, int), buf);
+                break;
+            case 'x':
+                ui2a(va_arg(va, unsigned int), 16, buf);
+                break;
+            case 'c':
+                buf[0] = (char)va_arg(va, int);
+                buf[1] = '\0';
+                break;
+            case 's':
+                str = va_arg(va, const char*);
+                break;
+            case '%':
+                buf[0] = '%';
+                buf[1] = '\0';
+                break;
+            default:
+                buf[0] = *fmt;
+                buf[1] = '\0';
+                break;
+        }
+
+        fmt++;
+
+        int len = strlen(str);
+        for (int i = len; i < width && outPos < sizeof(out) - 1; i++) {
+            out[outPos++] = ' ';
+        }
+
+        while (*str && outPos < sizeof(out) - 1) {
+            out[outPos++] = *str++;
+        }
+    }
+
+    out[outPos] = '\0';
+    va_end(va);
+
+    uartPutS(tid, out);
 }
 
 // Configure the line properties (e.g, parity, baud rate) of a UART and ensure that it is enabled

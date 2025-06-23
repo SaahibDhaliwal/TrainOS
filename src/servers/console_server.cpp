@@ -46,7 +46,7 @@ void ConsoleTXNotifier() {
 void ConsoleBufferDumper() {
     int consoleServerTid = sys::MyParentTid();
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-    // int registerReturn = name_server::RegisterAs("console_dump");
+    int registerReturn = name_server::RegisterAs("console_dump");
 
     uint32_t* sender = 0;
     emptyReceive(sender);
@@ -130,39 +130,33 @@ void ConsoleServer() {
                 break;
             }
             case Command::PRINT: {  // only for our buffer dumper?
-                if (trackflag == false) {
-                    trackflag = true;
-                    charReply(clientTid, toByte(Reply::SUCCESS));
-                    break;
-                } else {
-                    while (!charQueue2.empty()) {
-                        char ch = *charQueue2.pop();
-                        if (ch == '\033') {
-                            uart_printf(CONSOLE, "\r\n");
-                            uart_printf(CONSOLE, "O: \\033");  // ESC
-                        } else if (ch == '\r') {
-                            uart_printf(CONSOLE, "Printed: \\r");
-                        } else if (ch == '\n') {
-                            uart_printf(CONSOLE, "Printed: \\n");
-                        } else if (ch == '\t') {
-                            uart_printf(CONSOLE, "Printed: \\t");
-                        } else if (ch < 32 || ch > 126) {
-                            uart_printf(CONSOLE, "Printed: (non-printable: 0x%x)", (unsigned char)ch);
-                        } else {
-                            uart_printf(CONSOLE, "%c", ch);
-                            if (ch == 'H') {
-                                uart_printf(CONSOLE, " ");
-                            }
+                while (!charQueue2.empty()) {
+                    char ch = *charQueue2.pop();
+                    if (ch == '\033') {
+                        uart_printf(CONSOLE, "\r\n");
+                        uart_printf(CONSOLE, "O: \\033");  // ESC
+                    } else if (ch == '\r') {
+                        uart_printf(CONSOLE, "Printed: \\r");
+                    } else if (ch == '\n') {
+                        uart_printf(CONSOLE, "Printed: \\n");
+                    } else if (ch == '\t') {
+                        uart_printf(CONSOLE, "Printed: \\t");
+                    } else if (ch < 32 || ch > 126) {
+                        uart_printf(CONSOLE, "Printed: (non-printable: 0x%x)", (unsigned char)ch);
+                    } else {
+                        uart_printf(CONSOLE, "%c", ch);
+                        if (ch == 'H') {
+                            uart_printf(CONSOLE, " ");
                         }
                     }
-                    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-                    clock_server::Delay(clockServerTid, 10000);
-                    charSend(clockServerTid, toByte(clock_server::Command::KILL));
-                    ASSERT(1 == 2);
-
-                    break;
                 }
-            }
+                int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+                clock_server::Delay(clockServerTid, 10000);
+                charSend(clockServerTid, toByte(clock_server::Command::KILL));
+                ASSERT(1 == 2);
+
+                break;
+                        }
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
             }

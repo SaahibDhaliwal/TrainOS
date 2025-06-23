@@ -60,7 +60,7 @@ void CommandTask() {
                 print_clear_command_prompt(printerProprietorTid);
                 userInput[userInputIdx] = '\0';  // mark end of user input command
 
-                if (userInput[0] == 'd' /*&& userInput[1] == 'u' && userInput[2] == 'm' && userInput[3] == 'p'*/) {
+                if (userInput[0] == 'd') {
                     int tid = name_server::WhoIs("console_dump");
                     emptySend(tid);
                 }
