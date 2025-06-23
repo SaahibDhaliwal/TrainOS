@@ -72,7 +72,6 @@ void ConsoleServer() {
     RingBuffer<char, 100000> charQueue2;
 
     bool waitForTx = false;
-    bool trackflag = false;
 
     for (;;) {
         uint32_t clientTid;
@@ -156,18 +155,16 @@ void ConsoleServer() {
                 ASSERT(1 == 2);
 
                 break;
-                        }
+            }
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
             }
         }
 
         while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
-            char ch = *charQueue.pop();
-            if (trackflag) {
-                charQueue2.push(ch);  // onto our logger
-            }
+            unsigned char ch = *charQueue.pop();
             uartPutTX(CONSOLE, ch);
+            charQueue2.push(ch);  // onto our logger
         }
 
         // TODO: FIX ME

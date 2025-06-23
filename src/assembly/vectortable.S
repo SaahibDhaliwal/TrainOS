@@ -52,6 +52,7 @@ vbar_baseaddr:
 // ---------------------------------
     .balign 0x80 
     lower_el_AARCH64_SYNCH:
+        msr DAIFSet, #0b1011
         b userToKernel          //Important one for A1
     
     .balign 0x80 

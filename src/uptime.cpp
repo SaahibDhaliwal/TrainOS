@@ -11,6 +11,7 @@
 #define UPTIME_START_ROW 13
 #define UPTIME_START_COL 45
 #define UPTIME_LABEL "Uptime: "
+#define UPTIME_LABEL_LENGTH 53
 
 static char* const TIMER_BASE = (char*)(0xfe003000);
 
@@ -29,6 +30,6 @@ void update_uptime(int printTid, uint64_t micros) {
     uint32_t hours = millis / (1000 * 60 * 60);
 
     printer_proprietor::printF(printTid, "\033[s\033[%d;%dH%dh %dm %d.%ds   \033[u", UPTIME_START_ROW,
-                               UPTIME_START_COL + strlen(UPTIME_LABEL), hours, minutes, seconds,
+                               UPTIME_LABEL_LENGTH, hours, minutes, seconds,
                                tenths);  // padded to get rid of excess
 }
