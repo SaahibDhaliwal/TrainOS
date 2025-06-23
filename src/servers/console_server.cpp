@@ -46,13 +46,12 @@ void ConsoleTXNotifier() {
 void ConsoleBufferDumper() {
     int consoleServerTid = sys::MyParentTid();
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-    int registerReturn = name_server::RegisterAs("console_dump");
+    // int registerReturn = name_server::RegisterAs("console_dump");
 
-    uint32_t* sender;
+    uint32_t* sender = 0;
     emptyReceive(sender);
-    charSend(clockServerTid, toByte(clock_server::Command::KILL));
     charSend(consoleServerTid, toByte(Command::PRINT));
-    ASSERT(1 == 2);
+    // ASSERT(1 == 2);
     sys::Exit();
 }
 
@@ -68,11 +67,12 @@ void ConsoleServer() {
     uint32_t rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
     sys::Create(notifierPriority, ConsoleBufferDumper);
 
-    uint32_t rxClientTid = -1;  // assumption is one command task
+    uint32_t rxClientTid = 0;  // assumption is one command task
 
     RingBuffer<char, 100000> charQueue2;
 
     bool waitForTx = false;
+    bool trackflag = false;
 
     for (;;) {
         uint32_t clientTid;
@@ -129,27 +129,39 @@ void ConsoleServer() {
 
                 break;
             }
-            case Command::PRINT: {
-                while (!charQueue2.empty()) {
-                    char ch = *charQueue2.pop();
-                    if (ch == '\033') {
-                        uart_printf(CONSOLE, "Printed: \\033");  // ESC
-                    } else if (ch == '\r') {
-                        uart_printf(CONSOLE, "Printed: \\r");
-                    } else if (ch == '\n') {
-                        uart_printf(CONSOLE, "Printed: \\n");
-                    } else if (ch == '\t') {
-                        uart_printf(CONSOLE, "Printed: \\t");
-                    } else if (ch < 32 || ch > 126) {
-                        uart_printf(CONSOLE, "Printed: (non-printable: 0x%x)", (unsigned char)ch);
-                    } else {
-                        uart_printf(CONSOLE, "Printed: %c", ch);
+            case Command::PRINT: {  // only for our buffer dumper?
+                if (trackflag == false) {
+                    trackflag = true;
+                    charReply(clientTid, toByte(Reply::SUCCESS));
+                    break;
+                } else {
+                    while (!charQueue2.empty()) {
+                        char ch = *charQueue2.pop();
+                        if (ch == '\033') {
+                            uart_printf(CONSOLE, "\r\n");
+                            uart_printf(CONSOLE, "O: \\033");  // ESC
+                        } else if (ch == '\r') {
+                            uart_printf(CONSOLE, "Printed: \\r");
+                        } else if (ch == '\n') {
+                            uart_printf(CONSOLE, "Printed: \\n");
+                        } else if (ch == '\t') {
+                            uart_printf(CONSOLE, "Printed: \\t");
+                        } else if (ch < 32 || ch > 126) {
+                            uart_printf(CONSOLE, "Printed: (non-printable: 0x%x)", (unsigned char)ch);
+                        } else {
+                            uart_printf(CONSOLE, "%c", ch);
+                            if (ch == 'H') {
+                                uart_printf(CONSOLE, " ");
+                            }
+                        }
                     }
-                    uart_printf(CONSOLE, "\r\n");
-                }
-                ASSERT(1 == 2);
+                    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+                    clock_server::Delay(clockServerTid, 10000);
+                    charSend(clockServerTid, toByte(clock_server::Command::KILL));
+                    ASSERT(1 == 2);
 
-                break;
+                    break;
+                }
             }
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
@@ -158,7 +170,9 @@ void ConsoleServer() {
 
         while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
             char ch = *charQueue.pop();
-            charQueue2.push(ch);
+            if (trackflag) {
+                charQueue2.push(ch);  // onto our logger
+            }
             uartPutTX(CONSOLE, ch);
         }
 

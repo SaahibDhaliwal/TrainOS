@@ -2,7 +2,7 @@
 #define __MARKLIN_SERVER_PROTOCOL__
 
 namespace marklin_server {
-enum class Command : char { GET, PUT, PUTS, TX, RX, CTS, COUNT, UNKNOWN_COMMAND };
+enum class Command : char { GET, PUT, PUTS, TX, RX, CTS, TX_CONNECT, RX_CONNECT, CTS_CONNECT, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);

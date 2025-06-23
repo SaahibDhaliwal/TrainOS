@@ -18,6 +18,8 @@ int Putc(int tid, int channel, unsigned char ch);
 
 int Puts(int tid, int channel, const char* str);
 
+int PrintBuff(int tid);
+
 int Printf(uint32_t tid, const char* fmt, ...);
 }  // namespace console_server
 

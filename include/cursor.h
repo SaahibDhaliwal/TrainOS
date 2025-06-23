@@ -7,15 +7,6 @@
 
 // blocking
 
-// #define WITH_HIDDEN_CURSOR_BLOCKING(statement)             \
-//     do {                                                   \
-//         bool wasVisible = get_cursor_visibility();         \
-//         uart_printf(CONSOLE, "\033[s\033[?25l");           \
-//         statement;                                         \
-//         uart_printf(CONSOLE, "\033[u");                    \
-//         if (wasVisible) uart_printf(CONSOLE, "\033[?25h"); \
-//     } while (0)
-
 bool get_cursor_visibility();
 void backspace();
 void clear_current_line();
@@ -38,17 +29,6 @@ void cursor_sharp_blue();
 void cursor_sharp_pink();
 
 void print_ascii_art();
-
-// not blocking
-
-// #define WITH_HIDDEN_CURSOR(console, statement)            \
-//     do {                                                  \
-//         bool wasVisible = get_cursor_visibility();        \
-//         uartPrintf(console, "\033[s\033[?25l");           \
-//         statement;                                        \
-//         uartPrintf(console, "\033[u");                    \
-//         if (wasVisible) uartPrintf(console, "\033[?25h"); \
-//     } while (0)
 
 bool get_cursor_visibility();
 void backspace(int console);

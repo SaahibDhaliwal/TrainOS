@@ -140,19 +140,19 @@ void uartClearIMSC(size_t line, IMSC input) {
     switch (input) {
         case IMSC::CTS:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_CTS);  // it must be enabled for us to disable
-            UART_REG(line, UART_IMSC) ^= UART_IMSC_CTS;
+            UART_REG(line, UART_IMSC) |= ~UART_IMSC_CTS;
             break;
         case IMSC::RX:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RX);
-            UART_REG(line, UART_IMSC) ^= UART_IMSC_RX;
+            UART_REG(line, UART_IMSC) |= ~UART_IMSC_RX;
             break;
         case IMSC::TX:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_TX);
-            UART_REG(line, UART_IMSC) ^= UART_IMSC_TX;
+            UART_REG(line, UART_IMSC) |= ~UART_IMSC_TX;
             break;
         case IMSC::RT:
             ASSERT(UART_REG(line, UART_IMSC) & UART_IMSC_RT);
-            UART_REG(line, UART_IMSC) ^= UART_IMSC_RT;
+            UART_REG(line, UART_IMSC) |= ~UART_IMSC_RT;
             break;
         default:
             // print some error
