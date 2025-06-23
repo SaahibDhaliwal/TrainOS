@@ -222,6 +222,10 @@ void MarklinServer() {
                 }
                 break;
             }
+            case Command::KILL: {
+                emptyReply(clientTid);
+                sys::Exit();
+            }
 
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO MARKLIN SERVER");
@@ -229,7 +233,6 @@ void MarklinServer() {
         }
 
         if (sensorCount == 10) {
-            // ASSERT(1 == 2, "GOT ALL SENSORS");
             sensorCount = 0;
             performingSensorReading = false;
         }

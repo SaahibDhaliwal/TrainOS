@@ -37,22 +37,18 @@ extern "C" int kmain() {
 #else
     TaskDescriptor* curTask = nullptr;  // the current user task
     TaskManager taskManager;            // interface for task scheduling and creation
+    bool quitFlag = false;
 
     taskManager.createTask(nullptr, 0, reinterpret_cast<uint64_t>(IdleTask));             // idle task
     taskManager.createTask(nullptr, 10, reinterpret_cast<uint64_t>(FinalFirstUserTask));  // spawn parent task
     for (;;) {
         curTask = taskManager.schedule();
-        if (!curTask) {
-            // TODO:
-            // we end up here because we can't reschedule the idle task since it's waiting on a print
-            // need to move printing the idle time over to the UI print task
-            // Joey tip: make sure that you initialize the marklin control uart to CTS and TX high
-            // because an interrupt is generated on a change
-
+        // in the event there are no more tasks to schedule or if we call quit
+        if (!curTask || quitFlag) {
             break;
         }
         uint32_t request = taskManager.activate(curTask);
-        kernel_util::handle(request, &taskManager, curTask);
+        kernel_util::handle(request, &taskManager, curTask, &quitFlag);
     }  // for
 
 #endif  // TESTING

@@ -2,7 +2,7 @@
 #define __NAME_SERVER_PROTOCOL__
 
 namespace name_server {
-enum class Command : char { REGISTER, WHO_IS, COUNT, UNKNOWN_COMMAND };
+enum class Command : char { REGISTER, WHO_IS, KILL, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);

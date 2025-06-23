@@ -28,7 +28,7 @@ void initialize_bss() {
     }  // for
 }
 
-void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
+void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask, bool* quitFlag) {
     switch (static_cast<SYSCALL_NUM>(N)) {
         case SYSCALL_NUM::CREATE: {
             uint64_t priority = curTask->getReg(0);
@@ -187,6 +187,12 @@ void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
         case SYSCALL_NUM::GET_IDLE: {
             curTask->setReturnValue(taskManager->getIdle());
             taskManager->rescheduleTask(curTask);
+            break;
+        }
+        case SYSCALL_NUM::QUIT: {
+            // taskManager->exitTask(curTask);
+            *quitFlag = true;
+            // ASSERT(1 == 2, "GOT HERE");
             break;
         }
         default: {  // we can make this more extensive

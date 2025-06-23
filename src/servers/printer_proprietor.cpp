@@ -107,6 +107,11 @@ void PrinterProprietor() {
 
                 break;
             }
+            case Command::KILL: {
+                charSend(consoleServerTid, console_server::toByte(console_server::Command::KILL));
+                emptyReply(clientTid);
+                sys::Exit();
+            }
             case Command::COMMAND_FEEDBACK: {
                 WITH_HIDDEN_CURSOR(consoleServerTid,
                                    command_feedback(consoleServerTid, command_server::replyFromByte(receiveBuffer[1])));

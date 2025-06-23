@@ -17,6 +17,7 @@ enum class Command : char {
     COMMAND_FEEDBACK,
     UPDATE_TURNOUT,
     UPDATE_SENSOR,
+    KILL,
     COUNT,
     UNKNOWN_COMMAND
 };

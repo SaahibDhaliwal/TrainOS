@@ -14,6 +14,7 @@ enum class SYSCALL_NUM {
     REPLY,
     AWAIT_EVENT,
     GET_IDLE,
+    QUIT,
     INTERRUPT = 50,
 };
 

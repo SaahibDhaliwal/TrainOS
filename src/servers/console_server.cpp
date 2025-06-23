@@ -160,6 +160,11 @@ void ConsoleServer() {
 
                 break;
             }
+            case Command::KILL: {
+                emptyReply(clientTid);
+                sys::Exit();
+                break;  // for compiler warning
+            }
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO CONSOLE SERVER");
             }

@@ -14,7 +14,7 @@ void run_init_array();
 void initialize_bss();
 
 // handles traps into the kernel
-void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask);
+void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask, bool* quitFlag);
 
 }  // namespace kernel_util
 

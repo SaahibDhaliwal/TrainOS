@@ -161,6 +161,16 @@ bool processInputCommand(char* command, Train* trains, int marklinServerTid, int
         }
 
         marklin_server::solenoidOff(marklinServerTid);
+    } else if (strncmp(command, "q", 1) == 0) {
+        charSend(clockServerTid, clock_server::toByte(clock_server::Command::KILL));
+        // will also kill the console server
+        charSend(printerProprietorTid, toByte(printer_proprietor::Command::KILL));
+        charSend(marklinServerTid, marklin_server::toByte(marklin_server::Command::KILL));
+        // Config::NAME_SERVER_TID
+        charSend(Config::NAME_SERVER_TID, name_server::toByte(name_server::Command::KILL));
+        sys::Quit();
+        ASSERT(1 == 2, "WE SHOULD NEVER GET HERE IF QUIT WORKS");
+
     } else {
         return false;
     }
