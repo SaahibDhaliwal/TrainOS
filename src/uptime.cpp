@@ -18,8 +18,7 @@ static char* const TIMER_BASE = (char*)(0xfe003000);
 #define TIMER_REG(offset) (*(volatile uint32_t*)(TIMER_BASE + offset))
 
 void print_uptime(int consoleTid) {
-    printer_proprietor::printF(consoleTid, "\033[s\033[%d;%dH%s\033[u", UPTIME_START_ROW, UPTIME_START_COL,
-                               UPTIME_LABEL);
+    console_server::Printf(consoleTid, "\033[%d;%dH%s", UPTIME_START_ROW, UPTIME_START_COL, UPTIME_LABEL);
 }
 
 void update_uptime(int printTid, uint64_t micros) {
@@ -29,7 +28,7 @@ void update_uptime(int printTid, uint64_t micros) {
     uint32_t minutes = (millis / (1000 * 60)) % 60;
     uint32_t hours = millis / (1000 * 60 * 60);
 
-    printer_proprietor::printF(printTid, "\033[s\033[%d;%dH%dh %dm %d.%ds   \033[u", UPTIME_START_ROW,
-                               UPTIME_LABEL_LENGTH, hours, minutes, seconds,
-                               tenths);  // padded to get rid of excess
+    console_server::Printf(printTid, "\033[%d;%dH%dh %dm %d.%ds   ", UPTIME_START_ROW, UPTIME_LABEL_LENGTH, hours,
+                           minutes, seconds,
+                           tenths);  // padded to get rid of excess
 }

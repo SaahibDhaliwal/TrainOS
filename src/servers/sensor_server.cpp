@@ -67,12 +67,12 @@ static void draw_grid_frame(uint32_t consoleTid) {
     int num_lines = sizeof(lines) / sizeof(lines[0]);
 
     for (int i = 0; i < num_lines; i += 1) {
-        printer_proprietor::printF(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
+        console_server::Printf(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
     }
 }
 
 void print_sensor_table(uint32_t consoleTid) {
-    printer_proprietor::printF(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
+    console_server::Printf(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
     draw_grid_frame(consoleTid);
 }
 

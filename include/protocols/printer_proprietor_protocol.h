@@ -3,8 +3,21 @@
 
 #include <cstdint>
 
+#include "command.h"
+#include "command_server_protocol.h"
+
 namespace printer_proprietor {
-enum class Command : char { PRINTC, PRINTS, REFRESH_CLOCKS, COUNT, UNKNOWN_COMMAND };
+enum class Command : char {
+    PRINTC,
+    PRINTS,
+    REFRESH_CLOCKS,
+    CLEAR_COMMAND_PROMPT,
+    STARTUP_PRINT,
+    COMMAND_FEEDBACK,
+    UPDATE_TURNOUT,
+    COUNT,
+    UNKNOWN_COMMAND
+};
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);
@@ -17,6 +30,10 @@ void printS(int tid, int channel, const char* str);
 void printC(int tid, int channel, const char ch);
 void printF(uint32_t tid, const char* fmt, ...);
 void refreshClocks(int tid);
+void commandFeedback(command_server::Reply reply, int tid);
+void clearCommandPrompt(int tid);
+void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid);
+void startupPrint(int tid);
 
 }  // namespace printer_proprietor
 

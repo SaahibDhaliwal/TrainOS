@@ -102,79 +102,79 @@ void print_ascii_art() {
 }
 
 void backspace(int console) {
-    printer_proprietor::printS(console, 0, "\b \b");
+    console_server::Puts(console, 0, "\b \b");
 }
 
 void cursor_down_one(int console) {
-    printer_proprietor::printS(console, 0, "\033[1B");
+    console_server::Puts(console, 0, "\033[1B");
 }
 
 void clear_current_line(int console) {
-    printer_proprietor::printS(console, 0, "\033[2K");
+    console_server::Puts(console, 0, "\033[2K");
 }
 
 void clear_screen(int console) {
-    printer_proprietor::printS(console, 0, "\033[2J");
+    console_server::Puts(console, 0, "\033[2J");
 }
 
 void hide_cursor(int console) {
-    printer_proprietor::printS(console, 0, "\033[?25l");
+    console_server::Puts(console, 0, "\033[?25l");
     g_isCursorVisible = false;
 }
 
 void show_cursor(int console) {
-    printer_proprietor::printS(console, 0, "\033[?25h");
+    console_server::Puts(console, 0, "\033[?25h");
     g_isCursorVisible = true;
 }
 
 void cursor_top_left(int console) {
-    printer_proprietor::printS(console, 0, "\033[H");
+    console_server::Puts(console, 0, "\033[H");
 }
 
 void cursor_white(int console) {
-    printer_proprietor::printS(console, 0, "\033[0m");
+    console_server::Puts(console, 0, "\033[0m");
 }
 
 void cursor_soft_blue(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;153m");
+    console_server::Puts(console, 0, "\033[38;5;153m");
 }
 
 void cursor_soft_pink(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;218m");
+    console_server::Puts(console, 0, "\033[38;5;218m");
 }
 
 void cursor_soft_green(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;34m");
+    console_server::Puts(console, 0, "\033[38;5;34m");
 }
 
 void cursor_soft_red(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;160m");
+    console_server::Puts(console, 0, "\033[38;5;160m");
 }
 
 void cursor_sharp_green(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;46m");
+    console_server::Puts(console, 0, "\033[38;5;46m");
 }
 
 void cursor_sharp_yellow(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;226m");
+    console_server::Puts(console, 0, "\033[38;5;226m");
 }
 
 void cursor_sharp_orange(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;202m");
+    console_server::Puts(console, 0, "\033[38;5;202m");
 }
 
 void cursor_sharp_blue(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;45m");
+    console_server::Puts(console, 0, "\033[38;5;45m");
 }
 
 void cursor_sharp_pink(int console) {
-    printer_proprietor::printS(console, 0, "\033[38;5;201m");
+    console_server::Puts(console, 0, "\033[38;5;201m");
 }
 
 void print_ascii_art(int console) {
     cursor_soft_pink(console);
     // clang-format off
-	printer_proprietor::printS(console, 0,
+	console_server::Puts(console, 0,
 	"__| |________________________________________________________________________________| |__\n\r"
 	"__   ________________________________________________________________________________   __\n\r"
 	"  | |                _____                        _                                  | |  \n\r"

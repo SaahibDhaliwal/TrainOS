@@ -2,6 +2,7 @@
   "files.associations": {
     "*.embeddedhtml": "html",
     "cstdint": "cpp",
-    "cassert": "cpp"
+    "cassert": "cpp",
+    "thread": "cpp"
   }
 }

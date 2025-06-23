@@ -19,30 +19,23 @@ static const Pos turnout_offsets[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT] = {
     {2, 1},  {4, 1},  {6, 1},  {8, 1},  {10, 1}, {12, 1},  {2, 8},   {4, 8},  {6, 8},  {8, 8},  {10, 8},
     {12, 8}, {2, 15}, {4, 15}, {6, 15}, {8, 15}, {10, 15}, {12, 15}, {2, 22}, {4, 22}, {6, 22}, {8, 22}};
 
-void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid) {
+void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid) {
     for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
-        Turnout turnout = {.id = i + 1, .state = CURVED};
-        turnouts[i] = turnout;
-
-        marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, turnouts[i].id);
+        marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, i + 1);
         clock_server::Delay(clockServerTid, 20);
-        WITH_HIDDEN_CURSOR(printerProprietorTid, update_turnout(turnouts, i, printerProprietorTid));
+        printer_proprietor::updateTurnout(SWITCH_CURVED, i, printerProprietorTid);
     }
 
     for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
-        Turnout turnout = {.id = i + 153, .state = UNKNOWN};
-        turnouts[i + SINGLE_SWITCH_COUNT] = turnout;
-
         if (i == 0 || i == 2) {
-            marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, turnouts[i + SINGLE_SWITCH_COUNT].id);
-            turnouts[i + SINGLE_SWITCH_COUNT].state = CURVED;
+            marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, (char)i + 153);
+            printer_proprietor::updateTurnout(SWITCH_CURVED, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
+
         } else {
-            marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, turnouts[i + SINGLE_SWITCH_COUNT].id);
-            turnouts[i + SINGLE_SWITCH_COUNT].state = STRAIGHT;
+            marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, (char)i + 153);
+            printer_proprietor::updateTurnout(SWITCH_STRAIGHT, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
         }
         clock_server::Delay(clockServerTid, 20);
-        WITH_HIDDEN_CURSOR(printerProprietorTid,
-                           update_turnout(turnouts, i + SINGLE_SWITCH_COUNT, printerProprietorTid));
     }
 
     marklin_server::solenoidOff(marklinServerTid);
@@ -71,7 +64,7 @@ void draw_grid_frame(uint32_t consoleTid) {
     int num_lines = sizeof(lines) / sizeof(lines[0]);
 
     for (int i = 0; i < num_lines; i += 1) {
-        printer_proprietor::printF(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
+        console_server::Printf(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
     }
 }
 
@@ -85,28 +78,28 @@ int turnoutIdx(int turnoutNum) {
     }
 }
 
-void update_turnout(Turnout* turnouts, int idx, uint32_t printerProprietorTid) {
+void update_turnout(Turnout* turnouts, int idx, uint32_t consoleServerTid) {
     Pos pos = turnout_offsets[idx];
     char state = turnouts[idx].state == STRAIGHT ? 'S' : 'C';
 
     if (pos.col == 22) {
-        printer_proprietor::printF(printerProprietorTid, "\033[%d;%dH", TABLE_START_ROW + pos.row,
-                                   TABLE_START_COL + pos.col + 4);
+        console_server::Printf(consoleServerTid, "\033[%d;%dH", TABLE_START_ROW + pos.row,
+                               TABLE_START_COL + pos.col + 4);
     } else {
-        printer_proprietor::printF(printerProprietorTid, "\033[%d;%dH", TABLE_START_ROW + pos.row,
-                                   TABLE_START_COL + pos.col + 3);
+        console_server::Printf(consoleServerTid, "\033[%d;%dH", TABLE_START_ROW + pos.row,
+                               TABLE_START_COL + pos.col + 3);
     }
 
-    printer_proprietor::printS(printerProprietorTid, 0, "\033[1m");
+    console_server::Puts(consoleServerTid, 0, "\033[1m");
 
     if (turnouts[idx].state == STRAIGHT) {
-        cursor_sharp_blue(printerProprietorTid);
+        cursor_sharp_blue(consoleServerTid);
     } else {
-        cursor_sharp_pink(printerProprietorTid);
+        cursor_sharp_pink(consoleServerTid);
     }
 
-    printer_proprietor::printC(printerProprietorTid, 0, state);
-    printer_proprietor::printS(printerProprietorTid, 0, "\033[22m");
+    console_server::Putc(consoleServerTid, 0, state);
+    console_server::Puts(consoleServerTid, 0, "\033[22m");
 }
 
 // void fill_turnout_nums(Turnout *turnouts, uint32_t consoleTid) {
@@ -124,6 +117,6 @@ void update_turnout(Turnout* turnouts, int idx, uint32_t printerProprietorTid) {
 // }
 
 void print_turnout_table(uint32_t consoleTid) {
-    printer_proprietor::printF(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
+    console_server::Printf(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
     draw_grid_frame(consoleTid);
 }

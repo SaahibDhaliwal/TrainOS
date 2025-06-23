@@ -43,34 +43,13 @@
 // step 5:
 // other tasks like sensor notifier
 
-void startup_print(int consoleTid) {
-    hide_cursor(consoleTid);
-    clear_screen(consoleTid);
-    cursor_top_left(consoleTid);
-
-    print_ascii_art(consoleTid);
-
-    cursor_white(consoleTid);
-    // uartPutS(consoleTid, "Press 'q' to reboot\n");
-    print_uptime(consoleTid);
-    print_idle_percentage(consoleTid);
-
-    print_turnout_table(consoleTid);
-    print_sensor_table(consoleTid);
-
-    cursor_soft_pink(consoleTid);
-    print_command_prompt_blocked(consoleTid);
-    cursor_white(consoleTid);
-}
-
 void FinalFirstUserTask() {
     sys::Create(49, &NameServer);
     int clockTid = sys::Create(50, &ClockServer);
     int consoleTid = sys::Create(30, &ConsoleServer);
     int marklinServerTid = sys::Create(30, &MarklinServer);
     int printerProprietorTid = sys::Create(49, &PrinterProprietor);
-
-    startup_print(printerProprietorTid);
+    printer_proprietor::startupPrint(printerProprietorTid);
 
     int commandServerTid = sys::Create(20, &CommandServer);
 

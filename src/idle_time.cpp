@@ -18,11 +18,11 @@ static char* const TIMER_BASE = (char*)(0xfe003000);
 #define TIMER_REG(offset) (*(volatile uint32_t*)(TIMER_BASE + offset))
 
 void print_idle_percentage(int printTid) {
-    printer_proprietor::printF(printTid, "\033[s\033[%d;%dH%s\033[u", IDLE_START_ROW, IDLE_START_COL, IDLE_LABEL);
+    console_server::Printf(printTid, "\033[%d;%dH%s", IDLE_START_ROW, IDLE_START_COL, IDLE_LABEL);
 }
 
 void update_idle_percentage(int percentage, int printTid) {
-    printer_proprietor::printF(printTid, "\033[s\033[%d;%dH%d.%d%%  \033[u", IDLE_START_ROW,
-                               IDLE_START_COL + strlen(IDLE_LABEL), percentage / 100,
-                               percentage % 100);  // padded to get rid of excess
+    console_server::Printf(printTid, "\033[%d;%dH%d.%d%%  ", IDLE_START_ROW, IDLE_START_COL + strlen(IDLE_LABEL),
+                           percentage / 100,
+                           percentage % 100);  // padded to get rid of excess
 }

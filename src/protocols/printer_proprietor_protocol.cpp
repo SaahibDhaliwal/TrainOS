@@ -120,10 +120,46 @@ void printF(uint32_t tid, const char* fmt, ...) {
     printS(tid, 0, out);
 }
 
+// whatever task calls this, will block because of the getIdleTime() sys called
 void refreshClocks(int tid) {
-    char sendBuf[22] = {0};
+    char sendBuf[23] = {0};
     sendBuf[0] = toByte(Command::REFRESH_CLOCKS);
     ui2a(sys::GetIdleTime(), 10, sendBuf + 1);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void commandFeedback(command_server::Reply reply, int tid) {
+    char sendBuf[3] = {0};
+    sendBuf[0] = toByte(Command::COMMAND_FEEDBACK);
+    sendBuf[1] = toByte(reply);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void clearCommandPrompt(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::CLEAR_COMMAND_PROMPT);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid) {
+    ASSERT(command == Command_Byte::SWITCH_STRAIGHT || command == Command_Byte::SWITCH_CURVED,
+           "INVALID TURNOUT COMMAND!\r\n");
+
+    char sendBuf[24] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TURNOUT);
+    sendBuf[1] = command;
+
+    ui2a(turnoutIdx, 10, sendBuf + 2);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void startupPrint(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::STARTUP_PRINT);
+
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 

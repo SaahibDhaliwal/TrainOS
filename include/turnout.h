@@ -12,7 +12,7 @@ typedef struct {
     SwitchState state;
 } Turnout;
 
-void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid);
+void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid);
 void print_turnout_table(uint32_t consoleTid);
 void update_turnout(Turnout* turnouts, int turnoutNum, uint32_t consoleTid);
 int turnoutIdx(int turnoutNum);

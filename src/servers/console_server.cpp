@@ -65,11 +65,11 @@ void ConsoleServer() {
 
     int notifierPriority = 63;  // TODO: think about this prio
 
-    uint32_t txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
-    uint32_t rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
+    int txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
+    int rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
     sys::Create(notifierPriority, ConsoleBufferDumper);
 
-    uint32_t rxClientTid = 0;  // assumption is one command task
+    int rxClientTid = 0;  // assumption is one command task
 
     RingBuffer<char, 100000> charQueue2;
 
