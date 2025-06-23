@@ -35,7 +35,6 @@ void gicInit() {
     // GICC_REG(GICC_CTLR) = GICC_REG(GICC_CTLR) | 0x1;
     // GICD_REG(GICD_CTLR) = GICD_REG(GICD_CTLR) | 0x1;
     // all interrupts disabled at GIC? Above isn't needed?
-    // uart_printf(CONSOLE, "gic has been init\n\r");
     gicTarget(97);   // route interrupt to IRQ on CPU 0
     gicEnable(97);   // enable interrupt
     gicTarget(153);  // uart

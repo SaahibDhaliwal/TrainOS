@@ -49,7 +49,6 @@ extern "C" int kmain() {
             // Joey tip: make sure that you initialize the marklin control uart to CTS and TX high
             // because an interrupt is generated on a change
 
-            // uart_printf(CONSOLE, "No task left to schedule. Exiting...\n\r");
             break;
         }
         uint32_t request = taskManager.activate(curTask);

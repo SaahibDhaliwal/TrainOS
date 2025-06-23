@@ -2,6 +2,7 @@
 
 #include "queue.h"
 #include "rpi.h"
+#include "test_utils.h"
 
 void TaskDescriptor::initialize(TaskDescriptor* newParent, uint8_t newPriority, uint64_t newEntryPoint,
                                 uint64_t newStackTop) {
@@ -31,10 +32,7 @@ int32_t TaskDescriptor::getTid() const {
 }
 
 int64_t TaskDescriptor::getReg(uint8_t reg) const {
-    if (reg >= 31) {
-        uart_printf(CONSOLE, "Trying to get register %d!\r\n", reg);
-        return 0;
-    }
+    ASSERT(reg < 31, "Trying to get register %d!\r\n", reg);
 
     return context.registers[reg];
 }

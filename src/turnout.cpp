@@ -3,6 +3,7 @@
 #include "command.h"
 #include "cursor.h"
 #include "pos.h"
+#include "printer_proprietor_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 
@@ -87,17 +88,17 @@ void draw_grid_frame(uint32_t consoleTid) {
     const char* lines[] = {
         "           Turnouts          ",
         "┌─────╦──────╦──────╦──────┐",
-        "│     ║      ║      ║      │",
+        "│ 1│  ║  7│  ║ 13│  ║ 153│ │",
         "├─────╬──────╬──────╬──────┤",
-        "│     ║      ║      ║      │",
+        "│ 2│  ║  8│  ║ 14│  ║ 154│ │",
         "├─────╬──────╬──────╬──────┤",
-        "│     ║      ║      ║      │",
+        "│ 3│  ║  9│  ║ 15│  ║ 155│ │",
         "├─────╬──────╬──────╬──────┤",
-        "│     ║      ║      ║      │",
+        "│ 4│  ║ 10│  ║ 16│  ║ 156│ │",
         "├─────╬──────╬──────╬──────┘",
-        "│     ║      ║      │",
+        "│ 5│  ║ 11│  ║ 17│  │",
         "├─────╬──────╬──────│",
-        "│     ║      ║      │",
+        "│ 6│  ║ 12│  ║ 18│  │",
         "└─────╩──────╩──────┘\n"
     };
     // clang-format on
@@ -105,7 +106,7 @@ void draw_grid_frame(uint32_t consoleTid) {
     int num_lines = sizeof(lines) / sizeof(lines[0]);
 
     for (int i = 0; i < num_lines; i += 1) {
-        uartPrintf(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
+        printer_proprietor::printF(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
     }
 }
 
@@ -119,46 +120,43 @@ int turnoutIdx(int turnoutNum) {
     }
 }
 
-void update_turnout(Turnout *turnouts, int idx, uint32_t consoleTid) {
-    Pos pos = turnout_offsets[idx];
-    char state = turnouts[idx].state == STRAIGHT ? 'S' : 'C';
+// void update_turnout(Turnout* turnouts, int idx, uint32_t consoleTid) {
+//     Pos pos = turnout_offsets[idx];
+//     char state = turnouts[idx].state == STRAIGHT ? 'S' : 'C';
 
-    if (pos.col == 22) {
-        uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col + 4);
-    } else {
-        uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col + 3);
-    }
+//     if (pos.col == 22) {
+//         uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col + 4);
+//     } else {
+//         uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col + 3);
+//     }
 
-    uartPutS(consoleTid, "\033[1m");
+//     uartPutS(consoleTid, "\033[1m");
 
-    if (turnouts[idx].state == STRAIGHT) {
-        cursor_sharp_blue(consoleTid);
-    } else {
-        cursor_sharp_pink(consoleTid);
-    }
+//     if (turnouts[idx].state == STRAIGHT) {
+//         cursor_sharp_blue(consoleTid);
+//     } else {
+//         cursor_sharp_pink(consoleTid);
+//     }
 
-    uartPutC(consoleTid, state);
-    uartPutS(consoleTid, "\033[22m");
-}
+//     uartPutC(consoleTid, state);
+//     uartPutS(consoleTid, "\033[22m");
+// }
 
-void fill_turnout_nums(Turnout *turnouts, uint32_t consoleTid) {
-    for (int idx = 0; idx < SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT; idx++) {
-        Pos pos = turnout_offsets[idx];
+// void fill_turnout_nums(Turnout *turnouts, uint32_t consoleTid) {
+//     for (int idx = 0; idx < SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT; idx++) {
+//         Pos pos = turnout_offsets[idx];
 
-        uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col);
+//         uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW + pos.row, TABLE_START_COL + pos.col);
 
-        if (pos.col == 22) {
-            uartPrintf(consoleTid, "%3d│", turnouts[idx].id);
-        } else {
-            uartPrintf(consoleTid, "%2d│", turnouts[idx].id);
-        }
-    }
-}
+//         if (pos.col == 22) {
+//             uartPrintf(consoleTid, "%3d│", turnouts[idx].id);
+//         } else {
+//             uartPrintf(consoleTid, "%2d│", turnouts[idx].id);
+//         }
+//     }
+// }
 
-void print_turnout_table(Turnout *turnouts, uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
+void print_turnout_table(uint32_t consoleTid) {
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
     draw_grid_frame(consoleTid);
-    uartPutS(consoleTid, "\033[s");  // save cursor
-    fill_turnout_nums(turnouts, consoleTid);
-    uartPutS(consoleTid, "\033[u");  // restore cursor
 }

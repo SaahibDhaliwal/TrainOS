@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "cursor.h"
+#include "printer_proprietor_protocol.h"
 #include "queue.h"
 #include "rpi.h"
 #include "train.h"
@@ -170,26 +171,26 @@ void print_command_feedback(uint32_t consoleTid, bool validCommand) {
     clear_current_line(consoleTid);
     if (validCommand) {
         cursor_soft_green(consoleTid);
-        uartPutS(consoleTid, "✔ Command accepted");
+        printer_proprietor::printS(consoleTid, 0, "✔ Command accepted");
     } else {
         cursor_soft_red(consoleTid);
-        uartPutS(consoleTid, "✖ Invalid command");
+        printer_proprietor::printS(consoleTid, 0, "✖ Invalid command");
     }  // if
 }
 
 void print_initial_command_prompt(uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
     clear_current_line(consoleTid);
-    uartPutS(consoleTid, "\r> ");
+    printer_proprietor::printS(consoleTid, 0, "\r> ");
 }
 
 void print_clear_command_prompt(uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
     clear_current_line(consoleTid);
-    uartPutS(consoleTid, "\r> ");
+    printer_proprietor::printS(consoleTid, 0, "\r> ");
 }
 
 void print_command_prompt_blocked(uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
-    uartPutS(consoleTid, "Initializing...");
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
+    printer_proprietor::printS(consoleTid, 0, "Initializing...");
 }

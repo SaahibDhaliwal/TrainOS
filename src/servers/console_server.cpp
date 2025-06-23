@@ -110,7 +110,7 @@ void ConsoleServer() {
             }
             case Command::PUTS: {
                 int msgIdx = 1;
-                while (msgIdx < msgLen) {
+                while (msgIdx < msgLen - 1) {
                     ASSERT(!charQueue.full(), "QUEUE LIMIT HIT");
                     charQueue.push(msg[msgIdx]);
                     msgIdx += 1;
@@ -162,41 +162,10 @@ void ConsoleServer() {
             uartPutTX(CONSOLE, ch);
         }
 
+        // TODO: FIX ME
         if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT) {
             emptyReply(txNotifier);  // re-enable TX interrupts
             waitForTx = true;
         }
     }
-}
-
-void ConsoleFirstUserTask() {
-    int ctid = name_server::WhoIs(CONSOLE_SERVER_NAME);
-    uart_printf(CONSOLE, "Done WHOIS\r\n");
-
-    cursor_top_left(ctid);
-    clear_screen(ctid);
-    cursor_top_left(ctid);
-    WITH_HIDDEN_CURSOR(ctid, print_idle_percentage(ctid));
-    uart_printf(CONSOLE, "\r\r\n\n");
-    cursor_white(ctid);
-
-    uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
-    int clock = sys::Create(50, &ClockServer);
-    uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", clock);
-    uart_printf(CONSOLE, "[First Task]: Attempting to create ConsoleServer...\r\n");
-    int console = sys::Create(49, &ConsoleServer);
-    uart_printf(CONSOLE, "[First Task]: Console server created! TID: %u\r\n", console);
-
-    int response = 0;
-
-    for (;;) {
-        int c = console_server::Getc(ctid, 0);
-        if (c < 0) {
-            uart_printf(CONSOLE, "GETC Cannot reach TID\r\n");
-        }
-        console_server::Putc(ctid, 0, c);
-        // uart_printf(CONSOLE, "%c\n\r", c);
-    }
-
-    sys::Exit();
 }

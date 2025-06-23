@@ -13,7 +13,7 @@ typedef struct {
 } Turnout;
 
 // void initialize_turnouts(Turnout* turnouts, Queue* marklin);
-void print_turnout_table(Turnout* turnouts, uint32_t consoleTid);
+void print_turnout_table(uint32_t consoleTid);
 void update_turnout(Turnout* turnouts, int turnoutNum, uint32_t consoleTid);
 int turnoutIdx(int turnoutNum);
 

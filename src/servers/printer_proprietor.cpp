@@ -1,47 +1,45 @@
 #include "printer_proprietor.h"
 
+#include "clock_server.h"
+#include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
 #include "console_server.h"
 #include "console_server_protocol.h"
 #include "cursor.h"
+#include "generic_protocol.h"
 #include "idle_time.h"
 #include "name_server_protocol.h"
 #include "printer_proprietor_protocol.h"
 #include "sensor.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "timer.h"
 #include "turnout.h"
 #include "uptime.h"
 
 using namespace printer_proprietor;
 
-void startup_print(int consoleTid, Turnout* turnouts) {
-    hide_cursor(consoleTid);
-    clear_screen(consoleTid);
-    cursor_top_left(consoleTid);
+void displayRefresher() {
+    uint32_t clockTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    uint32_t printerTid = sys::MyParentTid();
 
-    print_ascii_art(consoleTid);
-
-    cursor_white(consoleTid);
-    // uartPutS(consoleTid, "Press 'q' to reboot\n");
-    print_uptime(consoleTid);
-    print_idle_percentage(consoleTid);
-
-    print_turnout_table(turnouts, consoleTid);
-    print_sensor_table(consoleTid);
-
-    cursor_soft_pink(consoleTid);
-    print_command_prompt_blocked(consoleTid);
-    cursor_white(consoleTid);
+    for (;;) {
+        clock_server::Delay(clockTid, 10);
+        update_idle_percentage(sys::GetIdleTime(), printerTid);
+        update_uptime(printerTid, timerGet());
+    }
 }
 
 void PrinterProprietor() {
+    int registerReturn = name_server::RegisterAs(PRINTER_PROPRIETOR_NAME);
+    ASSERT(registerReturn != -1, "UNABLE TO REGISTER PRINTER PROPRIETOR SERVER\r\n");
+
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];  // turnouts
     // initialize_turnouts(turnouts, &marklinQueue);
     int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
 
-    startup_print(consoleServerTid, turnouts);  // initial display
+    uint32_t displayRefresherTid = sys::Create(20, &displayRefresher);
 
     for (;;) {
         uint32_t clientTid;
@@ -54,15 +52,22 @@ void PrinterProprietor() {
         switch (command) {
             case Command::PRINTS: {
                 const char* msg = &receiveBuffer[1];
-
                 console_server::Puts(consoleServerTid, CONSOLE, msg);
+
                 break;
             }
+            case Command::PRINTC: {
+                console_server::Putc(consoleServerTid, CONSOLE, receiveBuffer[1]);
+
+                break;
+            }
+
             default: {
-                ASSERT(0, "[Name Server]: Unknown Command!\r\n");
+                ASSERT(0, "[Printer Proprietor]: Unknown Command!\r\n");
                 break;
             }
         }
+        emptyReply(clientTid);
     }
 
     sys::Exit();

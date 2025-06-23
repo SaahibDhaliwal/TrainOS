@@ -6,6 +6,7 @@
 #include "rpi.h"
 #include "sys_call_handler.h"
 #include "task_manager.h"
+#include "test_utils.h"
 
 typedef void (*funcvoid0_t)();
 extern funcvoid0_t __init_array_start, __init_array_end;  // defined in linker script
@@ -189,7 +190,7 @@ void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask) {
             break;
         }
         default: {  // we can make this more extensive
-            uart_printf(CONSOLE, "Unknown syscall: %u\n", N);
+            ASSERT(0, "Unknown syscall: %u\n", N);
             break;
         }
     }  // switch

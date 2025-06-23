@@ -119,10 +119,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             int rtCompare = static_cast<int>(MIS::RT);
             int misOriginal = mis;
 
-            if (mis > 57 || mis < 8) {
-                // something broke
-                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
-            }
+            ASSERT(mis <= 57 && mis >= 8, "MIS Console Check broke! \n\r");
 
             if ((mis & (rxCompare | rtCompare)) != 0) {
                 uartClearIMSC(CONSOLE, IMSC::RX);
@@ -177,10 +174,7 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             int ctsCompare = static_cast<int>(MIS::CTS);
             int misOriginal = mis;
 
-            if (mis > 25 || mis <= 0) {
-                // something broke
-                uart_printf(CONSOLE, "MIS Console Check broke! \n\r");
-            }
+            ASSERT(mis <= 25 && mis > 0, "MIS Console Check broke! \n\r");
 
             if (mis >= static_cast<int>(MIS::TX)) {
                 uartClearIMSC(MARKLIN, IMSC::TX);
@@ -251,7 +245,6 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
         idleTimePercentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
 
         // task->setReturnValue(idleTimePercentage);  // send how much time we have not been idling since our last idle
-        //  uart_printf(CONSOLE, "STARTING IDLE TASK \n\r");
     }
 
     uint32_t request = slowKernelToUser(&kernelContext, task->getMutableContext());

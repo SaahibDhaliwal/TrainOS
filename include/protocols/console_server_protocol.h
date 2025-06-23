@@ -1,5 +1,6 @@
 #ifndef __CONSOLE_SERVER_PROTOCOL__
 #define __CONSOLE_SERVER_PROTOCOL__
+#include <cstdint>
 
 namespace console_server {
 enum class Command : char { GET, PUT, PUTS, TX, RX, RT, TX_CONNECT, RX_CONNECT, PRINT, COUNT, UNKNOWN_COMMAND };
@@ -17,6 +18,7 @@ int Putc(int tid, int channel, unsigned char ch);
 
 int Puts(int tid, int channel, const char* str);
 
+int Printf(uint32_t tid, const char* fmt, ...);
 }  // namespace console_server
 
 #endif

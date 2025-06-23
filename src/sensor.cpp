@@ -6,6 +6,7 @@
 #include "command.h"
 #include "cursor.h"
 #include "pos.h"
+#include "printer_proprietor_protocol.h"
 #include "rpi.h"
 
 #define TABLE_START_ROW 15
@@ -44,12 +45,12 @@ static void draw_grid_frame(uint32_t consoleTid) {
     int num_lines = sizeof(lines) / sizeof(lines[0]);
 
     for (int i = 0; i < num_lines; i += 1) {
-        uartPrintf(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
+        printer_proprietor::printF(consoleTid, "\033[%d;%dH%s", TABLE_START_ROW + i, TABLE_START_COL, lines[i]);
     }
 }
 
 void print_sensor_table(uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", TABLE_START_ROW, TABLE_START_COL);
     draw_grid_frame(consoleTid);
 }
 
@@ -104,12 +105,13 @@ void print_sensor_table(uint32_t consoleTid) {
 // }
 
 void print_sensor_time(uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", SENSOR_TIME_START_ROW, SENSOR_TIME_START_COL);
-    uartPrintf(consoleTid, SENSOR_TIME_LABEL);
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", SENSOR_TIME_START_ROW, SENSOR_TIME_START_COL);
+    printer_proprietor::printF(consoleTid, SENSOR_TIME_LABEL);
 }
 
 // updates the total time to read all the sensor bytes
 void update_sensor_total_time(uint64_t millis, uint32_t consoleTid) {
-    uartPrintf(consoleTid, "\033[%d;%dH", SENSOR_TIME_START_ROW, SENSOR_TIME_START_COL + strlen(SENSOR_TIME_LABEL));
-    uartPrintf(consoleTid, "%2dms", millis);
+    printer_proprietor::printF(consoleTid, "\033[%d;%dH", SENSOR_TIME_START_ROW,
+                               SENSOR_TIME_START_COL + strlen(SENSOR_TIME_LABEL));
+    printer_proprietor::printF(consoleTid, "%2dms", millis);
 }
