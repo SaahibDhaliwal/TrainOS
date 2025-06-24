@@ -3,7 +3,6 @@
 #include "config.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
-#include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "marklin_server_protocol.h"
@@ -144,7 +143,7 @@ void MarklinServer() {
     uint32_t rxNotifier = sys::Create(notifierPriority, MarklinRXNotifier);
     uint32_t ctsNotifier = sys::Create(notifierPriority, MarklinCTSNotifier);
 
-    uint32_t rxClientTid = 0;
+    int rxClientTid = 0;
 
     bool ctsState = true;
     bool performingSensorReading = false;
@@ -176,7 +175,6 @@ void MarklinServer() {
                 break;
             }
             case Command::TX: {
-                // ASSERT(!charQueue.empty(), "TX WAS ENABLED WHEN WE HAD NO CHARS TO PROCESS");
                 ASSERT(!uartTXFull(MARKLIN), "TX SUPPOSED TO BE FREE");
                 ASSERT(clientTid == txNotifier, "GOT TX COMMAND NOT FROM NOTIFIER");
 
@@ -225,10 +223,12 @@ void MarklinServer() {
             case Command::KILL: {
                 emptyReply(clientTid);
                 sys::Exit();
+                break;
             }
 
             default: {
                 ASSERT(0, "INVALID COMMAND SENT TO MARKLIN SERVER");
+                break;
             }
         }
 

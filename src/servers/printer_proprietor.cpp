@@ -6,70 +6,21 @@
 #include "config.h"
 #include "console_server.h"
 #include "console_server_protocol.h"
-#include "cursor.h"
+#include "display_refresher.h"
 #include "generic_protocol.h"
-#include "idle_time.h"
 #include "name_server_protocol.h"
+#include "printer_proprietor_helpers.h"
+#include "printer_proprietor_protocol.h"
 #include "sensor_server.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
 #include "turnout.h"
-#include "uptime.h"
 
 using namespace printer_proprietor;
 
 #define COMMAND_PROMPT_START_ROW 29
 #define COMMAND_PROMPT_START_COL 0
-
-void displayRefresher() {
-    uint32_t clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
-
-    uint32_t printerTid = sys::MyParentTid();
-
-    for (;;) {
-        clock_server::Delay(clockServerTid, 10);
-        refreshClocks(printerTid);
-    }
-}
-
-void refresh_clocks(int tid, unsigned int idleTime) {
-    update_idle_percentage(idleTime, tid);
-    update_uptime(tid, timerGet());
-}
-
-void command_feedback(int tid, command_server::Reply reply) {
-    cursor_down_one(tid);
-    clear_current_line(tid);
-    if (reply == command_server::Reply::SUCCESS) {
-        cursor_soft_green(tid);
-        console_server::Puts(tid, 0, "✔ Command accepted");
-    } else {
-        cursor_soft_red(tid);
-        console_server::Puts(tid, 0, "✖ Invalid command");
-    }  // if
-}
-
-void startup_print(int consoleTid) {
-    hide_cursor(consoleTid);
-    clear_screen(consoleTid);
-    cursor_top_left(consoleTid);
-
-    print_ascii_art(consoleTid);
-
-    cursor_white(consoleTid);
-    // uartPutS(consoleTid, "Press 'q' to reboot\n");
-    print_uptime(consoleTid);
-    print_idle_percentage(consoleTid);
-
-    print_turnout_table(consoleTid);
-    print_sensor_table(consoleTid);
-
-    cursor_soft_pink(consoleTid);
-    print_command_prompt_blocked(consoleTid);
-    cursor_white(consoleTid);
-}
 
 void PrinterProprietor() {
     int registerReturn = name_server::RegisterAs(PRINTER_PROPRIETOR_NAME);
@@ -78,7 +29,7 @@ void PrinterProprietor() {
     int consoleServerTid = name_server::WhoIs(CONSOLE_SERVER_NAME);
     ASSERT(consoleServerTid >= 0, "UNABLE TO GET CONSOLE_SERVER_NAME\r\n");
 
-    uint32_t displayRefresherTid = sys::Create(20, &displayRefresher);
+    sys::Create(20, &displayRefresher);
 
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];  // turnouts
 
@@ -111,6 +62,7 @@ void PrinterProprietor() {
                 charSend(consoleServerTid, console_server::toByte(console_server::Command::KILL));
                 emptyReply(clientTid);
                 sys::Exit();
+                break;
             }
             case Command::COMMAND_FEEDBACK: {
                 WITH_HIDDEN_CURSOR(consoleServerTid,

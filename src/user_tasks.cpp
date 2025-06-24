@@ -10,10 +10,8 @@
 #include "command_server_protocol.h"
 #include "console_server.h"
 #include "console_server_protocol.h"
-#include "cursor.h"
 #include "fixed_map.h"
 #include "generic_protocol.h"
-#include "idle_time.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server.h"
@@ -30,28 +28,22 @@
 #include "task_descriptor.h"
 #include "timer.h"
 #include "turnout.h"
-#include "uptime.h"
 #include "util.h"
 
-// step 1: printer proprietor
-// step 2: command server who ges form command task
-// don't need protocol for command servers, its job is to liteally parse the command
-// step 3: marklin protocol that the command server uses
-// reverse task
-// step 4: clean up markin server like console server
-// step 5:
-// other tasks like sensor notifier
+void IdleTask() {
+    while (true) {
+        asm volatile("wfi");
+    }
+}
 
 void FinalFirstUserTask() {
     sys::Create(49, &NameServer);
-    int clockTid = sys::Create(50, &ClockServer);
-    int consoleTid = sys::Create(30, &ConsoleServer);
-    int marklinServerTid = sys::Create(30, &MarklinServer);
+    sys::Create(50, &ClockServer);
+    sys::Create(30, &ConsoleServer);
+    sys::Create(30, &MarklinServer);
     int printerProprietorTid = sys::Create(49, &PrinterProprietor);
     printer_proprietor::startupPrint(printerProprietorTid);
-
-    int commandServerTid = sys::Create(20, &CommandServer);
-
+    sys::Create(20, &CommandServer);
     sys::Exit();
 }
 
@@ -78,12 +70,6 @@ void FinalFirstUserTask() {
 //     uart_printf(CONSOLE, "[Task %u] Parent: %u\r\n", sys::MyTid(), sys::MyParentTid());
 //     sys::Exit();
 // }
-
-void IdleTask() {
-    while (true) {
-        asm volatile("wfi");
-    }
-}
 
 // void SenderTask() {
 //     const char* msg =

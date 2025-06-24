@@ -228,7 +228,7 @@ void uartPrintf(uint32_t tid, const char* fmt, ...) {
     va_list va;
     char buf[12];
     char out[Config::MAX_MESSAGE_LENGTH];
-    int outPos = 0;
+    unsigned int outPos = 0;
 
     va_start(va, fmt);
     while (*fmt && outPos < sizeof(out) - 1) {

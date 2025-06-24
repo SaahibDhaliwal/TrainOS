@@ -1,18 +1,16 @@
 
 #include "console_server.h"
 
+#include "clock_server.h"
+#include "clock_server_protocol.h"
 #include "config.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
-#include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "name_server.h"
 #include "name_server_protocol.h"
 #include "queue.h"
-// #include "rpi.h"
-#include "clock_server.h"
-#include "clock_server_protocol.h"
 #include "ring_buffer.h"
 #include "stack.h"
 #include "sys_call_stubs.h"
@@ -48,7 +46,7 @@ void ConsoleBufferDumper() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    int registerReturn = name_server::RegisterAs("console_dump");
+    name_server::RegisterAs("console_dump");
 
     uint32_t* sender = 0;
     emptyReceive(sender);

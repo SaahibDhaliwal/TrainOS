@@ -65,6 +65,7 @@ void NameServer() {
             case Command::KILL: {
                 emptyReply(clientTid);
                 sys::Exit();
+                break;
             }
             default: {
                 ASSERT(0, "[Name Server]: Unknown Command!\r\n");

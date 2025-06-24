@@ -8,6 +8,14 @@
 
 static const int trainAddresses[MAX_TRAINS] = {14, 15, 16, 17, 18, 55};
 
+int trainNumToIndex(int trainNum) {
+    for (int i = 0; i < MAX_TRAINS; i += 1) {
+        if (trainAddresses[i] == trainNum) return i;
+    }
+
+    return -1;
+}
+
 void initializeTrains(Train* trains, int marklinServerTid) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
@@ -15,12 +23,4 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].reversing = false;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
-}
-
-int trainNumToIndex(int trainNum) {
-    for (int i = 0; i < MAX_TRAINS; i += 1) {
-        if (trainAddresses[i] == trainNum) return i;
-    }
-
-    return -1;
 }

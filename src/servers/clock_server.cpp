@@ -3,7 +3,6 @@
 #include "clock_server_protocol.h"
 #include "config.h"
 #include "generic_protocol.h"
-#include "idle_time.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "name_server.h"
@@ -34,13 +33,6 @@ class DelayedClockClient : public IntrusiveNode<DelayedClockClient> {
 }  // namespace
 
 void ClockFirstUserTask() {
-    // cursor_top_left();
-    // clear_screen();
-    // cursor_top_left();
-    // WITH_HIDDEN_CURSOR(print_idle_percentage());
-    // uart_printf(CONSOLE, "\r\r\n\n");
-    // cursor_white();
-
     uart_printf(CONSOLE, "[First Task]: Created NameServer: %u\r\n", sys::Create(49, &NameServer));
     uart_printf(CONSOLE, "[First Task]: Created Clock Server: %u\r\n", sys::Create(50, &ClockServer));
 
@@ -180,6 +172,7 @@ void ClockServer() {
                 case Command::KILL: {
                     emptyReply(clientTid);
                     sys::Exit();
+                    break;
                 }
                 default: {
                     ASSERT(0, "[Clock Server]: Unknown Command!\r\n");

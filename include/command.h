@@ -1,11 +1,6 @@
 #ifndef __COMMAND__
 #define __COMMAND__
 
-#include <stdbool.h>
-#include <stdint.h>
-
-#include "command_server_protocol.h"
-
 typedef enum {
     TRAIN_STOP = 0x00 + 16,
     TRAIN_SPEED_1,
@@ -29,11 +24,4 @@ typedef enum {
     SENSOR_READ_ALL = 0x85,
 } Command_Byte;
 
-typedef struct Train Train;
-
-// void process_input_command(char* command, Queue* marklinQueue, Train* trains, uint64_t currentTimeMillis);
-void print_command_feedback(uint32_t consoleTid, command_server::Reply reply);
-void print_initial_command_prompt(uint32_t consoleTid);
-void print_clear_command_prompt(uint32_t consoleTid);
-void print_command_prompt_blocked(uint32_t consoleTid);
-#endif  // command.h
+#endif

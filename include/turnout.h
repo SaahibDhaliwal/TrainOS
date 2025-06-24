@@ -6,15 +6,11 @@
 #define DOUBLE_SWITCH_COUNT 4
 
 typedef enum { STRAIGHT, CURVED, UNKNOWN } SwitchState;
-
 typedef struct {
     char id;
     SwitchState state;
 } Turnout;
 
-void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid);
-void print_turnout_table(uint32_t consoleTid);
-void update_turnout(Turnout* turnouts, int turnoutNum, uint32_t consoleTid);
 int turnoutIdx(int turnoutNum);
-
+void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid);
 #endif

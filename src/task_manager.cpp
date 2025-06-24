@@ -117,7 +117,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
             int txCompare = static_cast<int>(MIS::TX);
             int rxCompare = static_cast<int>(MIS::RX);
             int rtCompare = static_cast<int>(MIS::RT);
-            int misOriginal = mis;
 
             ASSERT(mis <= 57 && mis >= 8, "MIS Console Check broke! \n\r");
 
@@ -136,34 +135,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 rescheduleTask(consoleTXEventTask);
                 consoleTXEventTask = nullptr;
             }
-
-            // if (mis >= rtCompare) {
-            //     // disable interrupt at IMSC
-            //     uartClearIMSC(CONSOLE, IMSC::RT);
-            //     // clear interrupt with UART ICR
-            //     uartClearICR(CONSOLE, IMSC::RT);
-            //     mis -= rtCompare;
-            //     rescheduleTask(consoleRXEventTask);
-            //     consoleRXEventTask = nullptr;
-            // }
-            // if (mis >= txCompare) {
-            //     uartClearIMSC(CONSOLE, IMSC::TX);
-            //     uartClearICR(CONSOLE, IMSC::TX);
-            //     mis -= txCompare;
-            //     rescheduleTask(consoleTXEventTask);
-            //     consoleTXEventTask = nullptr;
-            // }
-            // if (mis == rxCompare && consoleRXEventTask != nullptr) {
-            //     uartClearIMSC(CONSOLE, IMSC::RX);
-            //     uartClearICR(CONSOLE, IMSC::RX);
-            //     // so that if we already got an RT interrupt, we don't need to reschedule the RX task
-            //     // since it's already been done
-            //     // but we DO want to clear the interrupt at IMSC if it's high
-            //     if (consoleRXEventTask != nullptr) {
-            //         rescheduleTask(consoleRXEventTask);
-            //         consoleRXEventTask = nullptr;
-            //     }
-            // }
         }
 
         // FOR MARKLIN
@@ -171,8 +142,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
         if (mis) {
             int txCompare = static_cast<int>(MIS::TX);
             int rxCompare = static_cast<int>(MIS::RX);
-            int ctsCompare = static_cast<int>(MIS::CTS);
-            // int misOriginal = mis;
 
             ASSERT(mis <= 25 && mis > 0, "MIS Console Check broke! \n\r");
 
@@ -180,7 +149,6 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearIMSC(MARKLIN, IMSC::TX);
                 uartClearICR(MARKLIN, IMSC::TX);
                 mis -= txCompare;
-                // marklinTXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(marklinTXEventTask);
                 marklinTXEventTask = nullptr;
             }
@@ -188,14 +156,12 @@ void TaskManager::handleInterrupt(int64_t eventId) {
                 uartClearIMSC(MARKLIN, IMSC::RX);
                 uartClearICR(MARKLIN, IMSC::RX);
                 mis -= rxCompare;
-                // marklinRXEventTask->setReturnValue(misOriginal);
                 rescheduleTask(marklinRXEventTask);
                 marklinRXEventTask = nullptr;
             }
             if (mis == static_cast<int>(MIS::CTS)) {
                 uartClearIMSC(MARKLIN, IMSC::CTS);
                 uartClearICR(MARKLIN, IMSC::CTS);
-                // marklinCTSEventTask->setReturnValue(mis);  // this is not original
                 rescheduleTask(marklinCTSEventTask);
                 marklinCTSEventTask = nullptr;
             }
@@ -243,8 +209,6 @@ uint32_t TaskManager::activate(TaskDescriptor* task) {
         uint64_t currTime = timerGetRelativeTime();
         totalNonIdleTime += currTime - nonIdleTime;  // will be some number of ticks
         idleTimePercentage = ((currTime - totalNonIdleTime) * 10000) / currTime;
-
-        // task->setReturnValue(idleTimePercentage);  // send how much time we have not been idling since our last idle
     }
 
     uint32_t request = slowKernelToUser(&kernelContext, task->getMutableContext());

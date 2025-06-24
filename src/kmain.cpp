@@ -1,7 +1,6 @@
 #include <array>
 
 #include "gic.h"
-#include "idle_time.h"
 #include "kernel_utils.h"
 #include "rpi.h"
 #include "servers/clock_server.h"
