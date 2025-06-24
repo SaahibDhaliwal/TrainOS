@@ -19,9 +19,6 @@
 
 using namespace printer_proprietor;
 
-#define COMMAND_PROMPT_START_ROW 29
-#define COMMAND_PROMPT_START_COL 0
-
 void PrinterProprietor() {
     int registerReturn = name_server::RegisterAs(PRINTER_PROPRIETOR_NAME);
     ASSERT(registerReturn != -1, "UNABLE TO REGISTER PRINTER PROPRIETOR SERVER\r\n");
