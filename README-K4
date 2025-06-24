@@ -5,7 +5,7 @@ Clone repo and compile commands within terminal:
 ---------------------------------------------------------
 git clone https://git.uwaterloo.ca/dduranro/kernel.git
 cd kernel
-git checkout 64cba5ff59983daa8636378c00b497ac74a8fe93
+git checkout df836d65f219df57c6395d120931491493323683
 make
 ---------------------------------------------------------
 
