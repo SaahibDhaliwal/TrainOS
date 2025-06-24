@@ -28,11 +28,11 @@ void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int cloc
 
     for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
         if (i == 0 || i == 2) {
-            marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, (char)i + 153);
+            marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, i + 153);
             printer_proprietor::updateTurnout(SWITCH_CURVED, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
 
         } else {
-            marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, (char)i + 153);
+            marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, i + 153);
             printer_proprietor::updateTurnout(SWITCH_STRAIGHT, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
         }
         clock_server::Delay(clockServerTid, 20);

@@ -31,11 +31,11 @@ int Putc(int tid, int channel, unsigned char ch);
 
 int Puts(int tid, int channel, const char* str);
 
-int setTrainSpeed(int tid, const char trainSpeed, const char trainNumber);
+int setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
 
-int setTrainReverseAndSpeed(int tid, const char trainSpeed, const char trainNumber);
+int setTrainReverseAndSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
 
-int setTurnout(int tid, const char turnoutDirection, const char turnoutNumber);
+int setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber);
 
 int solenoidOff(int tid);
 

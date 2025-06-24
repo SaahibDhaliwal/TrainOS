@@ -7,6 +7,7 @@
 #define MAX_TRAINS 6
 
 struct Train {
+    bool reversing;
     uint8_t speed;
     uint8_t id;
 };

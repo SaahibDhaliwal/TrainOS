@@ -150,32 +150,32 @@ int Printf(uint32_t tid, const char* fmt, ...) {
     return Puts(tid, 1, out);
 }
 
-int setTrainSpeed(int tid, const char trainSpeed, const char trainNumber) {
+int setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber) {
     char buf[3] = {0};
-    buf[0] = trainSpeed;
-    buf[1] = trainNumber;
+    buf[0] = static_cast<char>(trainSpeed);
+    buf[1] = static_cast<char>(trainNumber);
     return Puts(tid, 0, buf);
 }
 
-int setTrainReverseAndSpeed(int tid, const char trainSpeed, const char trainNumber) {
+int setTrainReverseAndSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber) {
     char buf[5] = {0};
-    buf[0] = TRAIN_REVERSE;
-    buf[1] = trainNumber;
-    buf[2] = trainSpeed;
-    buf[3] = trainNumber;
+    buf[0] = static_cast<char>(TRAIN_REVERSE);
+    buf[1] = static_cast<char>(trainNumber);
+    buf[2] = static_cast<char>(trainSpeed);
+    buf[3] = static_cast<char>(trainNumber);
     return Puts(tid, 0, buf);
 }
 
-int setTurnout(int tid, const char turnoutDirection, const char turnoutNumber) {
+int setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber) {
     char buf[3] = {0};
-    buf[0] = turnoutDirection;
-    buf[1] = turnoutNumber;
+    buf[0] = static_cast<char>(turnoutDirection);
+    buf[1] = static_cast<char>(turnoutNumber);
     return Puts(tid, 0, buf);
 }
 
 int solenoidOff(int tid) {
     char buf[2] = {0};
-    buf[0] = SOLENOID_OFF;
+    buf[0] = static_cast<char>(SOLENOID_OFF);
     return Puts(tid, 0, buf);
 }
 
@@ -183,7 +183,7 @@ void reverseTrainTask() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
     int parentTid = sys::MyParentTid();
-    clock_server::Delay(clockServerTid, 500);
+    clock_server::Delay(clockServerTid, 550);
     emptySend(parentTid);
     sys::Exit();
 }
