@@ -2,7 +2,7 @@
 #define __COMMAND_SERVER_PROTOCOL__
 
 namespace command_server {
-enum class Command : char { MESSAGE, SENSOR_READ, COUNT, UNKNOWN_COMMAND };
+enum class Command : char { MESSAGE, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);

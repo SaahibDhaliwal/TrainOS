@@ -8,6 +8,8 @@
 #include "console_server.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
+#include "localization_server.h"
+#include "localization_server_protocol.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server_protocol.h"
@@ -22,8 +24,8 @@
 #include "turnout.h"
 using namespace command_server;
 
-bool processInputCommand(char* command, Train* trains, int marklinServerTid, int printerProprietorTid,
-                         int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains) {
+bool processInputCommand(char* command, int marklinServerTid, int printerProprietorTid, int clockServerTid,
+                         int localizationTid) {
     if (strncmp(command, "tr ", 3) == 0) {
         const char* cur = &command[3];
 
@@ -54,11 +56,8 @@ bool processInputCommand(char* command, Train* trains, int marklinServerTid, int
 
         if (*cur != '\0') return false;
 
-        if (!trains[trainIdx].reversing) {
-            marklin_server::setTrainSpeed(marklinServerTid, trainSpeed + 16, trainNumber);
-        }
+        localization_server::setTrainSpeed(localizationTid, trainSpeed + 16, trainNumber);
 
-        trains[trainIdx].speed = trainSpeed;
     } else if (strncmp(command, "rv ", 3) == 0) {
         const char* cur = &command[3];
 
@@ -76,12 +75,8 @@ bool processInputCommand(char* command, Train* trains, int marklinServerTid, int
 
         if (*cur != '\0') return false;
 
-        if (!trains[trainIdx].reversing) {
-            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainNumber);
-            reversingTrains->push(trainIdx);
-            sys::Create(40, &marklin_server::reverseTrainTask);
-            trains[trainIdx].reversing = true;
-        }
+        localization_server::reverseTrain(localizationTid, trainNumber);
+
     } else if (strncmp(command, "sw ", 3) == 0) {
         const char* cur = &command[3];
 
@@ -196,13 +191,13 @@ void CommandServer() {
 
     initializeTurnouts(marklinServerTid, printerProprietorTid, clockServerTid);
 
-    Train trains[MAX_TRAINS];  // trains
-    initializeTrains(trains, marklinServerTid);
+    // Train trains[MAX_TRAINS];  // trains
+    // initializeTrains(trains, marklinServerTid);
 
-    RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
+    // RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
     uint32_t terminalTid = sys::Create(20, &CommandTask);
-    sys::Create(20, &SensorServer);
+    uint32_t localizationTid = sys::Create(25, &LocalizationServer);
 
     for (;;) {
         uint32_t clientTid;
@@ -211,21 +206,14 @@ void CommandServer() {
         receiveBuffer[msgLen] = '\0';
 
         if (clientTid == terminalTid) {
-            bool validCommand = processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid,
-                                                    clockServerTid, &reversingTrains);
+            bool validCommand = processInputCommand(receiveBuffer, marklinServerTid, printerProprietorTid,
+                                                    clockServerTid, localizationTid);
 
             if (!validCommand) {
                 charReply(clientTid, toByte(Reply::FAILURE));
             } else {
                 charReply(clientTid, toByte(Reply::SUCCESS));
             }
-        } else {
-            ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");
-            int reversingTrainIdx = *reversingTrains.pop();
-            int trainSpeed = trains[reversingTrainIdx].speed;
-            int trainNumber = trains[reversingTrainIdx].id;
-            marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed + 16, trainNumber);
-            trains[reversingTrainIdx].reversing = false;
         }
     }
 

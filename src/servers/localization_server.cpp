@@ -1,0 +1,123 @@
+#include "localization_server.h"
+
+#include "clock_server.h"
+#include "clock_server_protocol.h"
+#include "command.h"
+#include "command_client.h"
+#include "command_server.h"
+#include "command_server_protocol.h"
+#include "config.h"
+#include "console_server.h"
+#include "console_server_protocol.h"
+#include "generic_protocol.h"
+#include "marklin_server.h"
+#include "marklin_server_protocol.h"
+#include "name_server_protocol.h"
+#include "printer_proprietor.h"
+#include "printer_proprietor_protocol.h"
+#include "ring_buffer.h"
+#include "rpi.h"
+#include "sensor_server.h"
+#include "sys_call_stubs.h"
+#include "test_utils.h"
+#include "track_data.h"
+#include "train.h"
+#include "turnout.h"
+
+using namespace localization_server;
+
+void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
+                         int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains) {
+    Command command = commandFromByte(receiveBuffer[0]);
+    switch (command) {
+        case Command::SET_SPEED: {
+            unsigned int trainSpeed = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
+            unsigned int trainNumber = 10 * a2d(receiveBuffer[3]) + a2d(receiveBuffer[4]);
+
+            int trainIdx = trainNumToIndex(trainNumber);
+
+            if (!trains[trainIdx].reversing) {
+                marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, trainNumber);
+            }
+            trains[trainIdx].speed = trainSpeed;
+            break;
+        }
+        case Command::REVERSE_TRAIN: {
+            int trainNumber = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
+            int trainIdx = trainNumToIndex(trainNumber);
+
+            if (!trains[trainIdx].reversing) {
+                marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainNumber);
+                reversingTrains->push(trainIdx);
+                // creates reverse task here which sends a message to whomever created them
+                sys::Create(40, &marklin_server::reverseTrainTask);
+                trains[trainIdx].reversing = true;
+            }
+
+            break;
+        }
+        default: {
+            ASSERT(1 == 2, "bad localization server command");
+        }
+    }
+}
+
+void LocalizationServer() {
+    int registerReturn = name_server::RegisterAs(LOCALIZATION_SERVER_NAME);
+    ASSERT(registerReturn != -1, "UNABLE TO REGISTER CONSOLE SERVER\r\n");
+
+    int marklinServerTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
+    ASSERT(marklinServerTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
+
+    int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
+    ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER_PROPRIETOR_NAME\r\n");
+
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
+    // could just be MyParent()
+    int commandServerTid = name_server::WhoIs(COMMAND_SERVER_NAME);
+    ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
+    // initializeTurnouts(marklinServerTid, printerProprietorTid, clockServerTid);
+
+    Train trains[MAX_TRAINS];  // trains
+    initializeTrains(trains, marklinServerTid);
+
+    RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
+
+    uint32_t sensorTid = sys::Create(20, &SensorServer);
+
+    track_node track[TRACK_MAX];
+    init_trackb(track);  // figure out how to tell which track it is at a later date
+
+    for (;;) {
+        uint32_t clientTid;
+        char receiveBuffer[7] = {0};
+        int msgLen = sys::Receive(&clientTid, receiveBuffer, 6);
+        receiveBuffer[msgLen] = '\0';
+
+        if (clientTid == commandServerTid) {
+            Command command = commandFromByte(receiveBuffer[0]);
+            processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
+                                &reversingTrains);
+            emptyReply(clientTid);
+
+        } else if (clientTid == sensorTid) {
+            ASSERT(1 == 2, "never get here");
+            // ideally, we would update the information within the train struct of which sensor is now behind and
+            // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
+            // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
+            // 0) = 28
+        } else {
+            ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");
+            int reversingTrainIdx = *reversingTrains.pop();
+            int trainSpeed = trains[reversingTrainIdx].speed;
+            int trainNumber = trains[reversingTrainIdx].id;
+            marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed, trainNumber);
+            trains[reversingTrainIdx].reversing = false;
+        }
+    }
+
+    sys::Exit();
+}

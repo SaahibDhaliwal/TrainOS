@@ -38,6 +38,8 @@ void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printer
             }
 
             printer_proprietor::updateSensor(box, sensorNum, printerProprietorTid);
+
+            // do a protocol to the localization server
         }
     }
 }
@@ -58,7 +60,7 @@ void SensorServer() {
         marklin_server::Putc(marklinTid, 0, SENSOR_READ_ALL);
         for (int i = 0; i < 10; i++) {
             unsigned char result = marklin_server::Getc(marklinTid, 0);
-            process_sensor_byte(result, i, printerProprietorTid);
+            if (result) process_sensor_byte(result, i, printerProprietorTid);
         }
 
     }  // for

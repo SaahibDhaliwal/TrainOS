@@ -21,6 +21,10 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
         trains[i].reversing = false;
+        trains[i].nodeAhead = TRAIN_INIT;
+        trains[i].nodeBehind = TRAIN_INIT;
+        trains[i].sensorAhead = TRAIN_INIT;
+        trains[i].sensorBehind = TRAIN_INIT;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
 }

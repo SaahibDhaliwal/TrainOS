@@ -14,9 +14,9 @@
 
 namespace marklin_server {
 
-char toByte(Command_Byte c) {
-    return static_cast<char>(c);
-}
+// char toByte(Command_Byte c) {
+//     return static_cast<char>(c);
+// }
 
 char toByte(Command c) {
     return static_cast<char>(c);
