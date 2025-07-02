@@ -4,6 +4,7 @@
     "cstdint": "cpp",
     "cassert": "cpp",
     "thread": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "string_view": "cpp"
   }
 }

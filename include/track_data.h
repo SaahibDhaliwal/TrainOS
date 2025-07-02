@@ -1,41 +1,46 @@
 #ifndef __TRACK_DATA__
 #define __TRACK_DATA__
 
-typedef enum {
-    NODE_NONE,
-    NODE_SENSOR,
-    NODE_BRANCH,
-    NODE_MERGE,
-    NODE_ENTER,
-    NODE_EXIT,
-} node_type;
+#pragma once
 
-#define DIR_AHEAD 0
-#define DIR_STRAIGHT 0
-#define DIR_CURVED 1
+// maximum number of nodes in a layout
+static constexpr int TRACK_MAX = 144;
 
-struct track_node;
-typedef struct track_node track_node;
-typedef struct track_edge track_edge;
+// node kinds
+enum class NodeType { NONE, SENSOR, BRANCH, MERGE, ENTER, EXIT };
 
-struct track_edge {
-    track_edge *reverse;
-    track_node *src, *dest;
-    int dist; /* in millimetres */
+// directions
+static constexpr int DIR_AHEAD = 0;
+static constexpr int DIR_STRAIGHT = 0;
+static constexpr int DIR_CURVED = 1;
+
+// forward declarations
+struct TrackNode;
+struct Edge;
+
+// one edge in the graph
+struct Edge {
+    TrackNode* src = nullptr;   // source node
+    TrackNode* dest = nullptr;  // destination node
+    Edge* reverse = nullptr;    // reverse edge
+    int dist = 0;               // in millimetres
 };
 
-struct track_node {
-    const char *name;
-    node_type type;
-    int num;             /* sensor or switch number */
-    track_node *reverse; /* same location, but opposite direction */
-    track_edge edge[2];
+// one node in the graph
+struct TrackNode {
+    const char* name = nullptr;  // e.g. "A1", "BR1", etc.
+    NodeType type = NodeType::NONE;
+    int num = -1;                  // sensor or switch number
+    TrackNode* reverse = nullptr;  // same location, opposite direction
+    Edge edge[2];                  // outgoing edges
 };
 
-// The track initialization functions expect an array of this size.
-#define TRACK_MAX 144
+// track data initializers
+// -- each takes a pre-allocated array of TRACK_MAX nodes
+void init_tracka(TrackNode* track);
+void init_trackb(TrackNode* track);
 
-void init_tracka(track_node *track);
-void init_trackb(track_node *track);
+// helper: map sensor box ('A'/'B') and number to an index
+int sensor_index(char box, int num);
 
 #endif

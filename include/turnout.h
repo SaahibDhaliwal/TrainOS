@@ -12,5 +12,5 @@ typedef struct {
 } Turnout;
 
 int turnoutIdx(int turnoutNum);
-void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid);
+void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid);
 #endif

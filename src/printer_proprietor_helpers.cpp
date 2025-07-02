@@ -105,7 +105,7 @@ void update_idle_percentage(int percentage, int printTid) {
 /*********** UPTIME ********************************/
 
 #define UPTIME_START_ROW 13
-#define UPTIME_START_COL 45
+#define UPTIME_START_COL 30
 #define UPTIME_LABEL "Uptime: "
 #define UPTIME_LABEL_LENGTH 53
 
@@ -284,6 +284,8 @@ void refresh_clocks(int tid, unsigned int idleTime) {
 }
 
 /*********** COMMAND  ********************************/
+#define COMMAND_PROMPT_START_ROW 29
+#define COMMAND_PROMPT_START_COL 0
 
 void command_feedback(int tid, command_server::Reply reply) {
     cursor_down_one(tid);
@@ -296,9 +298,6 @@ void command_feedback(int tid, command_server::Reply reply) {
         console_server::Puts(tid, 0, "✖ Invalid command");
     }  // if
 }
-
-#define COMMAND_PROMPT_START_ROW 29
-#define COMMAND_PROMPT_START_COL 0
 
 void print_command_feedback(uint32_t consoleTid, command_server::Reply reply) {
     cursor_down_one(consoleTid);
@@ -327,6 +326,14 @@ void print_clear_command_prompt(uint32_t consoleTid) {
 void print_command_prompt_blocked(uint32_t consoleTid) {
     console_server::Printf(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
     console_server::Puts(consoleTid, 0, "Initializing...");
+}
+
+/*********** MEASUREMENTS  ********************************/
+#define MEASUREMENT_START_ROW 0
+#define MEASUREMENT_START_COL 90
+
+void print_measurement(uint32_t consoleTid, int measurementNum) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", MEASUREMENT_START_ROW + measurementNum, MEASUREMENT_START_COL);
 }
 
 /*********** STARTUP  ********************************/

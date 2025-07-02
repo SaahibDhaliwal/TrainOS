@@ -17,7 +17,6 @@
 #include "printer_proprietor_protocol.h"
 #include "ring_buffer.h"
 #include "rpi.h"
-#include "sensor_server.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "train.h"
@@ -106,16 +105,16 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
 
         marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
         clock_server::Delay(clockServerTid, 20);
-        printer_proprietor::updateTurnout(turnoutDirection, turnoutIndex, printerProprietorTid);
+        printer_proprietor::updateTurnout(printerProprietorTid, turnoutDirection, turnoutIndex);
 
         switch (turnoutNumber) {
             case 153: {
                 if (turnoutDirection == SWITCH_CURVED) {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 154);
-                    printer_proprietor::updateTurnout(SWITCH_STRAIGHT, turnoutIndex + 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex + 1);
                 } else {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 154);
-                    printer_proprietor::updateTurnout(SWITCH_CURVED, turnoutIndex + 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex + 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
 
@@ -124,10 +123,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             case 154: {
                 if (turnoutDirection == SWITCH_CURVED) {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 153);
-                    printer_proprietor::updateTurnout(SWITCH_STRAIGHT, turnoutIndex - 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex - 1);
                 } else {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 153);
-                    printer_proprietor::updateTurnout(SWITCH_CURVED, turnoutIndex - 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex - 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
 
@@ -136,10 +135,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             case 155: {
                 if (turnoutDirection == SWITCH_CURVED) {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 156);
-                    printer_proprietor::updateTurnout(SWITCH_STRAIGHT, turnoutIndex + 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex + 1);
                 } else {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 156);
-                    printer_proprietor::updateTurnout(SWITCH_CURVED, turnoutIndex + 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex + 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
                 break;
@@ -147,10 +146,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             case 156: {
                 if (turnoutDirection == SWITCH_CURVED) {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 155);
-                    printer_proprietor::updateTurnout(SWITCH_STRAIGHT, turnoutIndex - 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex - 1);
                 } else {
                     marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 155);
-                    printer_proprietor::updateTurnout(SWITCH_CURVED, turnoutIndex - 1, printerProprietorTid);
+                    printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex - 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
                 break;
@@ -188,13 +187,6 @@ void CommandServer() {
 
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
-
-    initializeTurnouts(marklinServerTid, printerProprietorTid, clockServerTid);
-
-    // Train trains[MAX_TRAINS];  // trains
-    // initializeTrains(trains, marklinServerTid);
-
-    // RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
     uint32_t terminalTid = sys::Create(20, &CommandTask);
     uint32_t localizationTid = sys::Create(25, &LocalizationServer);

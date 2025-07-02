@@ -148,7 +148,7 @@ void backspace(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid) {
+void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx) {
     ASSERT(command == Command_Byte::SWITCH_STRAIGHT || command == Command_Byte::SWITCH_CURVED,
            "INVALID TURNOUT COMMAND!\r\n");
 
@@ -161,7 +161,7 @@ void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateSensor(char sensorBox, unsigned int sensorNum, int tid) {
+void updateSensor(int tid, char sensorBox, unsigned int sensorNum) {
     char sendBuf[24] = {0};
     sendBuf[0] = toByte(Command::UPDATE_SENSOR);
     sendBuf[1] = sensorBox;

@@ -49,7 +49,8 @@ void updateSensor(int tid, char box, unsigned int sensorNum) {
     sendBuf[0] = toByte(Command::SENSOR_UPDATE);
     sendBuf[1] = box;
     sendBuf[2] = sensorNum;
-    sys::Send(tid, sendBuf, 4, nullptr, 0);
+    int res = sys::Send(tid, sendBuf, 4, nullptr, 0);
+    handleSendResponse(res, tid);
 }
 
 }  // namespace localization_server

@@ -36,8 +36,8 @@ void refreshClocks(int tid);
 void commandFeedback(command_server::Reply reply, int tid);
 void clearCommandPrompt(int tid);
 void backspace(int tid);
-void updateTurnout(Command_Byte command, unsigned int turnoutIdx, int tid);
-void updateSensor(char sensorBox, unsigned int sensorNum, int tid);
+void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
+void updateSensor(int tid, char sensorBox, unsigned int sensorNum);
 void startupPrint(int tid);
 
 }  // namespace printer_proprietor

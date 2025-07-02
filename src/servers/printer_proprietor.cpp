@@ -11,7 +11,6 @@
 #include "name_server_protocol.h"
 #include "printer_proprietor_helpers.h"
 #include "printer_proprietor_protocol.h"
-#include "sensor_server.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"

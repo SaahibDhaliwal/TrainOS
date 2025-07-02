@@ -1,4 +1,4 @@
-#include "sensor_server.h"
+#include "sensor_task.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -10,6 +10,7 @@
 #include "generic_protocol.h"
 #include "interrupt.h"
 #include "intrusive_node.h"
+#include "localization_server_protocol.h"
 #include "marklin_command_protocol.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
@@ -26,7 +27,8 @@
 #include "test_utils.h"
 #include "timer.h"
 
-void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printerProprietorTid) {
+void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printerProprietorTid,
+                         uint32_t localizationServerTid) {
     int sensorByteCount = sensorByteIdx + 1;
     char box = 'A' + (sensorByteCount - 1) / 2;
 
@@ -37,14 +39,13 @@ void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printer
                 sensorNum += 8;
             }
 
-            printer_proprietor::updateSensor(box, sensorNum, printerProprietorTid);
-
-            // do a protocol to the localization server
+            printer_proprietor::updateSensor(printerProprietorTid, box, sensorNum);
+            localization_server::updateSensor(localizationServerTid, box, sensorNum);
         }
     }
 }
 
-void SensorServer() {
+void SensorTask() {
     int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
     ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER_PROPRIETOR_NAME\r\n");
 
@@ -54,13 +55,15 @@ void SensorServer() {
     int marklinTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
     ASSERT(marklinTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
 
-    int nonSensorWindow = 5;
+    int localizationServerTid = sys::MyParentTid();
+    ASSERT(marklinTid >= 0, "UNABLE TO GET SENSOR TASK'S PARENT\r\n");
+
     for (;;) {
-        clock_server::Delay(clockServerTid, nonSensorWindow);
+        clock_server::Delay(clockServerTid, 5);
         marklin_server::Putc(marklinTid, 0, SENSOR_READ_ALL);
         for (int i = 0; i < 10; i++) {
             unsigned char result = marklin_server::Getc(marklinTid, 0);
-            if (result) process_sensor_byte(result, i, printerProprietorTid);
+            if (result) process_sensor_byte(result, i, printerProprietorTid, localizationServerTid);
         }
 
     }  // for

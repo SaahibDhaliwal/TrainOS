@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "track_data.h"
+
 #define MAX_TRAINS 6
 #define TRAIN_INIT 255
 
@@ -13,13 +15,13 @@ struct Train {
     uint8_t id;
     uint32_t velocity;
     // these are all ints associated with the array
-    uint8_t nodeAhead;
-    uint8_t nodeBehind;
-    uint8_t sensorAhead;
-    uint8_t sensorBehind;
+    TrackNode *nodeAhead;
+    TrackNode *nodeBehind;
+    TrackNode *sensorAhead;
+    TrackNode *sensorBehind;
 };
 
-void initializeTrains(Train* trains, int marklinServerTid);
+void initializeTrains(Train *trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
 
 #endif

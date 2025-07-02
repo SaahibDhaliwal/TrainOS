@@ -4,21 +4,25 @@
 #include "marklin_server_protocol.h"
 #include "printer_proprietor_protocol.h"
 
-void initializeTurnouts(int marklinServerTid, int printerProprietorTid, int clockServerTid) {
+void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid) {
     for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
+        turnouts[i].id = i + 1;
+        turnouts[i].state = CURVED;
         marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, i + 1);
         clock_server::Delay(clockServerTid, 20);
-        printer_proprietor::updateTurnout(SWITCH_CURVED, i, printerProprietorTid);
+        printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, i);
     }
 
     for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
+        turnouts[i].id = i + 153;
         if (i == 0 || i == 2) {
+            turnouts[i].state = CURVED;
             marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, i + 153);
-            printer_proprietor::updateTurnout(SWITCH_CURVED, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
-
+            printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, i + SINGLE_SWITCH_COUNT);
         } else {
+            turnouts[i].state = STRAIGHT;
             marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, i + 153);
-            printer_proprietor::updateTurnout(SWITCH_STRAIGHT, i + SINGLE_SWITCH_COUNT, printerProprietorTid);
+            printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, i + SINGLE_SWITCH_COUNT);
         }
         clock_server::Delay(clockServerTid, 20);
     }

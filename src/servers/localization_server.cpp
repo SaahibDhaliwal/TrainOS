@@ -17,7 +17,7 @@
 #include "printer_proprietor_protocol.h"
 #include "ring_buffer.h"
 #include "rpi.h"
-#include "sensor_server.h"
+#include "sensor_task.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "track_data.h"
@@ -49,7 +49,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             if (!trains[trainIdx].reversing) {
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainNumber);
                 reversingTrains->push(trainIdx);
-                // creates reverse task here which sends a message to whomever created them
+                // reverse task, that notifies it's parent when done reversing
                 sys::Create(40, &marklin_server::reverseTrainTask);
                 trains[trainIdx].reversing = true;
             }
@@ -79,16 +79,18 @@ void LocalizationServer() {
     int commandServerTid = name_server::WhoIs(COMMAND_SERVER_NAME);
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    // initializeTurnouts(marklinServerTid, printerProprietorTid, clockServerTid);
+    Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
+    initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
 
     Train trains[MAX_TRAINS];  // trains
     initializeTrains(trains, marklinServerTid);
 
     RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
-    uint32_t sensorTid = sys::Create(20, &SensorServer);
+    uint32_t sensorTid = sys::Create(20, &SensorTask);
 
-    track_node track[TRACK_MAX];
+    TrackNode track[TRACK_MAX];
+    // need to 0 this out still
     init_trackb(track);  // figure out how to tell which track it is at a later date
 
     for (;;) {
@@ -104,11 +106,21 @@ void LocalizationServer() {
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
-            ASSERT(1 == 2, "never get here");
             // ideally, we would update the information within the train struct of which sensor is now behind and
             // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
             // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
             // 0) = 28
+            char box = receiveBuffer[1];
+            unsigned int sensorNum = 0;
+            a2ui(receiveBuffer + 2, 10, &sensorNum);
+
+            int trackNodeIdx = (('A' - box) * 16) + (sensorNum - 1);
+
+            // trains[18].nodeBehind = &track[trackNodeIdx];
+            // trains[18].nodeAhead = track[trackNodeIdx].edge->dest;
+
+            emptyReply(clientTid);
+
         } else {
             ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");
             int reversingTrainIdx = *reversingTrains.pop();
@@ -116,6 +128,7 @@ void LocalizationServer() {
             int trainNumber = trains[reversingTrainIdx].id;
             marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed, trainNumber);
             trains[reversingTrainIdx].reversing = false;
+            // no need to reply, reverse task is dead
         }
     }
 
