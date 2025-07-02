@@ -120,11 +120,19 @@ void PrinterProprietor() {
                 back_space(consoleServerTid);
                 break;
             }
-            // case Command::UPDATE_TRAIN: {
-
-            //     WITH_HIDDEN_CURSOR(consoleServerTid, print(consoleServerTid, idleTime));
-            //     break;
-            // }
+            case Command::UPDATE_TRAIN: {
+                char trainBuff[3] = {0};
+                trainBuff[0] = receiveBuffer[1];
+                trainBuff[1] = receiveBuffer[2];
+                trainBuff[2] = '\0';
+                char sensorBuff[4] = {0};
+                sensorBuff[0] = receiveBuffer[3];  // letter
+                sensorBuff[1] = receiveBuffer[4];  // digit
+                sensorBuff[2] = receiveBuffer[5];
+                // strcpy(sensorBuff, receiveBuffer + 3);
+                WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, trainBuff, sensorBuff));
+                break;
+            }
             default: {
                 ASSERT(0, "[Printer Proprietor]: Unknown Command!\r\n");
                 break;

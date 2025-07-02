@@ -41,6 +41,7 @@ TrackNode* getNextSensor(TrackNode start, Turnout* turnouts) {
         } else if (nextNode->type == NodeType::ENTER || nextNode->type == NodeType::EXIT) {
             // ex: sensor A2, A14, A15 don't have a next sensor
             deadendFlag = true;
+            nextNode = nextNode->edge[DIR_AHEAD].dest;
             break;
         } else {
             nextNode = nextNode->edge[DIR_AHEAD].dest;
@@ -175,10 +176,21 @@ void LocalizationServer() {
 
             int trackNodeIdx = (('A' - box) * 16) + (sensorNum - 1);
 
-            // trains[18].nodeBehind = &track[trackNodeIdx];
-            // trains[18].nodeAhead = track[trackNodeIdx].edge->dest;
+            trains[trainNumToIndex(14)].nodeBehind = &track[trackNodeIdx];
+            TrackNode* nextSensor = track[trackNodeIdx].nextSensor;
+            trains[trainNumToIndex(14)].nodeAhead = nextSensor;
 
             emptyReply(clientTid);
+            // ASSERT(nextSensor != nullptr, "THERE IS NO NEXT SENSOR");
+
+            if (nextSensor != nullptr) {
+                char nextBox = 65 + (nextSensor->num / 16);
+                unsigned int nextNum = (nextSensor->num % 16) + 1;
+                printer_proprietor::printF(printerProprietorTid, "\033[%d;%dHTrainNum: %s Next Sensor: %c%u", 0, 90, 14,
+                                           nextBox, nextNum);
+            } else {
+                uart_printf(CONSOLE, "there is no next sensor for sensor: %c%u", box, sensorNum);
+            }
 
         } else {
             ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");

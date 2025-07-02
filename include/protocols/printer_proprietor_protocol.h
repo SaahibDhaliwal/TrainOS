@@ -39,7 +39,7 @@ void clearCommandPrompt(int tid);
 void backspace(int tid);
 void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
 void updateSensor(int tid, char sensorBox, unsigned int sensorNum);
-void updateTrainStatus(int tid, char sensorBox, unsigned int sensorNum);
+void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int sensorNum);
 void startupPrint(int tid);
 
 }  // namespace printer_proprietor

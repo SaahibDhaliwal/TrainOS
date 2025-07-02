@@ -179,11 +179,13 @@ void startupPrint(int tid) {
 }
 
 void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int sensorNum) {
+    // ASSERT(0, "sensornum: %d", sensorNum);
     char sendBuf[24] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN);
-    ui2a(trainNum, 10, sendBuf + 1);
+    ui2a(trainNum, 10, sendBuf + 1);  // this takes up two
     sendBuf[3] = sensorBox;
     ui2a(sensorNum, 10, sendBuf + 4);
+    ASSERT(0, "sensorbox: %c sensorNum: %u  sentstring: %s", sensorBox, sensorNum, sendBuf);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 

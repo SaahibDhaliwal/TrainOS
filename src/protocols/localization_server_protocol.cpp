@@ -49,7 +49,8 @@ void updateSensor(int tid, char box, unsigned int sensorNum) {
     char sendBuf[3] = {0};
     sendBuf[0] = toByte(Command::SENSOR_UPDATE);
     sendBuf[1] = box;
-    sendBuf[2] = sensorNum;
+    ui2a(sensorNum, 10, sendBuf + 2);
+    // sendBuf[2] = sensorNum;
     int res = sys::Send(tid, sendBuf, 4, nullptr, 0);
     handleSendResponse(res, tid);
 }
