@@ -103,17 +103,17 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
 
         if (*cur != '\0') return false;
 
-        marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
-        clock_server::Delay(clockServerTid, 20);
+        localization_server::setTurnout(localizationTid, turnoutDirection, turnoutNumber);
+        clock_server::Delay(clockServerTid, 20);  // why is this here?
         printer_proprietor::updateTurnout(printerProprietorTid, turnoutDirection, turnoutIndex);
 
         switch (turnoutNumber) {
             case 153: {
                 if (turnoutDirection == SWITCH_CURVED) {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 154);
+                    localization_server::setTurnout(localizationTid, SWITCH_STRAIGHT, 154);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex + 1);
                 } else {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 154);
+                    localization_server::setTurnout(localizationTid, SWITCH_CURVED, 154);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex + 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
@@ -122,10 +122,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             }
             case 154: {
                 if (turnoutDirection == SWITCH_CURVED) {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 153);
+                    localization_server::setTurnout(localizationTid, SWITCH_STRAIGHT, 153);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex - 1);
                 } else {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 153);
+                    localization_server::setTurnout(localizationTid, SWITCH_CURVED, 153);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex - 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
@@ -134,10 +134,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             }
             case 155: {
                 if (turnoutDirection == SWITCH_CURVED) {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 156);
+                    localization_server::setTurnout(localizationTid, SWITCH_STRAIGHT, 156);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex + 1);
                 } else {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 156);
+                    localization_server::setTurnout(localizationTid, SWITCH_CURVED, 156);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex + 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
@@ -145,10 +145,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             }
             case 156: {
                 if (turnoutDirection == SWITCH_CURVED) {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_STRAIGHT, 155);
+                    localization_server::setTurnout(localizationTid, SWITCH_STRAIGHT, 155);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_STRAIGHT, turnoutIndex - 1);
                 } else {
-                    marklin_server::setTurnout(marklinServerTid, SWITCH_CURVED, 155);
+                    localization_server::setTurnout(localizationTid, SWITCH_CURVED, 155);
                     printer_proprietor::updateTurnout(printerProprietorTid, SWITCH_CURVED, turnoutIndex - 1);
                 }
                 clock_server::Delay(clockServerTid, 20);
@@ -159,7 +159,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             }
         }
 
-        marklin_server::solenoidOff(marklinServerTid);
+        localization_server::solenoidOff(localizationTid);
     } else if (strncmp(command, "q", 1) == 0) {
         charSend(clockServerTid, clock_server::toByte(clock_server::Command::KILL));
         charSend(printerProprietorTid, toByte(printer_proprietor::Command::KILL));

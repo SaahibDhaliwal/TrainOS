@@ -93,6 +93,9 @@ void print_initial_command_prompt(uint32_t consoleTid);
 void print_clear_command_prompt(uint32_t consoleTid);
 void print_command_prompt_blocked(uint32_t consoleTid);
 
+/*********** MEASURMENTS ********************************/
+void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor);
+
 /*********** STARTUP ********************************/
 
 void startup_print(int consoleTid);

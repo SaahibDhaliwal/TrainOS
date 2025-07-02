@@ -336,6 +336,11 @@ void print_measurement(uint32_t consoleTid, int measurementNum) {
     console_server::Printf(consoleTid, "\033[%d;%dH", MEASUREMENT_START_ROW + measurementNum, MEASUREMENT_START_COL);
 }
 
+void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor) {
+    console_server::Printf(consoleTid, "\033[%d;%dHTrainNum: %s Next Sensor: %s", MEASUREMENT_START_ROW,
+                           MEASUREMENT_START_COL, trainNum, sensor);
+}
+
 /*********** STARTUP  ********************************/
 void startup_print(int consoleTid) {
     hide_cursor(consoleTid);

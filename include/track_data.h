@@ -33,6 +33,7 @@ struct TrackNode {
     int num = -1;                  // sensor or switch number
     TrackNode* reverse = nullptr;  // same location, opposite direction
     Edge edge[2];                  // outgoing edges
+    TrackNode* nextSensor = nullptr;
 };
 
 // track data initializers

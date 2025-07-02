@@ -178,4 +178,13 @@ void startupPrint(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int sensorNum) {
+    char sendBuf[24] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN);
+    ui2a(trainNum, 10, sendBuf + 1);
+    sendBuf[3] = sensorBox;
+    ui2a(sensorNum, 10, sendBuf + 4);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
 }  // namespace printer_proprietor

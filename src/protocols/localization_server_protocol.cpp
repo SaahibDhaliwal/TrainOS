@@ -1,5 +1,6 @@
 #include "localization_server_protocol.h"
 
+#include "command.h"
 #include "generic_protocol.h"
 #include "rpi.h"
 #include "sys_call_stubs.h"
@@ -50,6 +51,23 @@ void updateSensor(int tid, char box, unsigned int sensorNum) {
     sendBuf[1] = box;
     sendBuf[2] = sensorNum;
     int res = sys::Send(tid, sendBuf, 4, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber) {
+    char sendBuf[3] = {0};
+    sendBuf[0] = toByte(Command::SET_TURNOUT);
+    sendBuf[1] = static_cast<char>(turnoutDirection);
+    sendBuf[2] = static_cast<char>(turnoutNumber);
+    int res = sys::Send(tid, sendBuf, 4, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void solenoidOff(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::SOLENOID_OFF);
+    sendBuf[1] = static_cast<char>(Command_Byte::SOLENOID_OFF);
+    int res = sys::Send(tid, sendBuf, 3, nullptr, 0);
     handleSendResponse(res, tid);
 }
 

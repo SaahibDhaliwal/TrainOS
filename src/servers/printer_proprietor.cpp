@@ -120,6 +120,11 @@ void PrinterProprietor() {
                 back_space(consoleServerTid);
                 break;
             }
+            // case Command::UPDATE_TRAIN: {
+
+            //     WITH_HIDDEN_CURSOR(consoleServerTid, print(consoleServerTid, idleTime));
+            //     break;
+            // }
             default: {
                 ASSERT(0, "[Printer Proprietor]: Unknown Command!\r\n");
                 break;

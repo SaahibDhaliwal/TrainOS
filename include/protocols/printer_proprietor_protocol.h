@@ -17,6 +17,7 @@ enum class Command : char {
     COMMAND_FEEDBACK,
     UPDATE_TURNOUT,
     UPDATE_SENSOR,
+    UPDATE_TRAIN,
     KILL,
     COUNT,
     UNKNOWN_COMMAND
@@ -38,6 +39,7 @@ void clearCommandPrompt(int tid);
 void backspace(int tid);
 void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
 void updateSensor(int tid, char sensorBox, unsigned int sensorNum);
+void updateTrainStatus(int tid, char sensorBox, unsigned int sensorNum);
 void startupPrint(int tid);
 
 }  // namespace printer_proprietor

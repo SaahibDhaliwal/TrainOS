@@ -2364,15 +2364,3 @@ void init_trackb(TrackNode *track) {
     track[139].type = NodeType::EXIT;
     track[139].reverse = &track[138];
 }
-
-// TrackNode *findNextSensorNode(TrackNode *track, int curIdx) {
-//     TrackNode *nextNode = track[curIdx].edge->dest;
-//     while (nextNode->type != NodeType::SENSOR) {
-//         if (nextNode->type == NodeType::BRANCH) {
-//             int turnoutNum = nextNode->num;
-
-//         } else {
-//             nextNode = track[curIdx].edge[DIR_AHEAD].dest;
-//         }
-//     }
-// }

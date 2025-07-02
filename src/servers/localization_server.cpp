@@ -26,8 +26,45 @@
 
 using namespace localization_server;
 
+TrackNode* getNextSensor(TrackNode start, Turnout* turnouts) {
+    TrackNode* nextNode = start.edge[DIR_AHEAD].dest;
+    bool deadendFlag = false;
+    while (nextNode->type != NodeType::SENSOR) {
+        if (nextNode->type == NodeType::BRANCH) {
+            // if we hit a branch node, there are two different edges to take
+            // so look at our inital turnout state to know which sensor is next
+            if (turnouts[nextNode->num].state == CURVED) {
+                nextNode = nextNode->edge[DIR_CURVED].dest;
+            } else {
+                nextNode = nextNode->edge[DIR_STRAIGHT].dest;
+            }
+        } else if (nextNode->type == NodeType::ENTER || nextNode->type == NodeType::EXIT) {
+            // ex: sensor A2, A14, A15 don't have a next sensor
+            deadendFlag = true;
+            break;
+        } else {
+            nextNode = nextNode->edge[DIR_AHEAD].dest;
+        }
+    }
+    if (!deadendFlag) {
+        return nextNode;
+    } else {
+        return nullptr;
+    }
+}
+
+#define MAX_SENSORS 80
+void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
+    for (int i = 0; i < MAX_SENSORS; i++) {  // only need to look through first 80 indices (16 * 5)
+        // do a dfs for the next sensor
+        TrackNode* result = getNextSensor(track[i], turnouts);
+        if (result != nullptr) track[i].nextSensor = result;
+    }
+}
+
 void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
-                         int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains) {
+                         int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains, Turnout* turnouts,
+                         TrackNode* track) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::SET_SPEED: {
@@ -56,6 +93,26 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             break;
         }
+        case Command::SET_TURNOUT: {
+            char turnoutDirection = receiveBuffer[1];
+            char turnoutNumber = receiveBuffer[2];
+            marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
+
+            // do some processing on those sensors
+            int index = turnoutIdx(turnoutNumber);
+            turnouts[index].state = static_cast<SwitchState>(turnoutDirection);
+
+            // (2 * index) + 81 will give us the merge switch index within the track array
+            // MergeSwitch -> destination -> reverse will give us the impacted sensor
+            TrackNode* impactedSensor = track[(2 * index) + 81].edge[DIR_AHEAD].dest->reverse;
+            // do a dfs to assign the next sensor
+            impactedSensor->nextSensor = getNextSensor(*impactedSensor, turnouts);
+            break;
+        }
+        case Command::SOLENOID_OFF: {
+            marklin_server::solenoidOff(marklinServerTid);
+            break;
+        }
         default: {
             ASSERT(1 == 2, "bad localization server command");
         }
@@ -80,6 +137,7 @@ void LocalizationServer() {
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
+    initialTurnoutConfig(turnouts);
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
 
     Train trains[MAX_TRAINS];  // trains
@@ -92,6 +150,7 @@ void LocalizationServer() {
     TrackNode track[TRACK_MAX];
     // need to 0 this out still
     init_trackb(track);  // figure out how to tell which track it is at a later date
+    initTrackSensorInfo(track, turnouts);
 
     for (;;) {
         uint32_t clientTid;
@@ -102,7 +161,7 @@ void LocalizationServer() {
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
             processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
-                                &reversingTrains);
+                                &reversingTrains, turnouts, track);
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
