@@ -34,6 +34,8 @@ void PrinterProprietor() {
     int sensorBufferIdx = 0;
     bool isSensorBufferParityEven = true;
 
+    int measurementMessages = 0;
+
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
@@ -118,6 +120,13 @@ void PrinterProprietor() {
             }
             case Command::BACKSPACE: {
                 back_space(consoleServerTid);
+                break;
+            }
+            case Command::MEASUREMENT: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   print_measurement(consoleServerTid, measurementMessages, &receiveBuffer[1]));
+                measurementMessages += 1;
+
                 break;
             }
             case Command::UPDATE_TRAIN: {

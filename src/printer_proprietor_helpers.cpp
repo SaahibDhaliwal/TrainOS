@@ -332,8 +332,9 @@ void print_command_prompt_blocked(uint32_t consoleTid) {
 #define MEASUREMENT_START_ROW 0
 #define MEASUREMENT_START_COL 90
 
-void print_measurement(uint32_t consoleTid, int measurementNum) {
+void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message) {
     console_server::Printf(consoleTid, "\033[%d;%dH", MEASUREMENT_START_ROW + measurementNum, MEASUREMENT_START_COL);
+    console_server::Puts(consoleTid, 0, message);
 }
 
 void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor) {

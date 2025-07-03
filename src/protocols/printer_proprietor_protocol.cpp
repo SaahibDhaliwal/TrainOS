@@ -189,4 +189,8 @@ void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int senso
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t deltaT) {
+    printF(tid, "%c%s->%s: %u ns   ", toByte(Command::MEASUREMENT), srcName, dstName, deltaT);
+}
+
 }  // namespace printer_proprietor

@@ -96,6 +96,7 @@ void print_command_prompt_blocked(uint32_t consoleTid);
 /*********** MEASURMENTS ********************************/
 void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor);
 
+void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message);
 /*********** STARTUP ********************************/
 
 void startup_print(int consoleTid);

@@ -20,6 +20,7 @@
 #include "sensor_task.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "timer.h"
 #include "track_data.h"
 #include "train.h"
 #include "turnout.h"
@@ -153,6 +154,8 @@ void LocalizationServer() {
     init_trackb(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
+    uint64_t prevNanos = 0;
+
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[7] = {0};
@@ -170,15 +173,34 @@ void LocalizationServer() {
             // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
             // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
             // 0) = 28
+            uint64_t curNanos = timerGet();
+
+            Train* curTrain = &trains[trainNumToIndex(14)];
+
             char box = receiveBuffer[1];
             unsigned int sensorNum = 0;
             a2ui(receiveBuffer + 2, 10, &sensorNum);
 
             int trackNodeIdx = (('A' - box) * 16) + (sensorNum - 1);
+            TrackNode* curSensor = &track[trackNodeIdx];
+            TrackNode* prevSensor = curTrain->sensorBehind;
 
             trains[trainNumToIndex(14)].nodeBehind = &track[trackNodeIdx];
             TrackNode* nextSensor = track[trackNodeIdx].nextSensor;
             trains[trainNumToIndex(14)].nodeAhead = nextSensor;
+            if (!prevSensor || curSensor == prevSensor) {
+                prevNanos = curNanos;
+                curTrain->sensorBehind = curSensor;
+                break;
+            }
+
+            uint64_t deltaT = curNanos - prevNanos;
+
+            printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name, deltaT);
+
+            curTrain->sensorAhead = curSensor->nextSensor;
+            curTrain->sensorBehind = curSensor;
+            prevNanos = curNanos;
 
             emptyReply(clientTid);
             // ASSERT(nextSensor != nullptr, "THERE IS NO NEXT SENSOR");

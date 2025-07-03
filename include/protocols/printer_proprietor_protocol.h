@@ -18,6 +18,7 @@ enum class Command : char {
     UPDATE_TURNOUT,
     UPDATE_SENSOR,
     UPDATE_TRAIN,
+    MEASUREMENT,
     KILL,
     COUNT,
     UNKNOWN_COMMAND
@@ -41,6 +42,7 @@ void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
 void updateSensor(int tid, char sensorBox, unsigned int sensorNum);
 void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int sensorNum);
 void startupPrint(int tid);
+void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t deltaT);
 
 }  // namespace printer_proprietor
 
