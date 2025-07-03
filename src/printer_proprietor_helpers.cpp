@@ -107,7 +107,6 @@ void update_idle_percentage(int percentage, int printTid) {
 #define UPTIME_START_ROW 13
 #define UPTIME_START_COL 30
 #define UPTIME_LABEL "Uptime: "
-#define UPTIME_LABEL_LENGTH 53
 
 void print_uptime(int consoleTid) {
     console_server::Printf(consoleTid, "\033[%d;%dH%s", UPTIME_START_ROW, UPTIME_START_COL, UPTIME_LABEL);
@@ -120,8 +119,8 @@ void update_uptime(int printTid, uint64_t micros) {
     uint32_t minutes = (millis / (1000 * 60)) % 60;
     uint32_t hours = millis / (1000 * 60 * 60);
 
-    console_server::Printf(printTid, "\033[%d;%dH%dh %dm %d.%ds   ", UPTIME_START_ROW, UPTIME_LABEL_LENGTH, hours,
-                           minutes, seconds,
+    console_server::Printf(printTid, "\033[%d;%dH%dh %dm %d.%ds   ", UPTIME_START_ROW,
+                           UPTIME_START_COL + strlen(UPTIME_LABEL), hours, minutes, seconds,
                            tenths);  // padded to get rid of excess
 }
 
@@ -185,7 +184,7 @@ void draw_turnout_grid_frame(uint32_t consoleTid) {
 
 void update_turnout(Turnout* turnouts, int idx, uint32_t consoleServerTid) {
     Pos pos = turnout_offsets[idx];
-    char state = turnouts[idx].state == STRAIGHT ? 'S' : 'C';
+    char state = turnouts[idx].state == SwitchState::STRAIGHT ? 'S' : 'C';
 
     if (pos.col == 22) {
         console_server::Printf(consoleServerTid, "\033[%d;%dH", TURNOUT_TABLE_START_ROW + pos.row,
@@ -197,7 +196,7 @@ void update_turnout(Turnout* turnouts, int idx, uint32_t consoleServerTid) {
 
     console_server::Puts(consoleServerTid, 0, "\033[1m");
 
-    if (turnouts[idx].state == STRAIGHT) {
+    if (turnouts[idx].state == SwitchState::STRAIGHT) {
         cursor_sharp_blue(consoleServerTid);
     } else {
         cursor_sharp_pink(consoleServerTid);
@@ -216,9 +215,6 @@ void print_turnout_table(uint32_t consoleTid) {
 
 #define SENSOR_TABLE_START_ROW 15
 #define SENSOR_TABLE_START_COL 60
-#define SENSOR_TIME_START_ROW 13
-#define SENSOR_TIME_START_COL 73
-#define SENSOR_TIME_LABEL "Sensor Query: "
 #define SENSOR_BYTE_SIZE 10
 
 void initialize_sensors(Sensor* sensors) {
@@ -329,12 +325,13 @@ void print_command_prompt_blocked(uint32_t consoleTid) {
 }
 
 /*********** MEASUREMENTS  ********************************/
-#define MEASUREMENT_START_ROW 0
-#define MEASUREMENT_START_COL 90
+#define MEASUREMENT_START_ROW 1
+#define MEASUREMENT_START_COL 95
 
 void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message) {
-    console_server::Printf(consoleTid, "\033[%d;%dH", MEASUREMENT_START_ROW + measurementNum, MEASUREMENT_START_COL);
-    console_server::Puts(consoleTid, 0, message);
+    // console_server::Printf(consoleTid, "\033[%d;%dH", MEASUREMENT_START_ROW + measurementNum, MEASUREMENT_START_COL);
+    console_server::Measurement(consoleTid, 0, message);
+    console_server::Measurement(consoleTid, 0, "\r\n");
 }
 
 void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor) {

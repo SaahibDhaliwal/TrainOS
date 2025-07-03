@@ -48,14 +48,11 @@ void printS(int tid, int channel, const char* str) {
     ASSERT(response >= 0);
 }
 
-void printF(uint32_t tid, const char* fmt, ...) {
-    va_list va;
-    char buf[12];
-    char out[Config::MAX_MESSAGE_LENGTH];
+int formatToBuffer(char* out, int outSize, const char* fmt, va_list va) {
+    char buf[24];
     unsigned int outPos = 0;
 
-    va_start(va, fmt);
-    while (*fmt && outPos < sizeof(out) - 1) {
+    while (*fmt && outPos < outSize - 1) {
         if (*fmt != '%') {
             out[outPos++] = *fmt++;
             continue;
@@ -103,16 +100,32 @@ void printF(uint32_t tid, const char* fmt, ...) {
         fmt++;
 
         int len = strlen(str);
-        for (int i = len; i < width && outPos < sizeof(out) - 1; i++) {
+        for (int i = len; i < width && outPos < outSize - 1; i++) {
             out[outPos++] = ' ';
         }
 
-        while (*str && outPos < sizeof(out) - 1) {
+        while (*str && outPos < outSize - 1) {
             out[outPos++] = *str++;
         }
     }
 
     out[outPos] = '\0';
+    return (outPos < outSize - 1 ? (int)outPos : -1);
+}
+
+int formatToString(char* buff, int buffSize, const char* fmt, ...) {
+    va_list va;
+    va_start(va, fmt);
+    int len = formatToBuffer(buff, buffSize, fmt, va);
+    va_end(va);
+    return len;
+}
+
+void printF(uint32_t tid, const char* fmt, ...) {
+    char out[Config::MAX_MESSAGE_LENGTH];
+    va_list va;
+    va_start(va, fmt);
+    int len = formatToBuffer(out, Config::MAX_MESSAGE_LENGTH, fmt, va);
     va_end(va);
 
     printS(tid, 0, out);
@@ -189,8 +202,17 @@ void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int senso
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t deltaT) {
-    printF(tid, "%c%s->%s: %u ns   ", toByte(Command::MEASUREMENT), srcName, dstName, deltaT);
+void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
+                       const uint64_t mmDeltaT) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::MEASUREMENT);
+
+    uint64_t ms = microsDeltaT / 1000;
+    uint64_t micros = microsDeltaT % 1000;
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s,%s,%u.%u,%u", srcName, dstName, ms, micros,
+                   mmDeltaT);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
 }  // namespace printer_proprietor

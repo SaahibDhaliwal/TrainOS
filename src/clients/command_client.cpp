@@ -39,6 +39,11 @@ void CommandTask() {
                     emptySend(tid);
                 }
 
+                if (userInput[0] == 'm') {
+                    int tid = name_server::WhoIs("measure_dump");
+                    emptySend(tid);
+                }
+
                 char replyChar;
                 sys::Send(commandServerTid, userInput, userInputIdx, &replyChar, 1);
 

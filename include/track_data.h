@@ -1,7 +1,7 @@
 #ifndef __TRACK_DATA__
 #define __TRACK_DATA__
 
-#pragma once
+#include <cstdint>
 
 // maximum number of nodes in a layout
 static constexpr int TRACK_MAX = 144;
@@ -23,7 +23,7 @@ struct Edge {
     TrackNode* src = nullptr;   // source node
     TrackNode* dest = nullptr;  // destination node
     Edge* reverse = nullptr;    // reverse edge
-    int dist = 0;               // in millimetres
+    uint64_t dist = 0;          // in millimetres
 };
 
 // one node in the graph
@@ -34,6 +34,7 @@ struct TrackNode {
     TrackNode* reverse = nullptr;  // same location, opposite direction
     Edge edge[2];                  // outgoing edges
     TrackNode* nextSensor = nullptr;
+    uint64_t distToNextSensor = 0;
 };
 
 // track data initializers

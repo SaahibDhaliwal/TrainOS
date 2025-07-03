@@ -5,11 +5,12 @@
 #define SINGLE_SWITCH_COUNT 18
 #define DOUBLE_SWITCH_COUNT 4
 
-typedef enum { STRAIGHT = 33, CURVED, UNKNOWN } SwitchState;
-typedef struct {
+enum class SwitchState { STRAIGHT, CURVED, Unknown };
+
+struct Turnout {
     char id;
     SwitchState state;
-} Turnout;
+};
 
 int turnoutIdx(int turnoutNum);
 void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid);

@@ -5,25 +5,15 @@
 #include "printer_proprietor_protocol.h"
 
 void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid) {
-    for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
-        turnouts[i].id = i + 1;
-        marklin_server::setTurnout(marklinServerTid, turnouts[i].state, i + 1);
-        clock_server::Delay(clockServerTid, 20);
-        printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(turnouts[i].state), i);
-        // also update the track data?
-    }
-
-    for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
-        turnouts[i].id = i + 153;
-        if (i == 0 || i == 2) {
-            marklin_server::setTurnout(marklinServerTid, turnouts[i].state, i + 153);
-            printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(turnouts[i].state),
-                                              i + SINGLE_SWITCH_COUNT);
+    for (int i = 0; i < SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT; i += 1) {
+        if (turnouts[i].state == SwitchState::CURVED) {
+            marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_CURVED, turnouts[i].id);
+            printer_proprietor::updateTurnout(printerProprietorTid, Command_Byte::SWITCH_CURVED, i);
         } else {
-            marklin_server::setTurnout(marklinServerTid, turnouts[i].state, i + 153);
-            printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(turnouts[i].state),
-                                              i + SINGLE_SWITCH_COUNT);
+            marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_STRAIGHT, turnouts[i].id);
+            printer_proprietor::updateTurnout(printerProprietorTid, Command_Byte::SWITCH_STRAIGHT, i);
         }
+
         clock_server::Delay(clockServerTid, 20);
     }
     marklin_server::solenoidOff(marklinServerTid);
@@ -40,27 +30,35 @@ int turnoutIdx(int turnoutNum) {
 }
 
 void initialTurnoutConfig(Turnout* turnouts) {
-    turnouts[0].state = CURVED;
-    turnouts[1].state = CURVED;
-    turnouts[2].state = CURVED;
-    turnouts[3].state = CURVED;
-    turnouts[4].state = CURVED;
-    turnouts[5].state = CURVED;
-    turnouts[6].state = CURVED;
-    turnouts[7].state = CURVED;
-    turnouts[8].state = CURVED;
-    turnouts[9].state = STRAIGHT;
-    turnouts[10].state = CURVED;
-    turnouts[11].state = CURVED;
-    turnouts[12].state = STRAIGHT;
-    turnouts[13].state = CURVED;
-    turnouts[14].state = CURVED;
-    turnouts[15].state = CURVED;
-    turnouts[16].state = CURVED;
-    turnouts[17].state = CURVED;
+    for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
+        turnouts[i].id = i + 1;
+    }
+
+    for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
+        turnouts[i].id = i + 153;
+    }
+
+    turnouts[0].state = SwitchState::CURVED;
+    turnouts[1].state = SwitchState::CURVED;
+    turnouts[2].state = SwitchState::CURVED;
+    turnouts[3].state = SwitchState::CURVED;
+    turnouts[4].state = SwitchState::CURVED;
+    turnouts[5].state = SwitchState::CURVED;
+    turnouts[6].state = SwitchState::CURVED;
+    turnouts[7].state = SwitchState::CURVED;
+    turnouts[8].state = SwitchState::STRAIGHT;
+    turnouts[9].state = SwitchState::CURVED;
+    turnouts[10].state = SwitchState::CURVED;
+    turnouts[11].state = SwitchState::CURVED;
+    turnouts[12].state = SwitchState::CURVED;
+    turnouts[13].state = SwitchState::STRAIGHT;
+    turnouts[14].state = SwitchState::CURVED;
+    turnouts[15].state = SwitchState::STRAIGHT;
+    turnouts[16].state = SwitchState::STRAIGHT;
+    turnouts[17].state = SwitchState::STRAIGHT;
     // double switches
-    turnouts[18].state = CURVED;
-    turnouts[19].state = STRAIGHT;
-    turnouts[20].state = CURVED;
-    turnouts[21].state = STRAIGHT;
+    turnouts[18].state = SwitchState::CURVED;
+    turnouts[19].state = SwitchState::STRAIGHT;
+    turnouts[20].state = SwitchState::CURVED;
+    turnouts[21].state = SwitchState::STRAIGHT;
 }

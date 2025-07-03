@@ -34,7 +34,7 @@ void PrinterProprietor() {
     int sensorBufferIdx = 0;
     bool isSensorBufferParityEven = true;
 
-    int measurementMessages = 0;
+    unsigned int measurementMessages = 0;
 
     for (;;) {
         uint32_t clientTid;
@@ -78,9 +78,9 @@ void PrinterProprietor() {
                 a2ui(receiveBuffer + 2, 10, &turnoutIdx);
 
                 if (turnoutCommand == SWITCH_CURVED) {
-                    turnouts[turnoutIdx].state = CURVED;
+                    turnouts[turnoutIdx].state = SwitchState::CURVED;
                 } else {
-                    turnouts[turnoutIdx].state = STRAIGHT;
+                    turnouts[turnoutIdx].state = SwitchState::STRAIGHT;
                 }
 
                 WITH_HIDDEN_CURSOR(consoleServerTid, update_turnout(turnouts, turnoutIdx, consoleServerTid));
@@ -123,8 +123,7 @@ void PrinterProprietor() {
                 break;
             }
             case Command::MEASUREMENT: {
-                WITH_HIDDEN_CURSOR(consoleServerTid,
-                                   print_measurement(consoleServerTid, measurementMessages, &receiveBuffer[1]));
+                print_measurement(consoleServerTid, measurementMessages, &receiveBuffer[1]);
                 measurementMessages += 1;
 
                 break;

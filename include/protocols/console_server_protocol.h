@@ -3,7 +3,22 @@
 #include <cstdint>
 
 namespace console_server {
-enum class Command : char { GET, PUT, PUTS, TX, RX, RT, TX_CONNECT, RX_CONNECT, PRINT, KILL, COUNT, UNKNOWN_COMMAND };
+enum class Command : char {
+    GET,
+    PUT,
+    PUTS,
+    TX,
+    RX,
+    RT,
+    TX_CONNECT,
+    RX_CONNECT,
+    CONSOLE_DUMP,
+    MEASURE_DUMP,
+    MEASUREMENT,
+    KILL,
+    COUNT,
+    UNKNOWN_COMMAND
+};
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);
@@ -18,7 +33,7 @@ int Putc(int tid, int channel, unsigned char ch);
 
 int Puts(int tid, int channel, const char* str);
 
-int PrintBuff(int tid);
+int Measurement(int tid, int channel, const char* str);
 
 int Printf(uint32_t tid, const char* fmt, ...);
 }  // namespace console_server

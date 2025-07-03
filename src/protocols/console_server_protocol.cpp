@@ -68,6 +68,21 @@ int Puts(int tid, int channel, const char* str) {
     }
 }
 
+int Measurement(int tid, int channel, const char* str) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::MEASUREMENT);
+    strcpy(sendBuf + 1, str);
+
+    char reply = 0;
+    int response = sys::Send(tid, sendBuf, strlen(str) + 2, &reply, 1);
+
+    if (response < 0) {  // if Send() cannot reach the TID
+        return response;
+    } else {
+        return 0;
+    }
+}
+
 int Printf(uint32_t tid, const char* fmt, ...) {
     va_list va;
     char buf[12];

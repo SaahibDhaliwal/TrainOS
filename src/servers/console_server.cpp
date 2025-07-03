@@ -50,7 +50,21 @@ void ConsoleBufferDumper() {
 
     uint32_t* sender = 0;
     emptyReceive(sender);
-    charSend(consoleServerTid, toByte(Command::PRINT));
+    charSend(consoleServerTid, toByte(Command::CONSOLE_DUMP));
+    // ASSERT(1 == 2);
+    sys::Exit();
+}
+
+void ConsoleMeasurementDumper() {
+    int consoleServerTid = sys::MyParentTid();
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
+    name_server::RegisterAs("measure_dump");
+
+    uint32_t* sender = 0;
+    emptyReceive(sender);
+    charSend(consoleServerTid, toByte(Command::MEASURE_DUMP));
     // ASSERT(1 == 2);
     sys::Exit();
 }
@@ -66,10 +80,12 @@ void ConsoleServer() {
     int txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
     int rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
     sys::Create(notifierPriority, ConsoleBufferDumper);
+    sys::Create(notifierPriority, ConsoleMeasurementDumper);
 
     int rxClientTid = 0;  // assumption is one command task
 
     RingBuffer<char, 100000> charQueue2;
+    RingBuffer<char, 100000> measurements;
 
     bool waitForTx = false;
 
@@ -128,7 +144,7 @@ void ConsoleServer() {
 
                 break;
             }
-            case Command::PRINT: {  // only for our buffer dumper?
+            case Command::CONSOLE_DUMP: {  // only for our buffer dumper?
                 while (!charQueue2.empty()) {
                     char ch = *charQueue2.pop();
                     if (ch == '\033') {
@@ -154,7 +170,27 @@ void ConsoleServer() {
 
                 clock_server::Delay(clockServerTid, 10000);
                 charSend(clockServerTid, toByte(clock_server::Command::KILL));
-                ASSERT(1 == 2);
+                ASSERT(0);
+
+                break;
+            }
+            case Command::MEASUREMENT: {  // only for our buffer dumper?
+                int msgIdx = 1;
+                while (msgIdx < msgLen - 1) {
+                    measurements.push(msg[msgIdx]);
+                    msgIdx += 1;
+                }
+
+                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
+                break;
+            }
+            case Command::MEASURE_DUMP: {  // only for our buffer dumper?
+                while (!measurements.empty()) {
+                    char ch = *measurements.pop();
+                    uart_printf(CONSOLE, "%c", ch);
+                }
+
+                ASSERT(0);
 
                 break;
             }

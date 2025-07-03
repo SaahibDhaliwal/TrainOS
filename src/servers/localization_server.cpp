@@ -27,31 +27,37 @@
 
 using namespace localization_server;
 
-TrackNode* getNextSensor(TrackNode start, Turnout* turnouts) {
-    TrackNode* nextNode = start.edge[DIR_AHEAD].dest;
+void setNextSensor(TrackNode* start, Turnout* turnouts) {
+    int mmTotalDist = start->edge[DIR_AHEAD].dist;
+    TrackNode* nextNode = start->edge[DIR_AHEAD].dest;
     bool deadendFlag = false;
     while (nextNode->type != NodeType::SENSOR) {
         if (nextNode->type == NodeType::BRANCH) {
             // if we hit a branch node, there are two different edges to take
             // so look at our inital turnout state to know which sensor is next
-            if (turnouts[nextNode->num].state == CURVED) {
+            if (turnouts[nextNode->num].state == SwitchState::CURVED) {
+                mmTotalDist += nextNode->edge[DIR_CURVED].dist;
                 nextNode = nextNode->edge[DIR_CURVED].dest;
             } else {
+                mmTotalDist += nextNode->edge[DIR_STRAIGHT].dist;
                 nextNode = nextNode->edge[DIR_STRAIGHT].dest;
             }
         } else if (nextNode->type == NodeType::ENTER || nextNode->type == NodeType::EXIT) {
             // ex: sensor A2, A14, A15 don't have a next sensor
             deadendFlag = true;
-            nextNode = nextNode->edge[DIR_AHEAD].dest;
             break;
         } else {
+            mmTotalDist += nextNode->edge[DIR_AHEAD].dist;
             nextNode = nextNode->edge[DIR_AHEAD].dest;
         }
     }
+
     if (!deadendFlag) {
-        return nextNode;
+        start->nextSensor = nextNode;
+        start->distToNextSensor = mmTotalDist;
     } else {
-        return nullptr;
+        start->nextSensor = nullptr;
+        start->distToNextSensor = 0;
     }
 }
 
@@ -59,8 +65,7 @@ TrackNode* getNextSensor(TrackNode start, Turnout* turnouts) {
 void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
     for (int i = 0; i < MAX_SENSORS; i++) {  // only need to look through first 80 indices (16 * 5)
         // do a dfs for the next sensor
-        TrackNode* result = getNextSensor(track[i], turnouts);
-        if (result != nullptr) track[i].nextSensor = result;
+        setNextSensor(&track[i], turnouts);
     }
 }
 
@@ -108,7 +113,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             // MergeSwitch -> destination -> reverse will give us the impacted sensor
             TrackNode* impactedSensor = track[(2 * index) + 81].edge[DIR_AHEAD].dest->reverse;
             // do a dfs to assign the next sensor
-            impactedSensor->nextSensor = getNextSensor(*impactedSensor, turnouts);
+            setNextSensor(impactedSensor, turnouts);
             break;
         }
         case Command::SOLENOID_OFF: {
@@ -154,7 +159,7 @@ void LocalizationServer() {
     init_trackb(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
-    uint64_t prevNanos = 0;
+    uint64_t prevMicros = 0;
 
     for (;;) {
         uint32_t clientTid;
@@ -173,7 +178,7 @@ void LocalizationServer() {
             // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
             // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
             // 0) = 28
-            uint64_t curNanos = timerGet();
+            uint64_t curMicros = timerGet();
 
             Train* curTrain = &trains[trainNumToIndex(14)];
 
@@ -181,38 +186,38 @@ void LocalizationServer() {
             unsigned int sensorNum = 0;
             a2ui(receiveBuffer + 2, 10, &sensorNum);
 
-            int trackNodeIdx = (('A' - box) * 16) + (sensorNum - 1);
+            int trackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);
             TrackNode* curSensor = &track[trackNodeIdx];
             TrackNode* prevSensor = curTrain->sensorBehind;
 
-            trains[trainNumToIndex(14)].nodeBehind = &track[trackNodeIdx];
-            TrackNode* nextSensor = track[trackNodeIdx].nextSensor;
-            trains[trainNumToIndex(14)].nodeAhead = nextSensor;
             if (!prevSensor || curSensor == prevSensor) {
-                prevNanos = curNanos;
+                prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
-                break;
+            } else {
+                uint64_t microsDeltaT = curMicros - prevMicros;
+                uint64_t mmDeltaD = prevSensor->distToNextSensor;
+
+                printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
+                                                      microsDeltaT, mmDeltaD);
+
+                curTrain->sensorAhead = curSensor->nextSensor;
+                curTrain->sensorBehind = curSensor;
+                prevMicros = curMicros;
             }
-
-            uint64_t deltaT = curNanos - prevNanos;
-
-            printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name, deltaT);
-
-            curTrain->sensorAhead = curSensor->nextSensor;
-            curTrain->sensorBehind = curSensor;
-            prevNanos = curNanos;
 
             emptyReply(clientTid);
+
             // ASSERT(nextSensor != nullptr, "THERE IS NO NEXT SENSOR");
 
-            if (nextSensor != nullptr) {
-                char nextBox = 65 + (nextSensor->num / 16);
-                unsigned int nextNum = (nextSensor->num % 16) + 1;
-                printer_proprietor::printF(printerProprietorTid, "\033[%d;%dHTrainNum: %s Next Sensor: %c%u", 0, 90, 14,
-                                           nextBox, nextNum);
-            } else {
-                uart_printf(CONSOLE, "there is no next sensor for sensor: %c%u", box, sensorNum);
-            }
+            // if (nextSensor != nullptr) {
+            //     char nextBox = 65 + (nextSensor->num / 16);
+            //     unsigned int nextNum = (nextSensor->num % 16) + 1;
+            //     printer_proprietor::printF(printerProprietorTid, "\033[%d;%dHTrainNum: %s Next Sensor: %c%u", 0, 90,
+            //     14,
+            //                                nextBox, nextNum);
+            // } else {
+            //     uart_printf(CONSOLE, "there is no next sensor for sensor: %c%u", box, sensorNum);
+            // }
 
         } else {
             ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");

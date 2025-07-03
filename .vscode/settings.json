@@ -5,6 +5,18 @@
     "cassert": "cpp",
     "thread": "cpp",
     "ratio": "cpp",
-    "string_view": "cpp"
+    "string_view": "cpp",
+    "optional": "cpp",
+    "random": "cpp",
+    "fstream": "cpp",
+    "istream": "cpp",
+    "ostream": "cpp",
+    "sstream": "cpp",
+    "stop_token": "cpp",
+    "streambuf": "cpp",
+    "mutex": "cpp",
+    "system_error": "cpp",
+    "compare": "cpp",
+    "format": "cpp"
   }
 }
