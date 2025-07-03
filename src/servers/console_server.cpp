@@ -48,8 +48,8 @@ void ConsoleBufferDumper() {
 
     name_server::RegisterAs("console_dump");
 
-    uint32_t* sender = 0;
-    emptyReceive(sender);
+    uint32_t sender = 0;
+    emptyReceive(&sender);
     charSend(consoleServerTid, toByte(Command::CONSOLE_DUMP));
     // ASSERT(1 == 2);
     sys::Exit();
@@ -62,10 +62,14 @@ void ConsoleMeasurementDumper() {
 
     name_server::RegisterAs("measure_dump");
 
-    uint32_t* sender = 0;
-    emptyReceive(sender);
+    uint32_t sender = 0;
+    emptyReceive(&sender);
+    charSend(consoleServerTid, toByte(Command::MEASURE_RECORD));
+
+    emptyReply(sender);
+    emptyReceive(&sender);
     charSend(consoleServerTid, toByte(Command::MEASURE_DUMP));
-    // ASSERT(1 == 2);
+
     sys::Exit();
 }
 
@@ -88,6 +92,7 @@ void ConsoleServer() {
     RingBuffer<char, 100000> measurements;
 
     bool waitForTx = false;
+    bool recordMeasurements = false;
 
     for (;;) {
         uint32_t clientTid;
@@ -174,11 +179,13 @@ void ConsoleServer() {
 
                 break;
             }
-            case Command::MEASUREMENT: {  // only for our buffer dumper?
-                int msgIdx = 1;
-                while (msgIdx < msgLen - 1) {
-                    measurements.push(msg[msgIdx]);
-                    msgIdx += 1;
+            case Command::MEASUREMENT: {
+                if (recordMeasurements) {
+                    int msgIdx = 1;
+                    while (msgIdx < msgLen - 1) {
+                        measurements.push(msg[msgIdx]);
+                        msgIdx += 1;
+                    }
                 }
 
                 charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
@@ -192,6 +199,11 @@ void ConsoleServer() {
 
                 ASSERT(0);
 
+                break;
+            }
+            case Command::MEASURE_RECORD: {
+                recordMeasurements = true;
+                charReply(clientTid, toByte(Reply::SUCCESS));  // unblock client
                 break;
             }
             case Command::KILL: {

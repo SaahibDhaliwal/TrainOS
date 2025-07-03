@@ -13,6 +13,7 @@ enum class Command : char {
     TX_CONNECT,
     RX_CONNECT,
     CONSOLE_DUMP,
+    MEASURE_RECORD,
     MEASURE_DUMP,
     MEASUREMENT,
     KILL,

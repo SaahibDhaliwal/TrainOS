@@ -37,17 +37,14 @@ void CommandTask() {
                 if (userInput[0] == 'd') {
                     int tid = name_server::WhoIs("console_dump");
                     emptySend(tid);
-                }
-
-                if (userInput[0] == 'm') {
+                } else if (userInput[0] == 'm') {
                     int tid = name_server::WhoIs("measure_dump");
                     emptySend(tid);
+                } else {
+                    char replyChar;
+                    sys::Send(commandServerTid, userInput, userInputIdx, &replyChar, 1);
+                    printer_proprietor::commandFeedback(command_server::replyFromByte(replyChar), printerProprietorTid);
                 }
-
-                char replyChar;
-                sys::Send(commandServerTid, userInput, userInputIdx, &replyChar, 1);
-
-                printer_proprietor::commandFeedback(command_server::replyFromByte(replyChar), printerProprietorTid);
 
                 userInputIdx = 0;
             } else if (ch == '\b' || ch == 0x7F) {
