@@ -35,7 +35,7 @@ void setNextSensor(TrackNode* start, Turnout* turnouts) {
         if (nextNode->type == NodeType::BRANCH) {
             // if we hit a branch node, there are two different edges to take
             // so look at our inital turnout state to know which sensor is next
-            if (turnouts[nextNode->num].state == SwitchState::CURVED) {
+            if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::CURVED) {
                 mmTotalDist += nextNode->edge[DIR_CURVED].dist;
                 nextNode = nextNode->edge[DIR_CURVED].dest;
             } else {
@@ -84,6 +84,10 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
                 marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, trainNumber);
             }
             trains[trainIdx].speed = trainSpeed;
+            // if (trains[trainIdx].active == false) {
+            //     trains[trainIdx].active = true;
+
+            // }  // maybe have something that checks if the speed is zero and set the train as inactive?
             break;
         }
         case Command::REVERSE_TRAIN: {
@@ -156,10 +160,11 @@ void LocalizationServer() {
 
     TrackNode track[TRACK_MAX];
     // need to 0 this out still
-    init_trackb(track);  // figure out how to tell which track it is at a later date
+    init_tracka(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
     uint64_t prevMicros = 0;
+    // uint64_t velocity = 0;
 
     for (;;) {
         uint32_t clientTid;
@@ -181,6 +186,12 @@ void LocalizationServer() {
             uint64_t curMicros = timerGet();
 
             Train* curTrain = &trains[trainNumToIndex(14)];
+            for (int i = 0; i < MAX_TRAINS; i++) {
+                if (trains[i].active) {
+                    // later, will do a check to see if the sensor hit is plausible for an active train
+                    curTrain = &trains[i];
+                }
+            }
 
             char box = receiveBuffer[1];
             unsigned int sensorNum = 0;
@@ -201,23 +212,33 @@ void LocalizationServer() {
                                                       microsDeltaT, mmDeltaD);
 
                 curTrain->sensorAhead = curSensor->nextSensor;
+                // ASSERT(curSensor->nextSensor != nullptr);
                 curTrain->sensorBehind = curSensor;
                 prevMicros = curMicros;
+
+                uint64_t nextSample = (mmDeltaD * 1000000000) / microsDeltaT;
+                uint64_t lastEstimate = curTrain->velocity;
+                // alpha = 1/8 means k=3, so 8-1 and bit shift
+                curTrain->velocity = ((curTrain->velocity * 7) + nextSample) >> 3;
+                if (lastEstimate > nextSample) {
+                    // positive if we were slower than our estimate
+                    printer_proprietor::printF(
+                        printerProprietorTid,
+                        "\033[s\033[%d;%dH\033[K Train %d Next sensor: %s Current weighted velocity: 0.%u "
+                        "Last Sensor V: 0.%u Delta b/w last sensor and estimate: %d\033[u",
+                        15, 90, curTrain->id, curTrain->sensorAhead->name, curTrain->velocity, nextSample,
+                        lastEstimate - nextSample);
+                } else {
+                    printer_proprietor::printF(
+                        printerProprietorTid,
+                        "\033[s\033[%d;%dH\033[K Train %d Next sensor: %s Current weighted velocity: 0.%u "
+                        "Last Sensor V: 0.%u Delta b/w last sensor and estimate: -0.%d\033[u",
+                        15, 90, curTrain->id, curTrain->sensorAhead->name, curTrain->velocity, nextSample,
+                        nextSample - lastEstimate);
+                }
             }
 
             emptyReply(clientTid);
-
-            // ASSERT(nextSensor != nullptr, "THERE IS NO NEXT SENSOR");
-
-            // if (nextSensor != nullptr) {
-            //     char nextBox = 65 + (nextSensor->num / 16);
-            //     unsigned int nextNum = (nextSensor->num % 16) + 1;
-            //     printer_proprietor::printF(printerProprietorTid, "\033[%d;%dHTrainNum: %s Next Sensor: %c%u", 0, 90,
-            //     14,
-            //                                nextBox, nextNum);
-            // } else {
-            //     uart_printf(CONSOLE, "there is no next sensor for sensor: %c%u", box, sensorNum);
-            // }
 
         } else {
             ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");

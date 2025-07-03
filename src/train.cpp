@@ -21,6 +21,8 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
         trains[i].reversing = false;
+        trains[i].active = false;
+        trains[i].velocity = 0;
         trains[i].nodeAhead = nullptr;
         trains[i].nodeBehind = nullptr;
         trains[i].sensorAhead = nullptr;

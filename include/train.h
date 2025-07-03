@@ -10,10 +10,11 @@
 #define TRAIN_INIT 255
 
 struct Train {
+    bool active;
     bool reversing;
     uint8_t speed;
     uint8_t id;
-    uint32_t velocity;
+    uint64_t velocity;
     // these are all ints associated with the array
     TrackNode *nodeAhead;
     TrackNode *nodeBehind;

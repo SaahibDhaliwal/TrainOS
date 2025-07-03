@@ -1,8 +1,8 @@
 /* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
 
 #include "track_data.h"
-// extern "C" static void *memset(void *s, int c, unsigned int n) {
-//     unsigned char *p = s;
+// void *memset(void *s, int c, unsigned int n) {
+//     unsigned char *p = (unsigned char *)s;
 //     while (n-- > 0) {
 //         *p++ = (unsigned char)c;
 //     }
@@ -1202,7 +1202,7 @@ void init_tracka(TrackNode *track) {
 // TRACK A DONE. NEXT IS TRACK B
 
 void init_trackb(TrackNode *track) {
-    // memset(track, 0, TRACK_MAX * sizeof(track_node));
+    // memset(track, 0, TRACK_MAX * sizeof(TrackNode));
     track[0].name = "A1";
     track[0].type = NodeType::SENSOR;
     track[0].num = 0;
