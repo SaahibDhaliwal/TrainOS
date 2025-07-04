@@ -29,7 +29,7 @@ int turnoutIdx(int turnoutNum) {
     }
 }
 
-void initialTurnoutConfig(Turnout* turnouts) {
+void initialTurnoutConfigTrackA(Turnout* turnouts) {
     for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
         turnouts[i].id = i + 1;
     }
@@ -63,7 +63,7 @@ void initialTurnoutConfig(Turnout* turnouts) {
     turnouts[21].state = SwitchState::STRAIGHT;
 }
 
-void initialTurnoutConfigB(Turnout* turnouts) {
+void initialTurnoutConfigTrackB(Turnout* turnouts) {
     for (int i = 0; i < SINGLE_SWITCH_COUNT; i += 1) {
         turnouts[i].id = i + 1;
     }
@@ -87,7 +87,7 @@ void initialTurnoutConfigB(Turnout* turnouts) {
     turnouts[12].state = SwitchState::STRAIGHT;
     turnouts[13].state = SwitchState::STRAIGHT;
     turnouts[14].state = SwitchState::CURVED;
-    turnouts[15].state = SwitchState::CURVED;
+    turnouts[15].state = SwitchState::STRAIGHT;
     turnouts[16].state = SwitchState::STRAIGHT;
     turnouts[17].state = SwitchState::STRAIGHT;
     // double switches

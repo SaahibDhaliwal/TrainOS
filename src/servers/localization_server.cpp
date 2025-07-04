@@ -79,6 +79,7 @@ void StopTrain() {
         int res = sys::Send(parentTid, nullptr, 0, replyBuff, 5);
         handleSendResponse(res, parentTid);
         a2ui(replyBuff, 10, &delayAmount);
+        // ASSERT(0, "Delayamount : %u", delayAmount);
         // we assume that we have an amount of time to delay from the reply
         clock_server::Delay(clockServerTid, delayAmount);
     }
@@ -225,7 +226,7 @@ void LocalizationServer() {
     RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
     uint32_t sensorTid = sys::Create(20, &SensorTask);
-    uint32_t stoppingTid = sys::Create(20, &StopTrain);
+    uint32_t stoppingTid = sys::Create(49, &StopTrain);
     uint32_t client = 0;
     int res = sys::Receive(&client, nullptr, 0);
     ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
@@ -262,12 +263,12 @@ void LocalizationServer() {
             int64_t curMicros = timerGet();
 
             Train* curTrain = &trains[trainNumToIndex(14)];
-            for (int i = 0; i < MAX_TRAINS; i++) {
-                if (trains[i].active) {
-                    // later, will do a check to see if the sensor hit is plausible for an active train
-                    curTrain = &trains[i];
-                }
-            }
+            // for (int i = 0; i < MAX_TRAINS; i++) {
+            //     if (trains[i].active) {
+            //         // later, will do a check to see if the sensor hit is plausible for an active train
+            //         curTrain = &trains[i];
+            //     }
+            // }
             // if (!curTrain->active) {
             //     ASSERT(0, "got sensor when there's no active train");
             //     continue;
@@ -321,11 +322,14 @@ void LocalizationServer() {
 
                 // check if this sensor is the one a train is waiting for
                 if (curTrain->stoppingSensor == curSensor) {
-                                        // reply to our stopping task with a calculated amount of ticks to delay
+                    // reply to our stopping task with a calculated amount of ticks to delay
+
                     char sendBuff[20] = {0};
-                    uint16_t numOfTicks = 5;  // must be changed
+                    uint16_t numOfTicks = 10;  // must be changed
                     ui2a(numOfTicks, 10, sendBuff);
                     sys::Reply(stoppingTid, sendBuff, strlen(sendBuff) + 1);
+                    stopTrainIndex = trainNumToIndex(curTrain->id);
+                    // ASSERT(0, "got to the sensor we were looking for");
                 }
 
                 printer_proprietor::updateTrainStatus(printerProprietorTid, curTrain->id, curTrain->velocity);
@@ -361,7 +365,8 @@ void LocalizationServer() {
         } else if (clientTid == stoppingTid) {
             // we have delayed enough, issue the stop command:
             // ideally, we know which train this is (we are the localization server)
-            marklin_server::setTrainSpeed(marklinServerTid, 0, trains[stopTrainIndex].id);
+            // ASSERT(0, "the notifier got to us");
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trains[stopTrainIndex].id);
 
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
