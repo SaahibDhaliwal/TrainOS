@@ -196,7 +196,7 @@ void updateTrainStatus(int tid, int trainNum, uint64_t velocity) {
     sendBuf[0] = toByte(Command::UPDATE_TRAIN);
 
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "[Train %u]: Velocity Estimate: %u.%u mm/s       ",
-                   trainNum, velocity / 10000, velocity % 10000);
+                   trainNum, velocity / 1000, velocity % 1000);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 

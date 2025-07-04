@@ -317,7 +317,7 @@ void LocalizationServer() {
 
                 // this is still alpha w 1/8
                 uint64_t oldVelocity = curTrain->velocity;
-                curTrain->velocity = ((oldVelocity * 7) + sample_mm_per_s_x1000 + 4) >> 3;
+                curTrain->velocity = ((oldVelocity * 7) + sample_mm_per_s_x1000) >> 3;
 
                 // check if this sensor is the one a train is waiting for
                 if (curTrain->stoppingSensor == curSensor) {
