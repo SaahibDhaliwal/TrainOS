@@ -21,6 +21,8 @@ struct Train {
     TrackNode *sensorAhead;
     int64_t sensorAheadMicros;
     TrackNode *sensorBehind;
+    TrackNode *stoppingSensor;
+    uint64_t whereToIssueStop;
 };
 
 void initializeTrains(Train *trains, int marklinServerTid);

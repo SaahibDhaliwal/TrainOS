@@ -39,8 +39,8 @@ void FinalFirstUserTask() {
     sys::Create(49, &NameServer);
     sys::Create(50, &ClockServer);
     sys::Create(30, &ConsoleServer);
-    sys::Create(30, &MarklinServer);
-    int printerProprietorTid = sys::Create(49, &PrinterProprietor);
+    sys::Create(40, &MarklinServer);
+    int printerProprietorTid = sys::Create(35, &PrinterProprietor);
     printer_proprietor::startupPrint(printerProprietorTid);
     sys::Create(20, &CommandServer);
     sys::Exit();

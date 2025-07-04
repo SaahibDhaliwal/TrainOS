@@ -1,7 +1,9 @@
 #include "localization_server_protocol.h"
 
 #include "command.h"
+#include "config.h"
 #include "generic_protocol.h"
+#include "printer_proprietor_protocol.h"
 #include "rpi.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
@@ -69,6 +71,16 @@ void solenoidOff(int tid) {
     sendBuf[0] = toByte(Command::SOLENOID_OFF);
     sendBuf[1] = static_cast<char>(Command_Byte::SOLENOID_OFF);
     int res = sys::Send(tid, sendBuf, 3, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+// Note: I'm passing the sensor num and train num as a char.
+void setStopLocation(int tid, int trainNumber, char box, int sensorNum, int offset) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::SET_STOP);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d",
+                                       static_cast<char>(trainNumber), box, sensorNum, offset);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }
 

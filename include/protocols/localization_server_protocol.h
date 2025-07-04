@@ -14,6 +14,7 @@ enum class Command : char {
     SENSOR_UPDATE,
     SET_TURNOUT,
     SOLENOID_OFF,
+    SET_STOP,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -32,6 +33,8 @@ void updateSensor(int tid, char box, unsigned int sensorNum);
 
 void setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber);
 void solenoidOff(int tid);
+
+void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 
 }  // namespace localization_server
 

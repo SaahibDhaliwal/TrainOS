@@ -196,7 +196,7 @@ void handle(uint32_t N, TaskManager* taskManager, TaskDescriptor* curTask, bool*
             break;
         }
         default: {  // we can make this more extensive
-            ASSERT(0, "Unknown syscall: %u\n", N);
+            ASSERT(0, "Unknown syscall: %u from TID: %u\n", N, curTask->getTid());
             break;
         }
     }  // switch

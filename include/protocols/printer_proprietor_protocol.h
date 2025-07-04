@@ -44,7 +44,7 @@ void updateTrainStatus(int tid, int trainNum, uint64_t velocity);
 void startupPrint(int tid);
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaD);
-
+int formatToString(char* buff, int buffSize, const char* fmt, ...);
 }  // namespace printer_proprietor
 
 #endif

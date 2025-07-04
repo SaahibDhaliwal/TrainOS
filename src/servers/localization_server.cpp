@@ -69,9 +69,25 @@ void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
     }
 }
 
+void StopTrain() {
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+    int parentTid = sys::MyParentTid();
+    char replyBuff[6];  // assuming our ticks wont be more than 99999 ticks
+    unsigned int delayAmount = 0;
+    for (;;) {
+        int res = sys::Send(parentTid, nullptr, 0, replyBuff, 5);
+        handleSendResponse(res, parentTid);
+        a2ui(replyBuff, 10, &delayAmount);
+        // we assume that we have an amount of time to delay from the reply
+        clock_server::Delay(clockServerTid, delayAmount);
+    }
+    sys::Exit();
+}
+
 void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
                          int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains, Turnout* turnouts,
-                         TrackNode* track) {
+                         TrackNode* track, uint32_t* reverseTid) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::SET_SPEED: {
@@ -98,7 +114,8 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainNumber);
                 reversingTrains->push(trainIdx);
                 // reverse task, that notifies it's parent when done reversing
-                sys::Create(40, &marklin_server::reverseTrainTask);
+                // maybe this should be stored in the train task for multiple reversing trains
+                *reverseTid = sys::Create(40, &marklin_server::reverseTrainTask);
                 trains[trainIdx].reversing = true;
             }
 
@@ -122,6 +139,57 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
         }
         case Command::SOLENOID_OFF: {
             marklin_server::solenoidOff(marklinServerTid);
+            break;
+        }
+        case Command::SET_STOP: {
+            int trainNumber = static_cast<int>(receiveBuffer[1]);
+            char box = receiveBuffer[2];
+            int sensorNum = static_cast<int>(receiveBuffer[3]);
+            // loop through offset until the entire number is acquired:
+            char* buff = &receiveBuffer[4];
+            unsigned int offset = 0;
+
+            int signedOffset = 0;
+
+            bool negativeFlag = false;
+            if (*buff == '-') {
+                negativeFlag = true;
+                buff++;
+            }
+            a2ui(buff, 10, &offset);
+            signedOffset = offset;
+            if (negativeFlag) {
+                signedOffset *= -1;
+            }
+
+            // get our train velocity and calculate the tick in which we have to issue a stop command
+            // ASSERT(0, "trainnum: %u box: %c sensornum: %u, offset: %d", trainNumber, box, sensorNum, signedOffset);
+
+            // determine the sensor we want to listen for so that we can spin up our reverse task upon hit
+
+            int targetTrackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);  // our target's index in the track node
+            TrackNode* currNode = track[targetTrackNodeIdx].reverse;
+            // work backwards given our stopping distance
+            // later: grab this from the train
+            uint64_t stoppingDistance = 400;  // 400 mm -> 40 cm
+            uint64_t travelledDistance = 0;
+
+            // work backwards from the sensor node (WILL NEED TO BE CHANGED)
+            // because we might not be stopping at a sensor, but some random node instead (like a switch)
+            while (travelledDistance < stoppingDistance) {
+                travelledDistance += currNode->distToNextSensor;
+                currNode = currNode->nextSensor;
+            }
+            currNode = currNode->reverse;  // reorient ourselves so we know which sensor to listen for
+
+            // the amount of distance after hitting the sensor we need to issue the stop command
+            int trainIndex = trainNumToIndex(trainNumber);
+            trains[trainIndex].whereToIssueStop = travelledDistance - stoppingDistance;
+            trains[trainIndex].stoppingSensor = currNode;
+
+            // we could calculate the number of ticks here, since we have a lot of time from issuing the command
+            //  to when it actually stops. But then we wouldn't be using the most updated velocity
+
             break;
         }
         default: {
@@ -148,7 +216,7 @@ void LocalizationServer() {
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
-    initialTurnoutConfig(turnouts);
+    initialTurnoutConfigTrackB(turnouts);
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
 
     Train trains[MAX_TRAINS];  // trains
@@ -157,26 +225,32 @@ void LocalizationServer() {
     RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
     uint32_t sensorTid = sys::Create(20, &SensorTask);
+    uint32_t stoppingTid = sys::Create(20, &StopTrain);
+    uint32_t client = 0;
+    int res = sys::Receive(&client, nullptr, 0);
+    ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
 
     TrackNode track[TRACK_MAX];
     // need to 0 this out still
-    init_tracka(track);  // figure out how to tell which track it is at a later date
+    init_trackb(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
     uint64_t prevMicros = 0;
-    // uint64_t velocity = 0;
     int laps = 0;
+    uint32_t reverseTid = 0;
+    int stopTrainIndex = 0;
+    uint32_t delayTicks = 0;
 
     for (;;) {
         uint32_t clientTid;
-        char receiveBuffer[7] = {0};
-        int msgLen = sys::Receive(&clientTid, receiveBuffer, 6);
+        char receiveBuffer[21] = {0};
+        int msgLen = sys::Receive(&clientTid, receiveBuffer, 20);
         receiveBuffer[msgLen] = '\0';
 
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
             processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
-                                &reversingTrains, turnouts, track);
+                                &reversingTrains, turnouts, track, &reverseTid);
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
@@ -194,6 +268,10 @@ void LocalizationServer() {
                     curTrain = &trains[i];
                 }
             }
+            // if (!curTrain->active) {
+            //     ASSERT(0, "got sensor when there's no active train");
+            //     continue;
+            // }
 
             char box = receiveBuffer[1];
             unsigned int sensorNum = 0;
@@ -216,17 +294,17 @@ void LocalizationServer() {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
             } else {
-                if (box == 'E' && sensorNum == 13) {
-                    laps++;
-                }
+                // if (box == 'E' && sensorNum == 13) {
+                //     laps++;
+                // }
 
-                if (laps == 2) {
-                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, 16);
-                }
+                // if (laps == 2) {
+                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, 16);
+                // }
 
-                if (laps == 3) {
-                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, 16);
-                }
+                // if (laps == 3) {
+                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, 16);
+                // }
 
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
@@ -237,8 +315,18 @@ void LocalizationServer() {
                 uint64_t sample_mm_per_s_x1000 =
                     (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
 
+                // this is still alpha w 1/8
                 uint64_t oldVelocity = curTrain->velocity;
                 curTrain->velocity = ((oldVelocity * 7) + sample_mm_per_s_x1000 + 4) >> 3;
+
+                // check if this sensor is the one a train is waiting for
+                if (curTrain->stoppingSensor == curSensor) {
+                                        // reply to our stopping task with a calculated amount of ticks to delay
+                    char sendBuff[20] = {0};
+                    uint16_t numOfTicks = 5;  // must be changed
+                    ui2a(numOfTicks, 10, sendBuff);
+                    sys::Reply(stoppingTid, sendBuff, strlen(sendBuff) + 1);
+                }
 
                 printer_proprietor::updateTrainStatus(printerProprietorTid, curTrain->id, curTrain->velocity);
 
@@ -262,7 +350,7 @@ void LocalizationServer() {
 
             emptyReply(clientTid);
 
-        } else {
+        } else if (clientTid == reverseTid) {
             ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");
             int reversingTrainIdx = *reversingTrains.pop();
             int trainSpeed = trains[reversingTrainIdx].speed;
@@ -270,6 +358,13 @@ void LocalizationServer() {
             marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed, trainNumber);
             trains[reversingTrainIdx].reversing = false;
             // no need to reply, reverse task is dead
+        } else if (clientTid == stoppingTid) {
+            // we have delayed enough, issue the stop command:
+            // ideally, we know which train this is (we are the localization server)
+            marklin_server::setTrainSpeed(marklinServerTid, 0, trains[stopTrainIndex].id);
+
+        } else {
+            ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
         }
     }
 

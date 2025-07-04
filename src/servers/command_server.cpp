@@ -168,6 +168,50 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         sys::Quit();
         ASSERT(0, "WE SHOULD NEVER GET HERE IF QUIT WORKS\r\n");
 
+    } else if (strncmp(command, "stop ", 5) == 0) {
+        const char* cur = &command[5];
+
+        if (*cur < '0' || *cur > '9') return false;
+
+        int trainNumber = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (trainNumber > 255) return false;
+            trainNumber = trainNumber * 10 + (*cur - '0');
+            cur++;
+        }
+
+        if (*cur != ' ') return false;
+        cur++;
+        // THIS IS ONLY FOR STOPPING AT SENSOR NODES. MUST BE UPDATED FOR SWITCHES
+        if (*cur < 'A' || *cur > 'E') return false;
+        char box = *cur;
+        cur++;
+        int sensorNum = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (sensorNum > 16) return false;
+            sensorNum = sensorNum * 10 + (*cur - '0');
+            cur++;
+        }
+        // should do offset afterwards
+        if (*cur != ' ') return false;
+        cur++;
+
+        int offset = 0;
+        bool negativeFlag = false;
+        if (*cur == '-') {
+            negativeFlag = true;
+            cur++;
+            if (*cur == '\0') return false;
+        }
+        while (*cur >= '0' && *cur <= '9') {
+            if (offset > 1000) return false;
+            offset = offset * 10 + (*cur - '0');
+            cur++;
+        }
+        if (negativeFlag) offset *= -1;
+
+        localization_server::setStopLocation(localizationTid, trainNumber, box, sensorNum, offset);
+
     } else {
         return false;
     }

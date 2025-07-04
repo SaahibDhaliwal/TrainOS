@@ -14,6 +14,7 @@ struct Turnout {
 
 int turnoutIdx(int turnoutNum);
 void initializeTurnouts(Turnout* turnouts, int marklinServerTid, int printerProprietorTid, int clockServerTid);
-void initialTurnoutConfig(Turnout* turnouts);
+void initialTurnoutConfigTrackA(Turnout* turnouts);
+void initialTurnoutConfigTrackB(Turnout* turnouts);
 
 #endif
