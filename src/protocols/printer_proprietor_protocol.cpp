@@ -68,7 +68,7 @@ int formatToBuffer(char* out, int outSize, const char* fmt, va_list va) {
         if (*fmt >= '0' && *fmt <= '9') {
             width = a2d(*fmt++);
         }
-
+        // 127131
         const char* str = buf;
         switch (*fmt) {
             case 'u':
@@ -174,12 +174,12 @@ void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateSensor(int tid, char sensorBox, unsigned int sensorNum) {
-    char sendBuf[24] = {0};
+void updateSensor(int tid, char sensorBox, unsigned int sensorNum, int64_t timeDiff, int64_t distDiff) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_SENSOR);
-    sendBuf[1] = sensorBox;
 
-    ui2a(sensorNum, 10, sendBuf + 2);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u #Time Diff:%4d ms   Distance Diff:%4d mm",
+                   sensorBox, sensorNum, timeDiff, distDiff);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
@@ -191,14 +191,25 @@ void startupPrint(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainStatus(int tid, int trainNum, char sensorBox, unsigned int sensorNum) {
-    // ASSERT(0, "sensornum: %d", sensorNum);
-    char sendBuf[24] = {0};
+void updateTrainStatus(int tid, int trainNum, uint64_t velocity) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN);
-    ui2a(trainNum, 10, sendBuf + 1);  // this takes up two
-    sendBuf[3] = sensorBox;
-    ui2a(sensorNum, 10, sendBuf + 4);
-    ASSERT(0, "sensorbox: %c sensorNum: %u  sentstring: %s", sensorBox, sensorNum, sendBuf);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "[Train %u]: Velocity Estimate: %u.%u mm/s       ",
+                   trainNum, velocity / 10000, velocity % 10000);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainStatus(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
+                       const uint64_t mmDeltaT) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::MEASUREMENT);
+
+    uint64_t ms = microsDeltaT / 1000;
+    uint64_t micros = microsDeltaT % 1000;
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s,%s,%u.%u,%u", srcName, dstName, ms, micros,
+                   mmDeltaT);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 

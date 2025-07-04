@@ -76,7 +76,8 @@ void print_turnout_table(uint32_t consoleTid);
 void initialize_sensors(Sensor* sensors);
 void draw_sensor_grid_frame(uint32_t consoleTid);
 void print_sensor_table(uint32_t consoleTid);
-void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity);
+void update_sensor(uint32_t consoleTid, const char* msg, int sensorBufferIdx, bool evenParity);
+void update_sensor_time(uint32_t consoleTid, const char* msg, int sensorBufferIdx);
 
 /*********** CLOCKS ********************************/
 
@@ -94,8 +95,7 @@ void print_clear_command_prompt(uint32_t consoleTid);
 void print_command_prompt_blocked(uint32_t consoleTid);
 
 /*********** MEASURMENTS ********************************/
-void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor);
-
+void print_train_status(uint32_t consoleTid, const char* message);
 void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message);
 /*********** STARTUP ********************************/
 

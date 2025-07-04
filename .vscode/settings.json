@@ -17,6 +17,7 @@
     "mutex": "cpp",
     "system_error": "cpp",
     "compare": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "algorithm": "cpp"
   }
 }

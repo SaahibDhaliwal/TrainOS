@@ -34,7 +34,7 @@ struct TrackNode {
     TrackNode* reverse = nullptr;  // same location, opposite direction
     Edge edge[2];                  // outgoing edges
     TrackNode* nextSensor = nullptr;
-    uint64_t distToNextSensor = 0;
+    uint64_t distToNextSensor = 0;  // in millimetres
 };
 
 // track data initializers

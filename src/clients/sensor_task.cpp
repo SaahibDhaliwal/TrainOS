@@ -39,7 +39,6 @@ void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printer
                 sensorNum += 8;
             }
 
-            printer_proprietor::updateSensor(printerProprietorTid, box, sensorNum);
             localization_server::updateSensor(localizationServerTid, box, sensorNum);
         }
     }

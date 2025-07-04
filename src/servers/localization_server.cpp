@@ -165,6 +165,7 @@ void LocalizationServer() {
 
     uint64_t prevMicros = 0;
     // uint64_t velocity = 0;
+    int laps = 0;
 
     for (;;) {
         uint32_t clientTid;
@@ -183,7 +184,8 @@ void LocalizationServer() {
             // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
             // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
             // 0) = 28
-            uint64_t curMicros = timerGet();
+
+            int64_t curMicros = timerGet();
 
             Train* curTrain = &trains[trainNumToIndex(14)];
             for (int i = 0; i < MAX_TRAINS; i++) {
@@ -201,42 +203,62 @@ void LocalizationServer() {
             TrackNode* curSensor = &track[trackNodeIdx];
             TrackNode* prevSensor = curTrain->sensorBehind;
 
-            if (!prevSensor || curSensor == prevSensor) {
+            if (curSensor == prevSensor) {
+                emptyReply(clientTid);
+                continue;
+            }
+
+            uint64_t nextSample = 0;
+            uint64_t lastEstimate = 0;
+            int64_t prevSensorPredicitionMicros = 0;
+
+            if (!prevSensor) {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
             } else {
+                if (box == 'E' && sensorNum == 13) {
+                    laps++;
+                }
+
+                if (laps == 2) {
+                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, 16);
+                }
+
+                if (laps == 3) {
+                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, 16);
+                }
+
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
 
                 printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
                                                       microsDeltaT, mmDeltaD);
 
-                curTrain->sensorAhead = curSensor->nextSensor;
-                // ASSERT(curSensor->nextSensor != nullptr);
-                curTrain->sensorBehind = curSensor;
-                prevMicros = curMicros;
+                uint64_t sample_mm_per_s_x1000 =
+                    (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
 
-                uint64_t nextSample = (mmDeltaD * 1000000000) / microsDeltaT;
-                uint64_t lastEstimate = curTrain->velocity;
-                // alpha = 1/8 means k=3, so 8-1 and bit shift
-                curTrain->velocity = ((curTrain->velocity * 7) + nextSample) >> 3;
-                if (lastEstimate > nextSample) {
-                    // positive if we were slower than our estimate
-                    printer_proprietor::printF(
-                        printerProprietorTid,
-                        "\033[s\033[%d;%dH\033[K Train %d Next sensor: %s Current weighted velocity: 0.%u "
-                        "Last Sensor V: 0.%u Delta b/w last sensor and estimate: %d\033[u",
-                        15, 90, curTrain->id, curTrain->sensorAhead->name, curTrain->velocity, nextSample,
-                        lastEstimate - nextSample);
-                } else {
-                    printer_proprietor::printF(
-                        printerProprietorTid,
-                        "\033[s\033[%d;%dH\033[K Train %d Next sensor: %s Current weighted velocity: 0.%u "
-                        "Last Sensor V: 0.%u Delta b/w last sensor and estimate: -0.%d\033[u",
-                        15, 90, curTrain->id, curTrain->sensorAhead->name, curTrain->velocity, nextSample,
-                        nextSample - lastEstimate);
-                }
+                uint64_t oldVelocity = curTrain->velocity;
+                curTrain->velocity = ((oldVelocity * 7) + sample_mm_per_s_x1000 + 4) >> 3;
+
+                printer_proprietor::updateTrainStatus(printerProprietorTid, curTrain->id, curTrain->velocity);
+
+                prevSensorPredicitionMicros = curTrain->sensorAheadMicros;
+
+                // update next sensor
+                curTrain->sensorAhead = curSensor->nextSensor;
+                curTrain->sensorAheadMicros =
+                    curMicros + (curSensor->distToNextSensor * 1000 * 1000000 / curTrain->velocity);
+                curTrain->sensorBehind = curSensor;
+
+                prevMicros = curMicros;
             }
+
+            int64_t estimateTimeDiffmicros = (curMicros - prevSensorPredicitionMicros);
+            int64_t estimateTimeDiffms = estimateTimeDiffmicros / 1000;
+            int64_t estimateDistanceDiffmm = ((int64_t)curTrain->velocity * estimateTimeDiffmicros) / 1000000000;
+
+            printer_proprietor::updateSensor(printerProprietorTid, box, sensorNum, estimateTimeDiffms,
+                                             estimateDistanceDiffmm);
 
             emptyReply(clientTid);
 

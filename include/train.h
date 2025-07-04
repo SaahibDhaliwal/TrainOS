@@ -19,6 +19,7 @@ struct Train {
     TrackNode *nodeAhead;
     TrackNode *nodeBehind;
     TrackNode *sensorAhead;
+    int64_t sensorAheadMicros;
     TrackNode *sensorBehind;
 };
 

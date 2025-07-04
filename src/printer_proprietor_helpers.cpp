@@ -148,7 +148,7 @@ void print_ascii_art(int console) {
 /*********** TURNOUTS  ********************************/
 
 #define TURNOUT_TABLE_START_ROW 15
-#define TURNOUT_TABLE_START_COL 10
+#define TURNOUT_TABLE_START_COL 5
 
 static const Pos turnout_offsets[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT] = {
     {2, 1},  {4, 1},  {6, 1},  {8, 1},  {10, 1}, {12, 1},  {2, 8},   {4, 8},  {6, 8},  {8, 8},  {10, 8},
@@ -214,7 +214,7 @@ void print_turnout_table(uint32_t consoleTid) {
 /*********** SENSORS  ********************************/
 
 #define SENSOR_TABLE_START_ROW 15
-#define SENSOR_TABLE_START_COL 60
+#define SENSOR_TABLE_START_COL 40
 #define SENSOR_BYTE_SIZE 10
 
 void initialize_sensors(Sensor* sensors) {
@@ -257,19 +257,26 @@ void print_sensor_table(uint32_t consoleTid) {
     draw_sensor_grid_frame(consoleTid);
 }
 
-void update_sensor(Sensor* sensor_buffer, int sensorBufferIdx, int tid, bool evenParity) {
-    console_server::Printf(tid, "\033[%d;%dH", SENSOR_TABLE_START_ROW + 2 + sensorBufferIdx,
+void update_sensor(uint32_t consoleTid, const char* msg, int sensorBufferIdx, bool evenParity) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", SENSOR_TABLE_START_ROW + 2 + sensorBufferIdx,
                            SENSOR_TABLE_START_COL + 7);
-    console_server::Puts(tid, 0, "\033[1m");  // bold or increased intensity
+    console_server::Puts(consoleTid, 0, "\033[1m");  // bold or increased intensity
 
     if (evenParity) {
-        cursor_sharp_blue(tid);
+        cursor_sharp_blue(consoleTid);
     } else {
-        cursor_sharp_pink(tid);
+        cursor_sharp_pink(consoleTid);
     }
 
-    console_server::Printf(tid, "%c%d ", sensor_buffer[sensorBufferIdx].box, sensor_buffer[sensorBufferIdx].num);
-    console_server::Puts(tid, 0, "\033[22m");  // normal intensity
+    console_server::Puts(consoleTid, 0, msg);         // normal intensity
+    console_server::Puts(consoleTid, 0, "\033[22m");  // normal intensity
+}
+
+void update_sensor_time(uint32_t consoleTid, const char* msg, int sensorBufferIdx) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", SENSOR_TABLE_START_ROW + 2 + sensorBufferIdx,
+                           SENSOR_TABLE_START_COL + 15);
+    console_server::Puts(consoleTid, 0, "\033[K");
+    console_server::Puts(consoleTid, 0, msg);
 }
 
 /*********** CLOCKS  ********************************/
@@ -334,9 +341,9 @@ void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const c
     console_server::Measurement(consoleTid, 0, "\r\n");
 }
 
-void print_train_status(uint32_t consoleTid, char* trainNum, char* sensor) {
-    console_server::Printf(consoleTid, "\033[%d;%dHTrainNum: %s Next Sensor: %s", MEASUREMENT_START_ROW,
-                           MEASUREMENT_START_COL, trainNum, sensor);
+void print_train_status(uint32_t consoleTid, const char* message) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", UPTIME_START_ROW, 60);
+    console_server::Puts(consoleTid, 0, message);
 }
 
 /*********** STARTUP  ********************************/

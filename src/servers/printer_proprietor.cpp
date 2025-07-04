@@ -87,24 +87,44 @@ void PrinterProprietor() {
                 break;
             }
             case Command::UPDATE_SENSOR: {
-                char box = receiveBuffer[1];
+                // char box = receiveBuffer[1];
 
-                unsigned int sensorNum = 0;
-                a2ui(receiveBuffer + 2, 10, &sensorNum);
+                // unsigned int sensorNum = 0;
+                // a2ui(receiveBuffer + 2, 10, &sensorNum);
+
+                // int prevSensorIdx = (sensorBufferIdx - 1 + SENSOR_BUFFER_SIZE) % SENSOR_BUFFER_SIZE;
+
+                // if (sensorBuffer[prevSensorIdx].box != box ||
+                //     sensorBuffer[prevSensorIdx].num != sensorNum) {  // has the sensor changed?
+                //     if (sensorBufferIdx == 0) {                      // starting from the top, we can switch colour
+                //         isSensorBufferParityEven = !isSensorBufferParityEven;
+                //     }
+                //     sensorBuffer[sensorBufferIdx].box = box;
+                //     sensorBuffer[sensorBufferIdx].num = sensorNum;
+                //     WITH_HIDDEN_CURSOR(consoleServerTid, update_sensor(sensorBuffer, sensorBufferIdx,
+                //     consoleServerTid,
+                //                                                        isSensorBufferParityEven));
+                //     sensorBufferIdx = (sensorBufferIdx + 1) % SENSOR_BUFFER_SIZE;
+                // }
 
                 int prevSensorIdx = (sensorBufferIdx - 1 + SENSOR_BUFFER_SIZE) % SENSOR_BUFFER_SIZE;
 
-                if (sensorBuffer[prevSensorIdx].box != box ||
-                    sensorBuffer[prevSensorIdx].num != sensorNum) {  // has the sensor changed?
-                    if (sensorBufferIdx == 0) {                      // starting from the top, we can switch colour
-                        isSensorBufferParityEven = !isSensorBufferParityEven;
-                    }
-                    sensorBuffer[sensorBufferIdx].box = box;
-                    sensorBuffer[sensorBufferIdx].num = sensorNum;
-                    WITH_HIDDEN_CURSOR(consoleServerTid, update_sensor(sensorBuffer, sensorBufferIdx, consoleServerTid,
-                                                                       isSensorBufferParityEven));
-                    sensorBufferIdx = (sensorBufferIdx + 1) % SENSOR_BUFFER_SIZE;
+                if (sensorBufferIdx == 0) {  // starting from the top, we can switch colour
+                    isSensorBufferParityEven = !isSensorBufferParityEven;
                 }
+
+                char* firstMsgEnd = receiveBuffer;
+                while (*firstMsgEnd != '#') {
+                    firstMsgEnd++;
+                }
+                *firstMsgEnd = '\0';
+
+                WITH_HIDDEN_CURSOR(consoleServerTid, update_sensor(consoleServerTid, &receiveBuffer[1], sensorBufferIdx,
+                                                                   isSensorBufferParityEven));
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_sensor_time(consoleServerTid, &firstMsgEnd[1], sensorBufferIdx));
+
+                sensorBufferIdx = (sensorBufferIdx + 1) % SENSOR_BUFFER_SIZE;
 
                 break;
             }
@@ -129,16 +149,7 @@ void PrinterProprietor() {
                 break;
             }
             case Command::UPDATE_TRAIN: {
-                char trainBuff[3] = {0};
-                trainBuff[0] = receiveBuffer[1];
-                trainBuff[1] = receiveBuffer[2];
-                trainBuff[2] = '\0';
-                char sensorBuff[4] = {0};
-                sensorBuff[0] = receiveBuffer[3];  // letter
-                sensorBuff[1] = receiveBuffer[4];  // digit
-                sensorBuff[2] = receiveBuffer[5];
-                // strcpy(sensorBuff, receiveBuffer + 3);
-                WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, trainBuff, sensorBuff));
+                WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, &receiveBuffer[1]));
                 break;
             }
             default: {
