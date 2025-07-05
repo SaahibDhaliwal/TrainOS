@@ -22,7 +22,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].id = trainAddresses[i];
         trains[i].reversing = false;
         trains[i].active = false;
-        trains[i].velocity = 0;
+        trains[i].velocity = 200000;
         trains[i].nodeAhead = nullptr;
         trains[i].nodeBehind = nullptr;
         trains[i].sensorAhead = nullptr;
@@ -31,6 +31,4 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].whereToIssueStop = 0;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
-
-    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_14, 16);
 }

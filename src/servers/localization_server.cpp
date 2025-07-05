@@ -216,12 +216,14 @@ void LocalizationServer() {
     int commandServerTid = name_server::WhoIs(COMMAND_SERVER_NAME);
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
-    initialTurnoutConfigTrackB(turnouts);
-    initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
-
     Train trains[MAX_TRAINS];  // trains
     initializeTrains(trains, marklinServerTid);
+
+    // clock_server::Delay(clockServerTid, 1)
+
+    Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
+    initialTurnoutConfigTrackA(turnouts);
+    initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
 
     RingBuffer<int, MAX_TRAINS> reversingTrains;  // trains
 
@@ -233,7 +235,7 @@ void LocalizationServer() {
 
     TrackNode track[TRACK_MAX];
     // need to 0 this out still
-    init_trackb(track);  // figure out how to tell which track it is at a later date
+    init_tracka(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
     uint64_t prevMicros = 0;
@@ -262,7 +264,7 @@ void LocalizationServer() {
 
             int64_t curMicros = timerGet();
 
-            Train* curTrain = &trains[trainNumToIndex(14)];
+            Train* curTrain = &trains[trainNumToIndex(16)];
             // for (int i = 0; i < MAX_TRAINS; i++) {
             //     if (trains[i].active) {
             //         // later, will do a check to see if the sensor hit is plausible for an active train
@@ -295,10 +297,6 @@ void LocalizationServer() {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
             } else {
-                // if (box == 'E' && sensorNum == 13) {
-                //     laps++;
-                // }
-
                 // if (laps == 2) {
                 //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, 16);
                 // }
@@ -325,9 +323,13 @@ void LocalizationServer() {
                     // reply to our stopping task with a calculated amount of ticks to delay
 
                     char sendBuff[20] = {0};
-                    uint16_t numOfTicks = 10;  // must be changed
-                    ui2a(numOfTicks, 10, sendBuff);
-                    sys::Reply(stoppingTid, sendBuff, strlen(sendBuff) + 1);
+                    uint64_t arrivalTime = (curTrain->whereToIssueStop * 1000 * 1000000 / curTrain->velocity);
+                    uint16_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;  // must be changed
+                    // ui2a(numOfTicks, 10, sendBuff);
+                    uIntReply(stoppingTid, numOfTicks);
+                    // printer_proprietor::printF(printerProprietorTid, "number of ticks delayed: %u", numOfTicks);
+                    // uart_printf(CONSOLE, "number of ticks delayed: %u", numOfTicks);
+                    // sys::Reply(stoppingTid, sendBuff, strlen(sendBuff) + 1);
                     stopTrainIndex = trainNumToIndex(curTrain->id);
                     // ASSERT(0, "got to the sensor we were looking for");
                 }
@@ -367,6 +369,7 @@ void LocalizationServer() {
             // ideally, we know which train this is (we are the localization server)
             // ASSERT(0, "the notifier got to us");
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trains[stopTrainIndex].id);
+            trains[stopTrainIndex].stoppingSensor = nullptr;
 
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
