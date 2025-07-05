@@ -55,6 +55,11 @@
     "text_encoding": "cpp",
     "variant": "cpp",
     "chrono": "cpp",
-    "ranges": "cpp"
+    "ranges": "cpp",
+    "list": "cpp",
+    "unordered_set": "cpp",
+    "span": "cpp",
+    "iterator": "cpp",
+    "valarray": "cpp"
   }
 }

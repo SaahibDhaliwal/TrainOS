@@ -107,8 +107,6 @@ void PrinterProprietor() {
                 //     sensorBufferIdx = (sensorBufferIdx + 1) % SENSOR_BUFFER_SIZE;
                 // }
 
-                int prevSensorIdx = (sensorBufferIdx - 1 + SENSOR_BUFFER_SIZE) % SENSOR_BUFFER_SIZE;
-
                 if (sensorBufferIdx == 0) {  // starting from the top, we can switch colour
                     isSensorBufferParityEven = !isSensorBufferParityEven;
                 }
