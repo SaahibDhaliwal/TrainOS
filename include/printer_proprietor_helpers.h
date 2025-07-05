@@ -34,19 +34,10 @@ void cursor_sharp_pink(int console);
 
 /*********** IDLE TIME ********************************/
 
-#define IDLE_START_ROW 13
-#define IDLE_START_COL 0
-#define IDLE_LABEL "Idle Time: "
-
 void print_idle_percentage(int printTid);
 void update_idle_percentage(int percentage, int printTid);
 
 /*********** UPTIME ********************************/
-
-#define UPTIME_START_ROW 13
-#define UPTIME_START_COL 45
-#define UPTIME_LABEL "Uptime: "
-#define UPTIME_LABEL_LENGTH 53
 
 void print_uptime(int consoleTid);
 void update_uptime(int printTid, uint64_t micros);
@@ -57,20 +48,12 @@ void print_ascii_art(int console);
 
 /*********** TURNOUTS ********************************/
 
-#define TURNOUT_TABLE_START_ROW 15
-#define TURNOUT_TABLE_START_COL 10
-
 void draw_turnout_grid_frame(uint32_t consoleTid);
 void update_turnout(Turnout* turnouts, int idx, uint32_t consoleServerTid);
 void print_turnout_table(uint32_t consoleTid);
 
 /*********** SENSORS ********************************/
 
-#define SENSOR_TABLE_START_ROW 15
-#define SENSOR_TABLE_START_COL 60
-#define SENSOR_TIME_START_ROW 13
-#define SENSOR_TIME_START_COL 73
-#define SENSOR_TIME_LABEL "Sensor Query: "
 #define SENSOR_BYTE_SIZE 10
 
 void initialize_sensors(Sensor* sensors);
@@ -84,9 +67,6 @@ void update_sensor_time(uint32_t consoleTid, const char* msg, int sensorBufferId
 void refresh_clocks(int tid, unsigned int idleTime);
 
 /*********** COMMAND ********************************/
-
-#define COMMAND_PROMPT_START_ROW 29
-#define COMMAND_PROMPT_START_COL 0
 
 void command_feedback(int tid, command_server::Reply reply);
 void print_command_feedback(uint32_t consoleTid, command_server::Reply reply);

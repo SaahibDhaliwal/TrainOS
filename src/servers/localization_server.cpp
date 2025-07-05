@@ -1,5 +1,7 @@
 #include "localization_server.h"
 
+#include <utility>
+
 #include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
@@ -293,6 +295,10 @@ void LocalizationServer() {
             uint64_t lastEstimate = 0;
             int64_t prevSensorPredicitionMicros = 0;
 
+            RingBuffer<std::pair<uint64_t, uint64_t>, 10> velocitySamples;  // pair<mm(deltaD), micros(deltaT)>
+            uint64_t velocitySamplesNumeratorSum = 0;
+            uint64_t velocitySamplesDenominatorSum = 0;
+
             if (!prevSensor) {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
@@ -311,8 +317,23 @@ void LocalizationServer() {
                 printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
                                                       microsDeltaT, mmDeltaD);
 
+                if (velocitySamples.full()) {
+                    std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
+                    velocitySamplesNumeratorSum -= p->first;
+                    velocitySamplesDenominatorSum -= p->second;
+                    velocitySamples.pop();
+                }
+
+                velocitySamples.push({mmDeltaD, microsDeltaT});
+                velocitySamplesNumeratorSum += mmDeltaD;
+                velocitySamplesDenominatorSum += microsDeltaT;
+
                 uint64_t sample_mm_per_s_x1000 =
-                    (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
+                    (velocitySamplesNumeratorSum * 1000000) * 1000 /
+                    velocitySamplesDenominatorSum;  // microm/micros with a *1000 for decimals
+
+                // uint64_t sample_mm_per_s_x1000 =
+                //     (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
 
                 // this is still alpha w 1/8
                 uint64_t oldVelocity = curTrain->velocity;

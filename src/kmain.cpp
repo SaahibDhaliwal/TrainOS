@@ -30,7 +30,6 @@ extern "C" int kmain() {
     uart_config_and_enable(MARKLIN);
 
 #if defined(TESTING)
-    uart_getc(CONSOLE);
     runTests();
 
 #else
