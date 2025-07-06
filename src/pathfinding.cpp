@@ -22,6 +22,8 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
         auto [curDist, curNode] = pq.top();
         pq.pop();
 
+        if (curNode == target) break;  // found shortest path to target
+
         if (curDist != distances[nodeToNum(curNode)]) continue;  // stale pq entry
 
         int dirs[2];
