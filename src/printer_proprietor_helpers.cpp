@@ -346,6 +346,16 @@ void print_train_status(uint32_t consoleTid, const char* message) {
     console_server::Puts(consoleTid, 0, message);
 }
 
+/*********** DEBUG  ********************************/
+
+#define DEBUG_START_ROW 32
+#define DEBUG_START_COL 0
+
+void print_debug(uint32_t consoleTid, int row, const char* message) {
+    console_server::Printf(consoleTid, "\033[%d;%dHDebug:", DEBUG_START_ROW, DEBUG_START_COL);
+    console_server::Printf(consoleTid, "\033[%d;%dH\033[K%s", DEBUG_START_ROW + row + 1, DEBUG_START_COL, message);
+}
+
 /*********** STARTUP  ********************************/
 void startup_print(int consoleTid) {
     hide_cursor(consoleTid);

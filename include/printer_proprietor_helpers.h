@@ -77,6 +77,10 @@ void print_command_prompt_blocked(uint32_t consoleTid);
 /*********** MEASURMENTS ********************************/
 void print_train_status(uint32_t consoleTid, const char* message);
 void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message);
+
+/*********** DEBUG ********************************/
+void print_debug(uint32_t consoleTid, int row, const char* message);
+
 /*********** STARTUP ********************************/
 
 void startup_print(int consoleTid);

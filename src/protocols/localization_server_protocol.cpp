@@ -84,4 +84,10 @@ void setStopLocation(int tid, int trainNumber, char box, int sensorNum, int offs
     handleSendResponse(res, tid);
 }
 
+void resetTrack(int tid) {
+    char sendBuf = toByte(Command::RESET_TRACK);
+    int res = sys::Send(tid, &sendBuf, 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace localization_server

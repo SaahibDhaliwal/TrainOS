@@ -23,9 +23,11 @@ struct Train {
     TrackNode *sensorBehind;
     TrackNode *stoppingSensor;
     uint64_t whereToIssueStop;
+    uint64_t stoppingDistance;
 };
 
 void initializeTrains(Train *trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
+int getSeedVelocity(int trainIdx, int seedChoice);
 
 #endif

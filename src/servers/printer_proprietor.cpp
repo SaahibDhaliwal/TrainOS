@@ -87,26 +87,6 @@ void PrinterProprietor() {
                 break;
             }
             case Command::UPDATE_SENSOR: {
-                // char box = receiveBuffer[1];
-
-                // unsigned int sensorNum = 0;
-                // a2ui(receiveBuffer + 2, 10, &sensorNum);
-
-                // int prevSensorIdx = (sensorBufferIdx - 1 + SENSOR_BUFFER_SIZE) % SENSOR_BUFFER_SIZE;
-
-                // if (sensorBuffer[prevSensorIdx].box != box ||
-                //     sensorBuffer[prevSensorIdx].num != sensorNum) {  // has the sensor changed?
-                //     if (sensorBufferIdx == 0) {                      // starting from the top, we can switch colour
-                //         isSensorBufferParityEven = !isSensorBufferParityEven;
-                //     }
-                //     sensorBuffer[sensorBufferIdx].box = box;
-                //     sensorBuffer[sensorBufferIdx].num = sensorNum;
-                //     WITH_HIDDEN_CURSOR(consoleServerTid, update_sensor(sensorBuffer, sensorBufferIdx,
-                //     consoleServerTid,
-                //                                                        isSensorBufferParityEven));
-                //     sensorBufferIdx = (sensorBufferIdx + 1) % SENSOR_BUFFER_SIZE;
-                // }
-
                 if (sensorBufferIdx == 0) {  // starting from the top, we can switch colour
                     isSensorBufferParityEven = !isSensorBufferParityEven;
                 }
@@ -148,6 +128,11 @@ void PrinterProprietor() {
             }
             case Command::UPDATE_TRAIN: {
                 WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, &receiveBuffer[1]));
+                break;
+            }
+            case Command::DEBUG: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   print_debug(consoleServerTid, a2d(receiveBuffer[1]), &receiveBuffer[2]));
                 break;
             }
             default: {

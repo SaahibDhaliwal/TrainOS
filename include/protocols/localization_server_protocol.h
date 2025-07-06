@@ -15,6 +15,7 @@ enum class Command : char {
     SET_TURNOUT,
     SOLENOID_OFF,
     SET_STOP,
+    RESET_TRACK,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -33,6 +34,7 @@ void updateSensor(int tid, char box, unsigned int sensorNum);
 
 void setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber);
 void solenoidOff(int tid);
+void resetTrack(int tid);
 
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 

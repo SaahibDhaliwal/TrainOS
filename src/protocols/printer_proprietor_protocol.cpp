@@ -3,6 +3,7 @@
 #include <cstdarg>
 
 #include "config.h"
+#include "generic_protocol.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "util.h"
@@ -224,6 +225,14 @@ void measurementOutput(int tid, const char* srcName, const char* dstName, const 
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s,%s,%u.%u,%u", srcName, dstName, ms, micros,
                    mmDeltaT);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void debug(int tid, int column, const char* str) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::DEBUG);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%d%s", column, str);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
 }
 
 }  // namespace printer_proprietor

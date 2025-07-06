@@ -168,6 +168,9 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         sys::Quit();
         ASSERT(0, "WE SHOULD NEVER GET HERE IF QUIT WORKS\r\n");
 
+    } else if (strncmp(command, "reset", 5) == 0) {
+        localization_server::resetTrack(localizationTid);
+
     } else if (strncmp(command, "stop ", 5) == 0) {
         const char* cur = &command[5];
 
@@ -182,17 +185,51 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
 
         if (*cur != ' ') return false;
         cur++;
-        // THIS IS ONLY FOR STOPPING AT SENSOR NODES. MUST BE UPDATED FOR SWITCHES
-        if (*cur < 'A' || *cur > 'E') return false;
+
         char box = *cur;
+        if ((box > 'M')) box = box - 32;  // forces uppercase
+        if (box < 'A' || ((box > 'E') && (box < 'M'))) return false;
         cur++;
+
+        if (box == 'B' && (*cur == 'R' || *cur == 'r')) {
+            box = 'F';  // bad practice but oh well
+            cur++;
+        }
+
+        if (box == 'M' && (*cur == 'R' || *cur == 'r')) {
+            box = 'G';
+            cur++;
+        }
+
+        if (box == 'E') {
+            if (*cur == 'N' || *cur == 'n') {
+                box = 'H';
+                cur++;
+            } else if (*cur == 'X' || *cur == 'x') {
+                box = 'I';
+                cur++;
+            }
+        }
+
+        // ASSERT(0, "box: %c nextchar: %c", box, *cur);
+
+        if (*cur < '0' || *cur > '9') return false;
         int sensorNum = 0;
         while (*cur >= '0' && *cur <= '9') {
-            if (sensorNum > 16) return false;
+            if (sensorNum > 16 && box >= 'A' && box <= 'E') return false;
+            if (sensorNum > 156 && (box == 'F' || box == 'G')) return false;
             sensorNum = sensorNum * 10 + (*cur - '0');
             cur++;
         }
-        // should do offset afterwards
+        // ASSERT(0, "sensornum: %d", sensorNum);
+        if (sensorNum == 0) return false;
+        if ((box == 'F' || box == 'G') && (sensorNum < 153 && sensorNum > 18)) return false;
+
+#ifndef TRACKA
+        // checks if an incorrect exit node is passed on track B
+        if ((box == 'H' || box == 'I') && (sensorNum == 6 || sensorNum == 8)) return false;
+#endif
+
         if (*cur != ' ') return false;
         cur++;
 
@@ -203,13 +240,14 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             cur++;
             if (*cur == '\0') return false;
         }
+        if (*cur < '0' || *cur > '9') return false;
         while (*cur >= '0' && *cur <= '9') {
-            if (offset > 1000) return false;
+            if (offset > 1000000000000) return false;
             offset = offset * 10 + (*cur - '0');
             cur++;
         }
         if (negativeFlag) offset *= -1;
-
+        // ASSERT(0, "trainnum: %u box: %c, sensorNum: %u, offset: %d", trainNumber, box, sensorNum, offset);
         localization_server::setStopLocation(localizationTid, trainNumber, box, sensorNum, offset);
 
     } else {

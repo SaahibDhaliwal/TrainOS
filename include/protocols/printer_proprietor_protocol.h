@@ -19,6 +19,7 @@ enum class Command : char {
     UPDATE_SENSOR,
     UPDATE_TRAIN,
     MEASUREMENT,
+    DEBUG,
     KILL,
     COUNT,
     UNKNOWN_COMMAND
@@ -45,6 +46,7 @@ void startupPrint(int tid);
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaD);
 int formatToString(char* buff, int buffSize, const char* fmt, ...);
+void debug(int tid, int row, const char* str);
 }  // namespace printer_proprietor
 
 #endif
