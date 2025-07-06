@@ -93,10 +93,21 @@ class UnorderedMap {
     size_t size() const {
         return sz;
     }
+
     bool empty() const {
         return sz == 0;
     }
+
     bool full() const {
         return sz == MAP_CAPACITY;
+    }
+
+    Value& operator[](const Key& k) {
+        if (Value* p = get(k)) {
+            return *p;
+        }
+
+        insert(k, Value());  // inserts a 0 for ints
+        return *get(k);      // returns a reference to the slot
     }
 };

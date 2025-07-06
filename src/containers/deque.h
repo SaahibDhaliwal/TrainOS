@@ -15,38 +15,6 @@ class Deque {
     int count = 0;
 
    public:
-    class Iterator {
-        T* node;
-
-       public:
-        explicit Iterator(T* ptr) : node(ptr) {
-        }
-
-        T& operator*() const {
-            return *node;
-        }
-
-        Iterator& operator++() {
-            node = node->next;
-            return *this;
-        }
-
-        Iterator operator++(int) {
-            Iterator tmp = *this;
-            node = node->next;
-            return tmp;
-        }
-
-        bool operator==(const Iterator& other) const {
-            return node == other.node;
-        }
-        bool operator!=(const Iterator& other) const {
-            return node != other.node;
-        }
-
-        friend class Deque;
-    };
-
     // Insert node at tail
     void push_back(T* node) {
         node->next = nullptr;
@@ -85,6 +53,38 @@ class Deque {
     int size() const {
         return count;
     }
+
+    class Iterator {
+        T* node;
+
+       public:
+        explicit Iterator(T* ptr) : node(ptr) {
+        }
+
+        T& operator*() const {
+            return *node;
+        }
+
+        Iterator& operator++() {
+            node = node->next;
+            return *this;
+        }
+
+        Iterator operator++(int) {
+            Iterator tmp = *this;
+            node = node->next;
+            return tmp;
+        }
+
+        bool operator==(const Iterator& other) const {
+            return node == other.node;
+        }
+        bool operator!=(const Iterator& other) const {
+            return node != other.node;
+        }
+
+        friend class Deque;
+    };
 
     Iterator begin() {
         return Iterator(head);

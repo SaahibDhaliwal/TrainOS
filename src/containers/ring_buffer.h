@@ -43,6 +43,50 @@ class RingBuffer {
     bool full() const {
         return count == CAPACITY;
     }
+
+    class Iterator {
+        RingBuffer* rb;
+        size_t pos;
+        size_t remaining;
+
+       public:
+        Iterator(RingBuffer* rb, size_t pos, size_t remaining) : rb(rb), pos(pos), remaining(remaining) {
+        }
+
+        T& operator*() const {
+            return rb->buffer[pos];
+        }
+
+        Iterator& operator++() {
+            pos = (pos + 1) % CAPACITY;
+            --remaining;
+            return *this;
+        }
+
+        Iterator operator++(int) {
+            Iterator tmp = *this;
+            ++*this;
+            return tmp;
+        }
+
+        bool operator==(const Iterator& other) const {
+            return remaining == other.remaining;
+        }
+
+        bool operator!=(const Iterator& other) const {
+            return remaining != other.remaining;
+        }
+
+        friend class RingBuffer;
+    };
+
+    Iterator begin() {
+        return Iterator(this, head, count);
+    }
+
+    Iterator end() {
+        return Iterator(this, tail, 0);
+    }
 };
 
 #endif /* ring_buffer.h */

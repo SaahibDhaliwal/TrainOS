@@ -16,14 +16,14 @@ static constexpr int DIR_CURVED = 1;
 
 // forward declarations
 struct TrackNode;
-struct Edge;
+struct TrackEdge;
 
 // one edge in the graph
-struct Edge {
-    TrackNode* src = nullptr;   // source node
-    TrackNode* dest = nullptr;  // destination node
-    Edge* reverse = nullptr;    // reverse edge
-    uint64_t dist = 0;          // in millimetres
+struct TrackEdge {
+    TrackNode* src = nullptr;      // source node
+    TrackNode* dest = nullptr;     // destination node
+    TrackEdge* reverse = nullptr;  // reverse edge
+    uint64_t dist = 0;             // in millimetres
 };
 
 // one node in the graph
@@ -32,7 +32,7 @@ struct TrackNode {
     NodeType type = NodeType::NONE;
     int num = -1;                  // sensor or switch number
     TrackNode* reverse = nullptr;  // same location, opposite direction
-    Edge edge[2];                  // outgoing edges
+    TrackEdge edge[2];             // outgoing edges
     TrackNode* nextSensor = nullptr;
     uint64_t distToNextSensor = 0;  // in millimetres
 };

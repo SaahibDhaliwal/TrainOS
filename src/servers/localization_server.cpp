@@ -15,6 +15,7 @@
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server_protocol.h"
+#include "pathfinding.h"
 #include "printer_proprietor.h"
 #include "printer_proprietor_protocol.h"
 #include "ring_buffer.h"
@@ -127,7 +128,6 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
         case Command::SET_TURNOUT: {
             char turnoutDirection = receiveBuffer[1];
             char turnoutNumber = receiveBuffer[2];
-            marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
 
             // do some processing on those sensors
             int index = turnoutIdx(turnoutNumber);
@@ -138,6 +138,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             TrackNode* impactedSensor = track[(2 * index) + 81].edge[DIR_AHEAD].dest->reverse;
             // do a dfs to assign the next sensor
             setNextSensor(impactedSensor, turnouts);
+            marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
             break;
         }
         case Command::SOLENOID_OFF: {
@@ -171,24 +172,58 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             // determine the sensor we want to listen for so that we can spin up our reverse task upon hit
 
             int targetTrackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);  // our target's index in the track node
-            TrackNode* currNode = track[targetTrackNodeIdx].reverse;
+            int trainIndex = trainNumToIndex(trainNumber);
+
+            TrackNode* targetNode = &track[targetTrackNodeIdx];
+
+            RingBuffer<TrackNode*, 100> path;
+            computeShortestPath(trains[trainIndex].sensorAhead, targetNode, path);
+
+            TrackNode* prev = nullptr;
+            for (auto it = path.begin(); it != path.end(); ++it) {
+                TrackNode* node = *it;
+                if (prev && node->type == NodeType::BRANCH) {
+                    if (node->edge[DIR_CURVED].dest == prev &&
+                        turnouts[turnoutIdx(node->num)].state == SwitchState::STRAIGHT) {
+                        TrackNode* impactedSensor =
+                            track[(2 * turnoutIdx(node->num)) + 81].edge[DIR_AHEAD].dest->reverse;
+                        setNextSensor(impactedSensor, turnouts);
+                        marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_CURVED, node->num);
+                    }
+
+                    if (node->edge[DIR_STRAIGHT].dest == prev &&
+                        turnouts[turnoutIdx(node->num)].state == SwitchState::CURVED) {
+                        TrackNode* impactedSensor =
+                            track[(2 * turnoutIdx(node->num)) + 81].edge[DIR_AHEAD].dest->reverse;
+                        setNextSensor(impactedSensor, turnouts);
+                        marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_STRAIGHT, node->num);
+                    }
+                }
+                prev = node;
+            }
+
+            // ************ FIND SENSOR TO ISSUE STOP COMMAND **************
+
+            TrackNode* curNode = targetNode->reverse;
             // work backwards given our stopping distance
             // later: grab this from the train
             uint64_t stoppingDistance = 400;  // 400 mm -> 40 cm
-            uint64_t travelledDistance = 0;
+            uint64_t distance = 0;
 
             // work backwards from the sensor node (WILL NEED TO BE CHANGED)
             // because we might not be stopping at a sensor, but some random node instead (like a switch)
-            while (travelledDistance < stoppingDistance) {
-                travelledDistance += currNode->distToNextSensor;
-                currNode = currNode->nextSensor;
+            while (distance < stoppingDistance) {
+                distance += curNode->distToNextSensor;
+                curNode = curNode->nextSensor;
             }
-            currNode = currNode->reverse;  // reorient ourselves so we know which sensor to listen for
+
+            TrackNode* sensorToIssueStop = curNode->reverse;
 
             // the amount of distance after hitting the sensor we need to issue the stop command
-            int trainIndex = trainNumToIndex(trainNumber);
-            trains[trainIndex].whereToIssueStop = travelledDistance - stoppingDistance;
-            trains[trainIndex].stoppingSensor = currNode;
+            trains[trainIndex].whereToIssueStop = distance - stoppingDistance;
+            trains[trainIndex].stoppingSensor = sensorToIssueStop;
+
+            // *************************************************************
 
             // we could calculate the number of ticks here, since we have a lot of time from issuing the command
             //  to when it actually stops. But then we wouldn't be using the most updated velocity
@@ -200,6 +235,39 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
         }
     }
 }
+
+// uint64_t trackNodeToInt(TrackNode* node) {
+//     uint64_t id = 0;
+
+//     switch (node->type) {
+//         case NodeType::SENSOR: {
+//             id += 100;
+//             break;
+//         }
+//         case NodeType::BRANCH: {
+//             id += 200;
+//             break;
+//         }
+//         case NodeType::MERGE: {
+//             id += 300;
+//             break;
+//         }
+//         case NodeType::ENTER: {
+//             id += 400;
+//             break;
+//         }
+//         case NodeType::EXIT: {
+//             id += 500;
+//             break;
+//         }
+//         default: {
+//             id += 600;
+//             break;
+//         }
+//     }
+
+//     id += node->num;
+// }
 
 void LocalizationServer() {
     int registerReturn = name_server::RegisterAs(LOCALIZATION_SERVER_NAME);
@@ -237,7 +305,7 @@ void LocalizationServer() {
 
     TrackNode track[TRACK_MAX];
     // need to 0 this out still
-    init_tracka(track);  // figure out how to tell which track it is at a later date
+    init_trackb(track);  // figure out how to tell which track it is at a later date
     initTrackSensorInfo(track, turnouts);
 
     uint64_t prevMicros = 0;
@@ -260,9 +328,9 @@ void LocalizationServer() {
 
         } else if (clientTid == sensorTid) {
             // ideally, we would update the information within the train struct of which sensor is now behind and
-            // upcoming need to do some simple math to get the track array index from the sensor reading thankfully, the
-            // sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index start at
-            // 0) = 28
+            // upcoming need to do some simple math to get the track array index from the sensor reading thankfully,
+            // the sensors are in the first section of the array so sensor B12 -> B = 16 + 12  (- 1 for array index
+            // start at 0) = 28
 
             int64_t curMicros = timerGet();
 
