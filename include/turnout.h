@@ -5,7 +5,7 @@
 #define SINGLE_SWITCH_COUNT 18
 #define DOUBLE_SWITCH_COUNT 4
 
-enum class SwitchState { STRAIGHT, CURVED, Unknown };
+enum class SwitchState { STRAIGHT = 33, CURVED, Unknown };
 
 struct Turnout {
     char id;

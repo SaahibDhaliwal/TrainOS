@@ -115,9 +115,51 @@ void StopTrain() {
     sys::Exit();
 }
 
+#define DONE_TURNOUTS 1
+void TurnoutNotifier() {
+    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+    int marklinServerTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
+    ASSERT(clockServerTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
+
+    int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
+    ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER PROPRIETOR\r\n");
+
+    int parentTid = sys::MyParentTid();
+    for (;;) {
+        char replyBuff[3];
+        int res = sys::Send(parentTid, nullptr, 0, replyBuff, 3);
+        handleSendResponse(res, parentTid);
+        // uart_printf(CONSOLE, "turnout reply: %d %d", replyBuff[0], replyBuff[1]);
+        if (replyBuff[0] != DONE_TURNOUTS) {
+            marklin_server::setTurnout(marklinServerTid, replyBuff[0], replyBuff[1]);
+        } else {
+            marklin_server::solenoidOff(marklinServerTid);
+            clock_server::Delay(clockServerTid, 20);
+            continue;
+        }
+        clock_server::Delay(clockServerTid, 20);
+        printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(replyBuff[0]),
+                                          turnoutIdx(replyBuff[1]));
+        // char test[20] = {0};
+        // ui2a(replyBuff[1], 10, test);
+
+        char sendBuff[100] = {0};
+        // printer_proprietor::formatToString(sendBuff, 30, "set turnout: %s to straight", test)
+        if (replyBuff[0] == 33) {
+            printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to straight", replyBuff[1]);
+        } else {
+            printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to curved", replyBuff[1]);
+        }
+        printer_proprietor::debug(printerProprietorTid, 3, sendBuff);
+    }
+    sys::Exit();
+}
+
 void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
                          int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains, Turnout* turnouts,
-                         TrackNode* track, uint32_t* reverseTid) {
+                         TrackNode* track, uint32_t* reverseTid, RingBuffer<std::pair<char, char>, 100>* turnoutQueue,
+                         int turnoutNotifierTid, bool* stopTurnoutNotifier) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::SET_SPEED: {
@@ -220,27 +262,24 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             int stoppingDistance = trains[trainIndex].stoppingDistance - signedOffset;
             TrackNode* targetNode = &track[targetTrackNodeIdx];
 
-            if (stoppingDistance < 0) {
-                ASSERT(0, "stopping distance < 0");
-                // iterate over nodes until the difference is larger than zero
-                // "fakes" a target that is within our stopping distance
-                while (stoppingDistance < 0) {
-                    if (targetNode->type == NodeType::BRANCH) {
-                        if (turnouts[turnoutIdx(targetNode->num)].state == SwitchState::CURVED) {
-                            stoppingDistance += targetNode->edge[DIR_CURVED].dist;
-                            targetNode = targetNode->edge[DIR_CURVED].dest;
-                        } else {
-                            stoppingDistance += targetNode->edge[DIR_STRAIGHT].dist;
-                            targetNode = targetNode->edge[DIR_STRAIGHT].dest;
-                        }
-                    } else if (targetNode->type == NodeType::EXIT) {
-                        // ex: sensor A2, A14, A15 don't have a next sensor
-                        ASSERT(0, "Offset was too large and you hit a dead end");
-                        break;
+            // iterate over nodes until the difference is larger than zero
+            // "fakes" a target that is within our stopping distance
+            while (stoppingDistance < 0) {
+                if (targetNode->type == NodeType::BRANCH) {
+                    if (turnouts[turnoutIdx(targetNode->num)].state == SwitchState::CURVED) {
+                        stoppingDistance += targetNode->edge[DIR_CURVED].dist;
+                        targetNode = targetNode->edge[DIR_CURVED].dest;
                     } else {
-                        stoppingDistance += targetNode->edge[DIR_AHEAD].dist;
-                        targetNode = targetNode->edge[DIR_AHEAD].dest;
+                        stoppingDistance += targetNode->edge[DIR_STRAIGHT].dist;
+                        targetNode = targetNode->edge[DIR_STRAIGHT].dest;
                     }
+                } else if (targetNode->type == NodeType::EXIT) {
+                    // ex: sensor A2, A14, A15 don't have a next sensor
+                    ASSERT(0, "Offset was too large and you hit a dead end");
+                    break;
+                } else {
+                    stoppingDistance += targetNode->edge[DIR_AHEAD].dist;
+                    targetNode = targetNode->edge[DIR_AHEAD].dest;
                 }
             }
 
@@ -255,21 +294,58 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
                 if (prev && node->type == NodeType::BRANCH) {
                     if (node->edge[DIR_CURVED].dest == prev &&
                         turnouts[turnoutIdx(node->num)].state == SwitchState::STRAIGHT) {
+                        // this complex getnextsensor should be simplified to node
                         TrackNode* impactedSensor = getNextSensor(&track[(2 * turnoutIdx(node->num)) + 81], turnouts);
                         setNextSensor(impactedSensor, turnouts);
-                        marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_CURVED, node->num);
+                        // update turnouts
+                        turnouts[turnoutIdx(node->num)].state = SwitchState::CURVED;
+                        // add to turnout queue
+                        // uart_printf(CONSOLE, "node->num: %d", node->num);
+                        turnoutQueue->push(
+                            std::pair<char, char>(34, static_cast<char>(node->num)));  // dont want to static_cast it
+                        if (node->num == 153 || node->num == 155) {
+                            turnouts[turnoutIdx(node->num + 1)].state = SwitchState::STRAIGHT;
+                            turnoutQueue->push(std::pair<char, char>(
+                                33, static_cast<char>(node->num + 1)));  // dont want to static_cast it
+                        } else if (node->num == 154 || node->num == 156) {
+                            turnouts[turnoutIdx(node->num - 1)].state = SwitchState::STRAIGHT;
+                            turnoutQueue->push(std::pair<char, char>(
+                                33, static_cast<char>(node->num - 1)));  // dont want to static_cast it
+                        }
                     }
 
                     if (node->edge[DIR_STRAIGHT].dest == prev &&
                         turnouts[turnoutIdx(node->num)].state == SwitchState::CURVED) {
                         TrackNode* impactedSensor = getNextSensor(&track[(2 * turnoutIdx(node->num)) + 81], turnouts);
                         setNextSensor(impactedSensor, turnouts);
-                        marklin_server::setTurnout(marklinServerTid, Command_Byte::SWITCH_STRAIGHT, node->num);
+                        // update turnouts
+                        turnouts[turnoutIdx(node->num)].state = SwitchState::STRAIGHT;
+                        // add to turnout queue
+                        // uart_printf(CONSOLE, "node->num: %d", node->num);
+                        turnoutQueue->push(
+                            std::pair<char, char>(33, static_cast<char>(node->num)));  // dont want to static_cast it
+                        if (node->num == 153 || node->num == 155) {
+                            turnouts[turnoutIdx(node->num + 1)].state = SwitchState::CURVED;
+                            turnoutQueue->push(std::pair<char, char>(
+                                34, static_cast<char>(node->num + 1)));  // dont want to static_cast it
+                        } else if (node->num == 154 || node->num == 156) {
+                            turnouts[turnoutIdx(node->num - 1)].state = SwitchState::CURVED;
+                            turnoutQueue->push(std::pair<char, char>(
+                                34, static_cast<char>(node->num - 1)));  // dont want to static_cast it
+                        }
                     }
                 }
                 prev = node;
                 debugPath[counter] = node->name;
                 counter++;
+            }
+
+            if (!turnoutQueue->empty()) {
+                char sendBuff[3];
+                std::pair<char, char> c = *(turnoutQueue->pop());
+                printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
+                sys::Reply(turnoutNotifierTid, sendBuff, 3);
+                *stopTurnoutNotifier = true;
             }
 
             char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -289,10 +365,9 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             targetNode = targetNode->reverse;
 
-            if (targetNode->type != NodeType::SENSOR) {
+            if (targetNode->type != NodeType::SENSOR && targetNode->nextSensor == nullptr) {
                 setNextSensor(targetNode, turnouts);
             }
-            // setNextSensor(targetNode, turnouts);
 
             ASSERT(targetNode->nextSensor != nullptr, "next sensor is deadend!");
             ASSERT(stoppingDistance >= 0, "we have a negative stopping distance!");
@@ -322,39 +397,6 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
         }
     }
 }
-
-// uint64_t trackNodeToInt(TrackNode* node) {
-//     uint64_t id = 0;
-
-//     switch (node->type) {
-//         case NodeType::SENSOR: {
-//             id += 100;
-//             break;
-//         }
-//         case NodeType::BRANCH: {
-//             id += 200;
-//             break;
-//         }
-//         case NodeType::MERGE: {
-//             id += 300;
-//             break;
-//         }
-//         case NodeType::ENTER: {
-//             id += 400;
-//             break;
-//         }
-//         case NodeType::EXIT: {
-//             id += 500;
-//             break;
-//         }
-//         default: {
-//             id += 600;
-//             break;
-//         }
-//     }
-
-//     id += node->num;
-// }
 
 void LocalizationServer() {
     int registerReturn = name_server::RegisterAs(LOCALIZATION_SERVER_NAME);
@@ -399,13 +441,25 @@ void LocalizationServer() {
     int res = sys::Receive(&client, nullptr, 0);
     ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
 
+    uint32_t turnoutNotifierTid = sys::Create(49, &TurnoutNotifier);
+    res = sys::Receive(&client, nullptr, 0);
+    ASSERT(client == turnoutNotifierTid, "localization startup received from someone besides the turnoutNotifier task");
+
     uint64_t prevMicros = 0;
     int laps = 0;
     uint32_t reverseTid = 0;
     int stopTrainIndex = 0;
     uint32_t delayTicks = 0;
-    // int trackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);
-    // trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
+    RingBuffer<std::pair<uint64_t, uint64_t>, 10> velocitySamples;  // pair<mm(deltaD), micros(deltaT)>
+    int64_t prevSensorPredicitionMicros = 0;
+    uint64_t velocitySamplesNumeratorSum = 0;
+    uint64_t velocitySamplesDenominatorSum = 0;
+
+    RingBuffer<std::pair<char, char>, 100> turnoutQueue;
+    bool stopTurnoutNotifier = false;
+
+    trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
+    trains[trainNumToIndex(16)].active = true;
 
     for (;;) {
         uint32_t clientTid;
@@ -416,7 +470,8 @@ void LocalizationServer() {
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
             processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
-                                &reversingTrains, turnouts, track, &reverseTid);
+                                &reversingTrains, turnouts, track, &reverseTid, &turnoutQueue, turnoutNotifierTid,
+                                &stopTurnoutNotifier);
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
@@ -441,6 +496,7 @@ void LocalizationServer() {
             int trackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);
             TrackNode* curSensor = &track[trackNodeIdx];
             // if this is some random sensor flick
+            // need to initialize the curtrain sensor ahead or else this will error on the first sensor hit
             // if (curSensor != curTrain->sensorAhead && curSensor != curTrain->sensorAhead->nextSensor) {
             //     emptyReply(clientTid);
             //     continue;
@@ -451,14 +507,6 @@ void LocalizationServer() {
                 emptyReply(clientTid);
                 continue;
             }
-
-            uint64_t nextSample = 0;
-            uint64_t lastEstimate = 0;
-            int64_t prevSensorPredicitionMicros = 0;
-
-            RingBuffer<std::pair<uint64_t, uint64_t>, 10> velocitySamples;  // pair<mm(deltaD), micros(deltaT)>
-            uint64_t velocitySamplesNumeratorSum = 0;
-            uint64_t velocitySamplesDenominatorSum = 0;
 
             if (!prevSensor) {
                 prevMicros = curMicros;
@@ -499,9 +547,9 @@ void LocalizationServer() {
                     (velocitySamplesNumeratorSum * 1000000) * 1000 /
                     velocitySamplesDenominatorSum;  // microm/micros with a *1000 for decimals
 
-                // this is still alpha w 1/8
+                // this is still alpha w 1/16
                 uint64_t oldVelocity = curTrain->velocity;
-                curTrain->velocity = ((oldVelocity * 7) + sample_mm_per_s_x1000) >> 3;
+                curTrain->velocity = ((oldVelocity * 15) + sample_mm_per_s_x1000) >> 4;
 
                 // check if this sensor is the one a train is waiting for
                 if (curTrain->stoppingSensor == curSensor) {
@@ -550,6 +598,18 @@ void LocalizationServer() {
             // current implementation only works for one train
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trains[stopTrainIndex].id);
             trains[stopTrainIndex].stoppingSensor = nullptr;
+
+        } else if (clientTid == turnoutNotifierTid) {
+            if (turnoutQueue.empty() && stopTurnoutNotifier) {
+                char reply = DONE_TURNOUTS;
+                sys::Reply(turnoutNotifierTid, &reply, 1);
+                stopTurnoutNotifier = false;
+            } else if (!turnoutQueue.empty()) {
+                char sendBuff[3];
+                std::pair<char, char> c = *(turnoutQueue.pop());
+                printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
+                sys::Reply(turnoutNotifierTid, sendBuff, 3);
+            }
 
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);

@@ -22,7 +22,7 @@ int getSeedVelocity(int trainIdx, int seedChoice) {
     if (seedChoice == 8) {
         return trainVelocitySeedEight[trainIdx];
     }
-    return 0;
+    return 200000;
 }
 
 void initializeTrains(Train* trains, int marklinServerTid) {
