@@ -59,6 +59,14 @@ clean:
 test:
 	 $(MAKE) clean all TESTING=on
 
+.PHONY: a
+a:
+	 $(MAKE) clean all TRACKA=on
+
+.PHONY: b
+b:
+	 $(MAKE) clean all TRACKA=off
+
 $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -S -O binary $< $@
 
