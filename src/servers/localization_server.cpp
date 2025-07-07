@@ -422,7 +422,7 @@ void LocalizationServer() {
         } else if (clientTid == sensorTid) {
             int64_t curMicros = timerGet();
 
-            Train* curTrain = &trains[trainNumToIndex(16)];
+            Train* curTrain = nullptr;
             for (int i = 0; i < MAX_TRAINS; i++) {
                 if (trains[i].active) {
                     // later, will do a check to see if the sensor hit is plausible for an active train
@@ -467,8 +467,22 @@ void LocalizationServer() {
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
 
-                printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
-                                                      microsDeltaT, mmDeltaD);
+                // if ((box == 'B' && sensorNum == 1) || (box == 'B' && sensorNum == 2)) {
+                //     laps++;
+                // }
+
+                // if (laps == 24) {
+                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, curTrain->id);
+                // } else if (laps >= 14) {
+                //     printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
+                //                                           microsDeltaT, mmDeltaD);
+                // } else if (laps == 12) {
+                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, curTrain->id);
+                //     printer_proprietor::measurementOutput(printerProprietorTid, "CHANGING TO 8 HIGH", "", 0, 0);
+                // } else if (laps >= 2) {
+                //     printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
+                //                                           microsDeltaT, mmDeltaD);
+                // }
 
                 if (velocitySamples.full()) {
                     std::pair<uint64_t, uint64_t>* p = velocitySamples.front();

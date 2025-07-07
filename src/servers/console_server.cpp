@@ -63,10 +63,7 @@ void ConsoleMeasurementDumper() {
     name_server::RegisterAs("measure_dump");
 
     uint32_t sender = 0;
-    emptyReceive(&sender);
-    charSend(consoleServerTid, toByte(Command::MEASURE_RECORD));
 
-    emptyReply(sender);
     emptyReceive(&sender);
     charSend(consoleServerTid, toByte(Command::MEASURE_DUMP));
 
@@ -92,7 +89,7 @@ void ConsoleServer() {
     RingBuffer<char, 100000> measurements;
 
     bool waitForTx = false;
-    bool recordMeasurements = false;
+    bool recordMeasurements = true;
 
     for (;;) {
         uint32_t clientTid;

@@ -85,7 +85,7 @@ void initialTurnoutConfigTrackB(Turnout* turnouts) {
     turnouts[10].state = SwitchState::CURVED;
     turnouts[11].state = SwitchState::CURVED;
     turnouts[12].state = SwitchState::STRAIGHT;
-    turnouts[13].state = SwitchState::STRAIGHT;
+    turnouts[13].state = SwitchState::CURVED;
     turnouts[14].state = SwitchState::CURVED;
     turnouts[15].state = SwitchState::STRAIGHT;
     turnouts[16].state = SwitchState::STRAIGHT;
