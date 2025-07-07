@@ -124,6 +124,7 @@ void TurnoutNotifier() {
 
     int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
     ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER PROPRIETOR\r\n");
+    int debugCounter = 2;
 
     int parentTid = sys::MyParentTid();
     for (;;) {
@@ -151,7 +152,9 @@ void TurnoutNotifier() {
         } else {
             printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to curved", replyBuff[1]);
         }
-        printer_proprietor::debug(printerProprietorTid, 3, sendBuff);
+        printer_proprietor::debug(printerProprietorTid, debugCounter + 1, sendBuff);
+        debugCounter++;
+        if (debugCounter == 9) debugCounter = 2;
     }
     sys::Exit();
 }
@@ -287,52 +290,70 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             computeShortestPath(trains[trainIndex].sensorAhead, targetNode, path);
             const char* debugPath[100] = {0};
             int counter = 0;
-
+            TrackNode* lastSensor = nullptr;
+            uint64_t travelledDistance = 0;
             TrackNode* prev = nullptr;
             for (auto it = path.begin(); it != path.end(); ++it) {
                 TrackNode* node = *it;
-                if (prev && node->type == NodeType::BRANCH) {
-                    if (node->edge[DIR_CURVED].dest == prev &&
-                        turnouts[turnoutIdx(node->num)].state == SwitchState::STRAIGHT) {
-                        // this complex getnextsensor should be simplified to node
-                        TrackNode* impactedSensor = getNextSensor(&track[(2 * turnoutIdx(node->num)) + 81], turnouts);
-                        setNextSensor(impactedSensor, turnouts);
-                        // update turnouts
-                        turnouts[turnoutIdx(node->num)].state = SwitchState::CURVED;
-                        // add to turnout queue
-                        // uart_printf(CONSOLE, "node->num: %d", node->num);
-                        turnoutQueue->push(
-                            std::pair<char, char>(34, static_cast<char>(node->num)));  // dont want to static_cast it
-                        if (node->num == 153 || node->num == 155) {
-                            turnouts[turnoutIdx(node->num + 1)].state = SwitchState::STRAIGHT;
-                            turnoutQueue->push(std::pair<char, char>(
-                                33, static_cast<char>(node->num + 1)));  // dont want to static_cast it
-                        } else if (node->num == 154 || node->num == 156) {
-                            turnouts[turnoutIdx(node->num - 1)].state = SwitchState::STRAIGHT;
-                            turnoutQueue->push(std::pair<char, char>(
-                                33, static_cast<char>(node->num - 1)));  // dont want to static_cast it
+                uint64_t edgeDistance = 0;
+                if (!prev) {
+                    prev = node;
+                    debugPath[counter] = node->name;
+                    counter++;
+                    continue;
+                }
+                if (node->type == NodeType::BRANCH) {
+                    if (node->edge[DIR_CURVED].dest == prev) {
+                        edgeDistance += node->edge[DIR_CURVED].dist;
+                        // if we need to take the curved path, but the switch state is straight
+                        if (turnouts[turnoutIdx(node->num)].state == SwitchState::STRAIGHT) {
+                            // update turnouts
+                            turnouts[turnoutIdx(node->num)].state = SwitchState::CURVED;
+                            // add to turnout queue
+                            // uart_printf(CONSOLE, "node->num: %d", node->num);
+                            turnoutQueue->push(std::pair<char, char>(34, (node->num)));  // dont want to static_cast it
+                            if (node->num == 153 || node->num == 155) {
+                                turnouts[turnoutIdx(node->num + 1)].state = SwitchState::STRAIGHT;
+                                turnoutQueue->push(
+                                    std::pair<char, char>(33, (node->num + 1)));  // dont want to static_cast it
+                            } else if (node->num == 154 || node->num == 156) {
+                                turnouts[turnoutIdx(node->num - 1)].state = SwitchState::STRAIGHT;
+                                turnoutQueue->push(
+                                    std::pair<char, char>(33, (node->num - 1)));  // dont want to static_cast it
+                            }
+                            // take the branch's merge node and work backwards to get the next sensor
+                            TrackNode* impactedSensor = getNextSensor(node->reverse, turnouts);
+                            // then update the impacted sensors nextSensor
+                            setNextSensor(impactedSensor->reverse, turnouts);
                         }
                     }
 
-                    if (node->edge[DIR_STRAIGHT].dest == prev &&
-                        turnouts[turnoutIdx(node->num)].state == SwitchState::CURVED) {
-                        TrackNode* impactedSensor = getNextSensor(&track[(2 * turnoutIdx(node->num)) + 81], turnouts);
-                        setNextSensor(impactedSensor, turnouts);
-                        // update turnouts
-                        turnouts[turnoutIdx(node->num)].state = SwitchState::STRAIGHT;
-                        // add to turnout queue
-                        // uart_printf(CONSOLE, "node->num: %d", node->num);
-                        turnoutQueue->push(
-                            std::pair<char, char>(33, static_cast<char>(node->num)));  // dont want to static_cast it
-                        if (node->num == 153 || node->num == 155) {
-                            turnouts[turnoutIdx(node->num + 1)].state = SwitchState::CURVED;
-                            turnoutQueue->push(std::pair<char, char>(
-                                34, static_cast<char>(node->num + 1)));  // dont want to static_cast it
-                        } else if (node->num == 154 || node->num == 156) {
-                            turnouts[turnoutIdx(node->num - 1)].state = SwitchState::CURVED;
-                            turnoutQueue->push(std::pair<char, char>(
-                                34, static_cast<char>(node->num - 1)));  // dont want to static_cast it
+                    if (node->edge[DIR_STRAIGHT].dest == prev) {
+                        edgeDistance += node->edge[DIR_STRAIGHT].dist;
+                        if (turnouts[turnoutIdx(node->num)].state == SwitchState::CURVED) {
+                            // update turnouts
+                            turnouts[turnoutIdx(node->num)].state = SwitchState::STRAIGHT;
+                            // add to turnout queue
+                            turnoutQueue->push(std::pair<char, char>(33, (node->num)));  // dont want to static_cast it
+                            if (node->num == 153 || node->num == 155) {
+                                turnouts[turnoutIdx(node->num + 1)].state = SwitchState::CURVED;
+                                turnoutQueue->push(std::pair<char, char>(34, (node->num + 1)));
+                            } else if (node->num == 154 || node->num == 156) {
+                                turnouts[turnoutIdx(node->num - 1)].state = SwitchState::CURVED;
+                                turnoutQueue->push(std::pair<char, char>(34, (node->num - 1)));
+                            }
+                            TrackNode* impactedSensor = getNextSensor(node->reverse, turnouts);
+                            setNextSensor(impactedSensor->reverse, turnouts);
                         }
+                    }
+                } else {
+                    edgeDistance += node->edge[DIR_AHEAD].dist;
+                }
+
+                if (!lastSensor) {
+                    travelledDistance += edgeDistance;
+                    if (node->type == NodeType::SENSOR && travelledDistance >= stoppingDistance) {
+                        lastSensor = node;
                     }
                 }
                 prev = node;
@@ -340,6 +361,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
                 counter++;
             }
 
+            // if we need to update our turnouts, reply to the task right away
             if (!turnoutQueue->empty()) {
                 char sendBuff[3];
                 std::pair<char, char> c = *(turnoutQueue->pop());
@@ -361,33 +383,13 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             }
             printer_proprietor::debug(printerProprietorTid, 0, strBuff);
 
-            // ************ FIND SENSOR TO ISSUE STOP COMMAND **************
-
-            targetNode = targetNode->reverse;
-
-            if (targetNode->type != NodeType::SENSOR && targetNode->nextSensor == nullptr) {
-                setNextSensor(targetNode, turnouts);
-            }
-
-            ASSERT(targetNode->nextSensor != nullptr, "next sensor is deadend!");
-            ASSERT(stoppingDistance >= 0, "we have a negative stopping distance!");
-            uint64_t travelledDistance = targetNode->distToNextSensor;
-
-            while (travelledDistance < stoppingDistance) {
-                travelledDistance += targetNode->distToNextSensor;
-                targetNode = targetNode->nextSensor;
-            }
-
-            targetNode = targetNode->nextSensor->reverse;  // reorient ourselves so we know which sensor to listen for
-
-            // the amount of distance after hitting the sensor we need to issue the stop command
             trains[trainIndex].whereToIssueStop = travelledDistance - stoppingDistance;
-            trains[trainIndex].stoppingSensor = targetNode;
+            trains[trainIndex].stoppingSensor = lastSensor;
             char debugBuff[400] = {0};
             printer_proprietor::formatToString(
                 debugBuff, 400,
                 "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance: %d",
-                targetNode->name, travelledDistance - stoppingDistance, travelledDistance, stoppingDistance);
+                lastSensor->name, travelledDistance - stoppingDistance, travelledDistance, stoppingDistance);
             printer_proprietor::debug(printerProprietorTid, 1, debugBuff);
 
             break;
@@ -458,8 +460,8 @@ void LocalizationServer() {
     RingBuffer<std::pair<char, char>, 100> turnoutQueue;
     bool stopTurnoutNotifier = false;
 
-    trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
-    trains[trainNumToIndex(16)].active = true;
+    // trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
+    // trains[trainNumToIndex(16)].active = true;
 
     for (;;) {
         uint32_t clientTid;
@@ -514,23 +516,6 @@ void LocalizationServer() {
             } else {
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
-
-                // if ((box == 'B' && sensorNum == 1) || (box == 'B' && sensorNum == 2)) {
-                //     laps++;
-                // }
-
-                // if (laps == 24) {
-                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, curTrain->id);
-                // } else if (laps >= 14) {
-                //     printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
-                //                                           microsDeltaT, mmDeltaD);
-                // } else if (laps == 12) {
-                //     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, curTrain->id);
-                //     printer_proprietor::measurementOutput(printerProprietorTid, "CHANGING TO 8 HIGH", "", 0, 0);
-                // } else if (laps >= 2) {
-                //     printer_proprietor::measurementOutput(printerProprietorTid, prevSensor->name, curSensor->name,
-                //                                           microsDeltaT, mmDeltaD);
-                // }
 
                 if (velocitySamples.full()) {
                     std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
