@@ -69,7 +69,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].sensorBehind = nullptr;
         trains[i].stoppingSensor = nullptr;
         trains[i].whereToIssueStop = 0;
-        trains[i].stoppingDistance = trainStoppingDistSeed[i];
+        trains[i].stoppingDistance = getStoppingDistSeed(i);
         trains[i].stopping = false;
         trains[i].targetNode = nullptr;
         trains[i].sensorWhereStopStarted = nullptr;
