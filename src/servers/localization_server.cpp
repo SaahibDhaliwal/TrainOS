@@ -222,6 +222,9 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             int trainIdx = trainNumToIndex(trainNumber);
 
             if (!trains[trainIdx].reversing) {
+                if (trainSpeed == 8) {
+                    marklin_server::setTrainSpeed(marklinServerTid, 9, trainNumber);
+                }
                 marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, trainNumber);
             }
             trains[trainIdx].speed = trainSpeed;
@@ -231,6 +234,9 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             // only speed 14 will make it here anyway
             trains[trainIdx].velocity = getFastVelocitySeed(trainIdx);
+            if (trainSpeed = 8) {
+                trains[trainIdx].velocity = getStoppingVelocitySeed(trainIdx);
+            }
             while (!velocitySamples->empty()) {
                 velocitySamples->pop();
             }

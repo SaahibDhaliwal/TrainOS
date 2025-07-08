@@ -52,6 +52,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
 
         if (trainSpeed > 14) return false;
+        if (trainSpeed != 14 && trainSpeed != 8) return false;
 
         if (*cur != '\0') return false;
 
@@ -205,6 +206,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             if (*cur == 'N' || *cur == 'n') {
                 box = 'H';
                 cur++;
+                return false;
             } else if (*cur == 'X' || *cur == 'x') {
                 box = 'I';
                 cur++;
@@ -225,10 +227,17 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         if (sensorNum == 0) return false;
         if ((box == 'F' || box == 'G') && (sensorNum < 153 && sensorNum > 18)) return false;
 
+        if ((box == 'B' && sensorNum == 7) || (box == 'B' && sensorNum == 11) || (box == 'B' && sensorNum == 9) ||
+            (box == 'A' && sensorNum == 13) || (box == 'A' && sensorNum == 1) || (box == 'C' && sensorNum == 4))
+            return false;
+
 #ifndef TRACKA
         // checks if an incorrect exit node is passed on track B
         if ((box == 'H' || box == 'I') && (sensorNum == 6 || sensorNum == 8)) return false;
+        if ((box == 'A' && sensorNum == 16) || (box == 'A' && sensorNum == 11)) return false;
+
 #endif
+        if ((box == 'I') && (sensorNum > 10)) return false;
 
         if (*cur != ' ') return false;
         cur++;
