@@ -10,9 +10,13 @@
 static const int trainAddresses[MAX_TRAINS] = {14, 15, 16, 17, 18, 55};
 // train 55 is 10H
 
-static const int trainFastVelocitySeed[MAX_TRAINS] = {596041, 605833, 596914, 266566, 627366, 525104};
-static const int trainStopVelocitySeed[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
-static const int trainStoppingDistSeed[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
+static const int trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833, 596914, 266566, 627366, 525104};
+static const int trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
+static const int trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
+
+static const int trainFastVelocitySeedTrackA[MAX_TRAINS] = {596041, 605833, 596914, 266566, 631283, 525104};
+static const int trainStopVelocitySeedTrackA[MAX_TRAINS] = {253549, 257347, 253548, 266566, 267566, 311583};
+static const int trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
 
 int trainNumToIndex(int trainNum) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
@@ -24,17 +28,32 @@ int trainNumToIndex(int trainNum) {
 
 int getFastVelocitySeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-    return trainFastVelocitySeed[trainIdx];
+
+#if defined(TRACKA)
+    return trainFastVelocitySeedTrackA[trainIdx];
+#else
+    return trainFastVelocitySeedTrackB[trainIdx];
+#endif
 }
 
 int getStoppingVelocitySeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-    return trainStopVelocitySeed[trainIdx];
+
+#if defined(TRACKA)
+    return trainStopVelocitySeedTrackA[trainIdx];
+#else
+    return trainStopVelocitySeedTrackB[trainIdx];
+#endif
 }
 
 int getStoppingDistSeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-    return trainStoppingDistSeed[trainIdx];
+
+#if defined(TRACKA)
+    return trainStoppingDistSeedTrackA[trainIdx];
+#else
+    return trainStoppingDistSeedTrackB[trainIdx];
+#endif
 }
 
 void initializeTrains(Train* trains, int marklinServerTid) {
