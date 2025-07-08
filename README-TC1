@@ -5,7 +5,7 @@ Clone repo and compile commands within terminal:
 ---------------------------------------------------------
 git clone https://git.uwaterloo.ca/dduranro/kernel.git
 cd kernel
-git checkout 2e405bc5d38a8cd43329ab5542021da32552fc41
+git checkout 763b721388474c939668170d8d3150bd5f1acacd
 
 Now, if uploading to "track a" do:
 make a
