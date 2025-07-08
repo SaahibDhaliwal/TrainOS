@@ -9,8 +9,15 @@
 //     return s;
 // }
 
+void basic_init(TrackNode *track) {
+    for (int i = 0; i < TRACK_MAX; i++) {
+        track[i].id = i;
+    }
+}
+
 void init_tracka(TrackNode *track) {
     // memset(track, 0, TRACK_MAX * sizeof(track_node));
+    basic_init(track);
     track[0].name = "A1";
     track[0].type = NodeType::SENSOR;
     track[0].num = 0;
@@ -1203,6 +1210,8 @@ void init_tracka(TrackNode *track) {
 
 void init_trackb(TrackNode *track) {
     // memset(track, 0, TRACK_MAX * sizeof(TrackNode));
+    basic_init(track);
+
     track[0].name = "A1";
     track[0].type = NodeType::SENSOR;
     track[0].num = 0;

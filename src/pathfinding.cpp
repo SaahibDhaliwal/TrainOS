@@ -1,19 +1,22 @@
 #include "pathfinding.h"
 
+#include <cstring>
+
 #include "priority_queue.h"
 #include "ring_buffer.h"
 #include "unordered_map.h"
 
-uint64_t nodeToNum(TrackNode* node) {
-    return (static_cast<int>(node->type) * 100) + node->num;
-}
+void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path) {
+    uint64_t distances[TRACK_MAX];
+    TrackNode* parents[TRACK_MAX];
+    PriorityQueue<std::pair<uint64_t, TrackNode*>, TRACK_MAX> pq;
 
-void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 100>& path) {
-    UnorderedMap<uint64_t, uint64_t, 500> distances;
-    UnorderedMap<uint64_t, TrackNode*, 500> parents;
-    PriorityQueue<std::pair<uint64_t, TrackNode*>, 500> pq;
+    for (int i = 0; i < TRACK_MAX; i++) {
+        distances[i] = UINT64_MAX;
+        parents[i] = nullptr;
+    }
 
-    uint64_t sourceNum = nodeToNum(source);
+    uint64_t sourceNum = source->id;
     distances[sourceNum] = 0;
     parents[sourceNum] = nullptr;
     pq.push({0, source});
@@ -24,7 +27,9 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
 
         if (curNode == target) break;  // found shortest path to target
 
-        if (curDist != distances[nodeToNum(curNode)]) continue;  // stale pq entry
+        if (curDist > distances[curNode->id]) continue;  // stale pq entry
+
+        if (curNode->type == NodeType::EXIT) continue;
 
         int dirs[2];
         int numberOfDirs = 0;
@@ -39,26 +44,25 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
         for (int i = 0; i < numberOfDirs; i += 1) {
             TrackEdge* edge = &curNode->edge[dirs[i]];
             TrackNode* destNode = edge->dest;
-            uint64_t destNodeNum = nodeToNum(destNode);
             int64_t newDistToDest = curDist + edge->dist;
 
             ASSERT(destNode != nullptr);
 
-            if (!distances.exists(destNodeNum) || (newDistToDest < distances[destNodeNum])) {
-                parents[destNodeNum] = curNode;
-                distances[destNodeNum] = newDistToDest;
+            if (newDistToDest < distances[destNode->id]) {
+                parents[destNode->id] = curNode;
+                distances[destNode->id] = newDistToDest;
 
-                if (destNode->type != NodeType::EXIT) {
-                    pq.push({distances[destNodeNum], destNode});
+                if (curNode->type != NodeType::EXIT) {
+                    pq.push({distances[destNode->id], destNode});
                 }
             }
         }
     }
 
     TrackNode* cur = target;
-    while (parents[nodeToNum(cur)]) {
+    while (parents[cur->id]) {
         path.push(cur);
-        cur = parents[nodeToNum(cur)];
+        cur = parents[cur->id];
     }
     path.push(cur);
 }

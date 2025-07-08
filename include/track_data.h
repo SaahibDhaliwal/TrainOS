@@ -35,6 +35,7 @@ struct TrackNode {
     TrackEdge edge[2];             // outgoing edges
     TrackNode* nextSensor = nullptr;
     uint64_t distToNextSensor = 0;  // in millimetres
+    uint64_t id;
 };
 
 // track data initializers

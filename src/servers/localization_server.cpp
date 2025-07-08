@@ -508,8 +508,21 @@ void LocalizationServer() {
             if (!prevSensor) {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
+                curTrain->sensorAhead = curSensor->nextSensor;
                 curTrain->sensorWhereSpeedChangeStarted = curSensor;
             } else {
+#if defined(TRACKA)
+                if (curSensor != curTrain->sensorAhead) {
+                    emptyReply(clientTid);
+                    continue;
+                }
+#else
+                if (curSensor != curTrain->sensorAhead && curTrain->sensorAhead != &track[43]) {
+                    emptyReply(clientTid);
+                    continue;
+                }
+#endif
+
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
 
@@ -544,7 +557,7 @@ void LocalizationServer() {
                 }
 
                 if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
-                    RingBuffer<TrackNode*, 100> path;
+                    RingBuffer<TrackNode*, 1000> path;
                     computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, path);
                     const char* debugPath[100] = {0};
                     int counter = 0;
