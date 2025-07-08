@@ -336,6 +336,12 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             } else if (box == 'I') {  // Exit
                 targetTrackNodeIdx = (2 * (nodeNum - 1)) + 125;
             }
+#ifndef TRACKA
+            if (box == 'H' || box == 'I') {
+                if (nodeNum > 8) targetTrackNodeIdx -= 4;
+                if (nodeNum == 7) targetTrackNodeIdx -= 2;
+            }
+#endif
 
             // if signed offset is a big negative number, then we're fine
             // but if larger than our stopping distance, we need to choose a new target
@@ -416,7 +422,6 @@ void LocalizationServer() {
     initialTurnoutConfigTrackA(turnouts);
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
     init_tracka(track);
-
 #else
     initialTurnoutConfigTrackB(turnouts);
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
@@ -636,6 +641,7 @@ void LocalizationServer() {
                             strSize += 2;
                         }
                     }
+                    printer_proprietor::debug(printerProprietorTid, strBuff);
 
                     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
                     curTrain->stoppingSensor = lastSensor;
@@ -645,6 +651,7 @@ void LocalizationServer() {
                         "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance: %d",
                         lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
                         curTrain->stoppingDistance);
+                    // printer_proprietor::debug(printerProprietorTid, debugBuff);
                 }
 
                 // check if this sensor is the one a train is waiting for

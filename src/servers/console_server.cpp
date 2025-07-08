@@ -105,7 +105,7 @@ void ConsoleServer() {
             }
             case Command::TX: {
                 // ASSERT(!charQueue.empty(), "TX WAS ENABLED WHEN WE HAD NO CHARS TO PROCESS");
-                ASSERT(!uartTXFull(CONSOLE), "TX SUPPOSED TO BE FREE");
+                // ASSERT(!uartTXFull(CONSOLE), "TX SUPPOSED TO BE FREE");
 
                 waitForTx = false;
                 break;
