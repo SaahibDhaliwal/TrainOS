@@ -46,7 +46,7 @@ void startupPrint(int tid);
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaD);
 int formatToString(char* buff, int buffSize, const char* fmt, ...);
-void debug(int tid, int row, const char* str);
+void debug(int tid, const char* str);
 }  // namespace printer_proprietor
 
 #endif

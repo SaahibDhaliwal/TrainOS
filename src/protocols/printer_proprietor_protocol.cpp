@@ -227,10 +227,10 @@ void measurementOutput(int tid, const char* srcName, const char* dstName, const 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void debug(int tid, int column, const char* str) {
+void debug(int tid, const char* str) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::DEBUG);
-    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%d%s", column, str);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s", str);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

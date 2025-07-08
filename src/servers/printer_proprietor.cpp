@@ -35,6 +35,7 @@ void PrinterProprietor() {
     bool isSensorBufferParityEven = true;
 
     unsigned int measurementMessages = 0;
+    unsigned int debugMessages = 0;
 
     for (;;) {
         uint32_t clientTid;
@@ -131,8 +132,8 @@ void PrinterProprietor() {
                 break;
             }
             case Command::DEBUG: {
-                WITH_HIDDEN_CURSOR(consoleServerTid,
-                                   print_debug(consoleServerTid, a2d(receiveBuffer[1]), &receiveBuffer[2]));
+                WITH_HIDDEN_CURSOR(consoleServerTid, print_debug(consoleServerTid, debugMessages, &receiveBuffer[2]));
+                debugMessages += 1;
                 break;
             }
             default: {
