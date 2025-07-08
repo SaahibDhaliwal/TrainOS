@@ -52,7 +52,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
 
         if (trainSpeed > 14) return false;
-        if (trainSpeed != 14 && trainSpeed != 8) return false;
+        if (trainSpeed != 14 && trainSpeed != 8 && trainSpeed != 0) return false;
 
         if (*cur != '\0') return false;
 

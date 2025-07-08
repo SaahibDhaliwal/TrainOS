@@ -72,7 +72,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].stoppingDistance = getStoppingDistSeed(i);
         trains[i].stopping = false;
         trains[i].targetNode = nullptr;
-        trains[i].sensorWhereStopStarted = nullptr;
+        trains[i].sensorWhereSpeedChangeStarted = nullptr;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
 }

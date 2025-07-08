@@ -28,7 +28,7 @@ struct Train {
     TrackNode *targetNode;
     TrackNode *stoppingSensor;
     uint64_t whereToIssueStop;
-    TrackNode *sensorWhereStopStarted;
+    TrackNode *sensorWhereSpeedChangeStarted;
 };
 
 void initializeTrains(Train *trains, int marklinServerTid);

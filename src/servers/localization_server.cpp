@@ -212,7 +212,7 @@ void TurnoutNotifier() {
 void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
                          int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains, Turnout* turnouts,
                          TrackNode* track, uint32_t* reverseTid,
-                         RingBuffer<std::pair<uint64_t, uint64_t>, 10>* velocitySamples) {
+                         RingBuffer<std::pair<uint64_t, uint64_t>, 10>* velocitySamples, uint64_t* laps) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::SET_SPEED: {
@@ -222,8 +222,8 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             int trainIdx = trainNumToIndex(trainNumber);
 
             if (!trains[trainIdx].reversing) {
-                if (trainSpeed == 8) {
-                    marklin_server::setTrainSpeed(marklinServerTid, 9, trainNumber);
+                if (trainSpeed == TRAIN_SPEED_8) {
+                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_9, trainNumber);
                 }
                 marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, trainNumber);
             }
@@ -234,12 +234,16 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             // only speed 14 will make it here anyway
             trains[trainIdx].velocity = getFastVelocitySeed(trainIdx);
-            if (trainSpeed = 8) {
+            if (trainSpeed == TRAIN_SPEED_8) {
                 trains[trainIdx].velocity = getStoppingVelocitySeed(trainIdx);
             }
             while (!velocitySamples->empty()) {
                 velocitySamples->pop();
             }
+
+            trains[trainIdx].sensorWhereSpeedChangeStarted = trains[trainIdx].sensorBehind;
+            *laps = 0;
+
             break;
         }
         case Command::REVERSE_TRAIN: {
@@ -361,7 +365,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             trains[trainIndex].targetNode = targetNode;
             trains[trainIndex].stoppingDistance = stoppingDistance;
-            trains[trainIndex].sensorWhereStopStarted = trains[trainIndex].sensorBehind;
+            trains[trainIndex].sensorWhereSpeedChangeStarted = trains[trainIndex].sensorBehind;
 
             if (trainNumber == 55) {
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_10, trainNumber);
@@ -374,6 +378,8 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             while (!velocitySamples->empty()) {
                 velocitySamples->pop();
             }
+
+            *laps = 0;
 
             break;
         }
@@ -430,7 +436,7 @@ void LocalizationServer() {
     ASSERT(client == turnoutNotifierTid, "localization startup received from someone besides the turnoutNotifier task");
 
     uint64_t prevMicros = 0;
-    int laps = 0;
+    uint64_t laps = 0;
     uint32_t reverseTid = 0;
     int stopTrainIndex = 0;
     uint32_t delayTicks = 0;
@@ -456,7 +462,7 @@ void LocalizationServer() {
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
             processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
-                                &reversingTrains, turnouts, track, &reverseTid, &velocitySamples);
+                                &reversingTrains, turnouts, track, &reverseTid, &velocitySamples, &laps);
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
@@ -497,6 +503,7 @@ void LocalizationServer() {
             if (!prevSensor) {
                 prevMicros = curMicros;
                 curTrain->sensorBehind = curSensor;
+                curTrain->sensorWhereSpeedChangeStarted = curSensor;
             } else {
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
@@ -506,7 +513,7 @@ void LocalizationServer() {
                     velocitySamplesDenominatorSum = 0;
                 }
 
-                if (!curTrain->stopping || laps == 1) {
+                if (laps >= 1) {
                     if (velocitySamples.full()) {
                         std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
                         velocitySamplesNumeratorSum -= p->first;
@@ -527,11 +534,11 @@ void LocalizationServer() {
                     curTrain->velocity = ((oldVelocity * 15) + sample_mm_per_s_x1000) >> 4;
                 }
 
-                if (curTrain->stopping && curTrain->sensorWhereStopStarted == curSensor) {
+                if (curTrain->sensorWhereSpeedChangeStarted == curSensor) {
                     laps++;
                 }
 
-                if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps == 1) {
+                if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
                     RingBuffer<TrackNode*, 100> path;
                     computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, path);
                     const char* debugPath[100] = {0};
@@ -690,7 +697,6 @@ void LocalizationServer() {
             trains[stopTrainIndex].stoppingSensor = nullptr;
             trains[stopTrainIndex].stopping = false;
             trains[stopTrainIndex].stoppingDistance = getStoppingDistSeed(stopTrainIndex);
-            laps = 0;
 
         } else if (clientTid == turnoutNotifierTid) {
             if (turnoutQueue.empty() && stopTurnoutNotifier) {
