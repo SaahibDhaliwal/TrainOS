@@ -52,7 +52,6 @@ void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNe
                                   distance + nextNode->edge[DIR_CURVED].dist);
 
             // after this, we can assume all those other sensors have been updated
-            // uart_printf(CONSOLE, "Done setting all impacted sensors");
             return;
 
         } else if (nextNode->type == NodeType::EXIT) {
@@ -63,79 +62,12 @@ void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNe
         }
     }
 
-    // ASSERT(0, "did not go through a branch");
-    // uart_printf(CONSOLE, "Did not go through a branch");
     // we get here if we reached a sensor and didn't need to branch
     // need to reverse since we're working backwards
     nextNode->reverse->distToNextSensor = distance;
     nextNode->reverse->nextSensor = newNextSensor;
     return;
 }
-
-// void iterativeSetAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNextSensor) {
-//     TrackNode* nextNode = start->edge[DIR_AHEAD].dest;
-//     int mmTotalDist = start->edge[DIR_AHEAD].dist;
-
-//     ASSERT(nextNode != nullptr, "nextNode == nullptr at start");
-
-//     TrackNode* branchNode = nullptr;
-//     bool deadendFlag = false;
-
-//     while (nextNode->type != NodeType::SENSOR) {
-//         if (nextNode->type == NodeType::BRANCH) {
-//             // go down each path and set an impacted sensor for each
-//             branchNode = nextNode;
-//             mmTotalDist += nextNode->edge[DIR_STRAIGHT].dist;
-//             nextNode = nextNode->edge[DIR_STRAIGHT].dest;
-//             ASSERT(nextNode != nullptr, "nextNode == nullptr after going down branch");
-//         } else if (nextNode->type == NodeType::EXIT || nextNode->type == NodeType::ENTER) {
-//             deadendFlag = true;
-//             break;
-//         } else {
-//             mmTotalDist += nextNode->edge[DIR_AHEAD].dist;
-//             nextNode = nextNode->edge[DIR_AHEAD].dest;
-//             ASSERT(nextNode != nullptr, "nextNode == nullptr after going down straight");
-//         }
-//     }
-
-//     if (!deadendFlag) {
-//         nextNode->reverse->nextSensor = newNextSensor;
-//         nextNode->reverse->distToNextSensor = mmTotalDist;
-//     } else {
-//         nextNode->reverse->nextSensor = nullptr;
-//         nextNode->reverse->distToNextSensor = 0;
-//     }
-
-//     if (branchNode == nullptr) return;
-//     // if we hit a branch, go down the other path
-//     ASSERT(0, "going down other branch");
-
-//     mmTotalDist = 0;
-//     deadendFlag = false;
-
-//     while (branchNode->type != NodeType::SENSOR) {
-//         if (branchNode->type == NodeType::BRANCH) {
-//             mmTotalDist += branchNode->edge[DIR_CURVED].dist;
-//             branchNode = branchNode->edge[DIR_CURVED].dest;
-//             ASSERT(branchNode != nullptr, "branchNode == nullptr after going down branch");
-//         } else if (branchNode->type == NodeType::EXIT || branchNode->type == NodeType::ENTER) {
-//             deadendFlag = true;
-//             break;
-//         } else {
-//             mmTotalDist += branchNode->edge[DIR_AHEAD].dist;
-//             branchNode = branchNode->edge[DIR_AHEAD].dest;
-//             ASSERT(branchNode != nullptr, "branchNode == nullptr after going down straight");
-//         }
-//     }
-//     if (!deadendFlag) {
-//         branchNode->reverse->distToNextSensor = mmTotalDist;
-//         branchNode->reverse->nextSensor = newNextSensor;
-//     } else {
-//         branchNode->reverse->nextSensor = nullptr;
-//         branchNode->reverse->distToNextSensor = 0;
-//     }
-//     return;
-// }
 
 // follows the track state to update the starting sensor's next sensor
 //  note: start must be a sensor
@@ -268,7 +200,6 @@ void TurnoutNotifier() {
         // ui2a(replyBuff[1], 10, test);
 
         char sendBuff[100] = {0};
-        // printer_proprietor::formatToString(sendBuff, 30, "set turnout: %s to straight", test)
         if (replyBuff[0] == 33) {
             printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to straight", replyBuff[1]);
         } else {
@@ -326,9 +257,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             // do some processing on those sensors
             int index = turnoutIdx(turnoutNumber);
-            // if(turnoutDirection){
 
-            // }
             turnouts[index].state = static_cast<SwitchState>(turnoutDirection);  // this is not updating properly
 
             marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
@@ -751,8 +680,10 @@ void LocalizationServer() {
             // ideally, we know which train this is (we are the localization server)
             // current implementation only works for one train
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trains[stopTrainIndex].id);
+
             trains[stopTrainIndex].stoppingSensor = nullptr;
             trains[stopTrainIndex].stopping = false;
+            trains[stopTrainIndex].stoppingDistance = getStoppingDistSeed(stopTrainIndex);
             laps = 0;
 
         } else if (clientTid == turnoutNotifierTid) {

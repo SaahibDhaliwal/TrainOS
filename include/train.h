@@ -35,5 +35,6 @@ void initializeTrains(Train *trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
 int getFastVelocitySeed(int trainIdx);
 int getStoppingVelocitySeed(int trainIdx);
+int getStoppingDistSeed(int trainIdx);
 
 #endif

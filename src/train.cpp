@@ -32,6 +32,11 @@ int getStoppingVelocitySeed(int trainIdx) {
     return trainStopVelocitySeed[trainIdx];
 }
 
+int getStoppingDistSeed(int trainIdx) {
+    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
+    return trainStoppingDistSeed[trainIdx];
+}
+
 void initializeTrains(Train* trains, int marklinServerTid) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
