@@ -14,8 +14,8 @@ static const int trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833, 5969
 static const int trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
 static const int trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
 
-static const int trainFastVelocitySeedTrackA[MAX_TRAINS] = {596041, 605833, 596914, 266566, 631283, 525104};
-static const int trainStopVelocitySeedTrackA[MAX_TRAINS] = {253549, 257347, 253548, 266566, 267566, 311583};
+static const int trainFastVelocitySeedTrackA[MAX_TRAINS] = {601640, 605833, 596914, 266566, 625911, 525104};
+static const int trainStopVelocitySeedTrackA[MAX_TRAINS] = {254904, 257347, 253548, 266566, 265294, 311583};
 static const int trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
 
 int trainNumToIndex(int trainNum) {

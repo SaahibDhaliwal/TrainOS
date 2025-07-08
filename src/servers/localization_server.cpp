@@ -212,7 +212,8 @@ void TurnoutNotifier() {
 void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTid, int printerProprietorTid,
                          int clockServerTid, RingBuffer<int, MAX_TRAINS>* reversingTrains, Turnout* turnouts,
                          TrackNode* track, uint32_t* reverseTid,
-                         RingBuffer<std::pair<uint64_t, uint64_t>, 10>* velocitySamples, uint64_t* laps) {
+                         RingBuffer<std::pair<uint64_t, uint64_t>, 10>* velocitySamples, uint64_t* laps,
+                         uint64_t* newSensorsPassed) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::SET_SPEED: {
@@ -243,6 +244,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
 
             trains[trainIdx].sensorWhereSpeedChangeStarted = trains[trainIdx].sensorBehind;
             *laps = 0;
+            *newSensorsPassed = 0;
 
             break;
         }
@@ -386,6 +388,7 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             }
 
             *laps = 0;
+            *newSensorsPassed = 0;
 
             break;
         }
@@ -442,6 +445,7 @@ void LocalizationServer() {
 
     uint64_t prevMicros = 0;
     uint64_t laps = 0;
+    uint64_t newSensorsPassed = 0;
     uint32_t reverseTid = 0;
     int stopTrainIndex = 0;
     uint32_t delayTicks = 0;
@@ -467,7 +471,8 @@ void LocalizationServer() {
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
             processInputCommand(receiveBuffer, trains, marklinServerTid, printerProprietorTid, clockServerTid,
-                                &reversingTrains, turnouts, track, &reverseTid, &velocitySamples, &laps);
+                                &reversingTrains, turnouts, track, &reverseTid, &velocitySamples, &laps,
+                                &newSensorsPassed);
             emptyReply(clientTid);
 
         } else if (clientTid == sensorTid) {
@@ -523,6 +528,8 @@ void LocalizationServer() {
                 }
 #endif
 
+                newSensorsPassed++;
+
                 uint64_t microsDeltaT = curMicros - prevMicros;
                 uint64_t mmDeltaD = prevSensor->distToNextSensor;
 
@@ -531,26 +538,31 @@ void LocalizationServer() {
                     velocitySamplesDenominatorSum = 0;
                 }
 
-                if (laps >= 1) {
-                    if (velocitySamples.full()) {
-                        std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
-                        velocitySamplesNumeratorSum -= p->first;
-                        velocitySamplesDenominatorSum -= p->second;
-                        velocitySamples.pop();
-                    }
+                // #if defined(TRACKA)
+                //                 if (newSensorsPassed >= 5) {
+                // #else
+                //                 if (newSensorsPassed >= 5 && curSensor != &track[3]) {
+                // #endif
 
-                    velocitySamples.push({mmDeltaD, microsDeltaT});
-                    velocitySamplesNumeratorSum += mmDeltaD;
-                    velocitySamplesDenominatorSum += microsDeltaT;
+                //                     if (velocitySamples.full()) {
+                //                         std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
+                //                         velocitySamplesNumeratorSum -= p->first;
+                //                         velocitySamplesDenominatorSum -= p->second;
+                //                         velocitySamples.pop();
+                //                     }
 
-                    uint64_t sample_mm_per_s_x1000 =
-                        (velocitySamplesNumeratorSum * 1000000) * 1000 /
-                        velocitySamplesDenominatorSum;  // microm/micros with a *1000 for decimals
+                //                     velocitySamples.push({mmDeltaD, microsDeltaT});
+                //                     velocitySamplesNumeratorSum += mmDeltaD;
+                //                     velocitySamplesDenominatorSum += microsDeltaT;
 
-                    // this is still alpha w 1/8
-                    uint64_t oldVelocity = curTrain->velocity;
-                    curTrain->velocity = ((oldVelocity * 15) + sample_mm_per_s_x1000) >> 4;
-                }
+                //                     uint64_t sample_mm_per_s_x1000 =
+                //                         (velocitySamplesNumeratorSum * 1000000) * 1000 /
+                //                         velocitySamplesDenominatorSum;  // microm/micros with a *1000 for decimals
+
+                //                     // this is still alpha w 1/8
+                //                     uint64_t oldVelocity = curTrain->velocity;
+                //                     curTrain->velocity = ((oldVelocity * 15) + sample_mm_per_s_x1000) >> 4;
+                //                 }
 
                 if (curTrain->sensorWhereSpeedChangeStarted == curSensor) {
                     laps++;
@@ -646,24 +658,24 @@ void LocalizationServer() {
                     char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
                     int strSize = 0;
 
-                    for (int i = counter - 1; i >= 0; i--) {
-                        strcpy(strBuff + strSize, debugPath[i]);
-                        strSize += strlen(debugPath[i]);
-                        if (i != 0) {
-                            strcpy(strBuff + strSize, "->");
-                            strSize += 2;
-                        }
-                    }
-                    printer_proprietor::debug(printerProprietorTid, strBuff);
+                    // for (int i = counter - 1; i >= 0; i--) {
+                    //     strcpy(strBuff + strSize, debugPath[i]);
+                    //     strSize += strlen(debugPath[i]);
+                    //     if (i != 0) {
+                    //         strcpy(strBuff + strSize, "->");
+                    //         strSize += 2;
+                    //     }
+                    // }
+                    // printer_proprietor::debug(printerProprietorTid, strBuff);
 
                     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
                     curTrain->stoppingSensor = lastSensor;
-                    char debugBuff[400] = {0};
-                    printer_proprietor::formatToString(
-                        debugBuff, 400,
-                        "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance: %d",
-                        lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
-                        curTrain->stoppingDistance);
+                    // char debugBuff[400] = {0};
+                    // printer_proprietor::formatToString(
+                    //     debugBuff, 400,
+                    //     "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance:
+                    //     %d", lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
+                    //     curTrain->stoppingDistance);
                     // printer_proprietor::debug(printerProprietorTid, debugBuff);
                 }
 
