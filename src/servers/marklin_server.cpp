@@ -137,7 +137,7 @@ void MarklinServer() {
     RingBuffer<unsigned char, Config::MARKLIN_QUEUE_SIZE> charQueue;
 
     // create notifiers
-    int notifierPriority = 42;  // should be higher priority than MarklinServer (I think)
+    int notifierPriority = 49;  // should be higher priority than MarklinServer (I think)
 
     uint32_t txNotifier = sys::Create(notifierPriority, MarklinTXNotifier);
     uint32_t rxNotifier = sys::Create(notifierPriority, MarklinRXNotifier);

@@ -35,7 +35,7 @@ void initialTurnoutConfigTrackA(Turnout* turnouts) {
     }
 
     for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
-        turnouts[i].id = i + 153;
+        turnouts[SINGLE_SWITCH_COUNT + i].id = i + 153;
     }
 
     turnouts[0].state = SwitchState::STRAIGHT;
@@ -57,10 +57,10 @@ void initialTurnoutConfigTrackA(Turnout* turnouts) {
     turnouts[16].state = SwitchState::STRAIGHT;
     turnouts[17].state = SwitchState::CURVED;
     // double switches
-    turnouts[18].state = SwitchState::CURVED;
-    turnouts[19].state = SwitchState::STRAIGHT;
-    turnouts[20].state = SwitchState::STRAIGHT;
-    turnouts[21].state = SwitchState::CURVED;
+    turnouts[18].state = SwitchState::CURVED;    // 153
+    turnouts[19].state = SwitchState::STRAIGHT;  // 154
+    turnouts[20].state = SwitchState::CURVED;    // 155
+    turnouts[21].state = SwitchState::STRAIGHT;  // 156
 }
 
 void initialTurnoutConfigTrackB(Turnout* turnouts) {
@@ -69,7 +69,7 @@ void initialTurnoutConfigTrackB(Turnout* turnouts) {
     }
 
     for (int i = 0; i < DOUBLE_SWITCH_COUNT; i += 1) {
-        turnouts[i].id = i + 153;
+        turnouts[SINGLE_SWITCH_COUNT + i].id = i + 153;
     }
 
     turnouts[0].state = SwitchState::STRAIGHT;
