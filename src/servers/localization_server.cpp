@@ -36,12 +36,12 @@ void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNe
     if (start != newNextSensor->reverse && start->type == NodeType::SENSOR) {
         start->reverse->distToNextSensor = distance;
         start->reverse->nextSensor = newNextSensor;
-        // ASSERT(0, "reached sensor %s", start->reverse->name);
+        // ASSERT(0, "reached sensor %s with next sensor as: %s", start->reverse->name, newNextSensor->name);
         return;
     }
 
     TrackNode* nextNode = start;  // might not be needed
-    while (nextNode->type != NodeType::SENSOR) {
+    while (nextNode->type != NodeType::SENSOR || nextNode == newNextSensor->reverse) {
         if (nextNode->type == NodeType::BRANCH) {
             // go down each path and set an impacted sensor for each
 
@@ -55,6 +55,7 @@ void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNe
             return;
 
         } else if (nextNode->type == NodeType::EXIT) {
+            // ASSERT(0, "hit exit node after branch");
             return;
         } else {
             distance += nextNode->edge[DIR_AHEAD].dist;
@@ -66,6 +67,7 @@ void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNe
     // need to reverse since we're working backwards
     nextNode->reverse->distToNextSensor = distance;
     nextNode->reverse->nextSensor = newNextSensor;
+    // ASSERT(0, "reached sensor %s with next sensor as: %s (no branch)", nextNode->reverse->name, newNextSensor->name);
     return;
 }
 
@@ -267,7 +269,6 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             char turnoutDirection = receiveBuffer[1];
             char turnoutNumber = receiveBuffer[2];
 
-            // do some processing on those sensors
             int index = turnoutIdx(turnoutNumber);
 
             turnouts[index].state = static_cast<SwitchState>(turnoutDirection);  // this is not updating properly
@@ -279,7 +280,6 @@ void processInputCommand(char* receiveBuffer, Train* trains, int marklinServerTi
             ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
             // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
             setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
-            // initTrackSensorInfo(track, turnouts);
 
             break;
         }
@@ -658,15 +658,15 @@ void LocalizationServer() {
                     char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
                     int strSize = 0;
 
-                    // for (int i = counter - 1; i >= 0; i--) {
-                    //     strcpy(strBuff + strSize, debugPath[i]);
-                    //     strSize += strlen(debugPath[i]);
-                    //     if (i != 0) {
-                    //         strcpy(strBuff + strSize, "->");
-                    //         strSize += 2;
-                    //     }
-                    // }
-                    // printer_proprietor::debug(printerProprietorTid, strBuff);
+                    for (int i = counter - 1; i >= 0; i--) {
+                        strcpy(strBuff + strSize, debugPath[i]);
+                        strSize += strlen(debugPath[i]);
+                        if (i != 0) {
+                            strcpy(strBuff + strSize, "->");
+                            strSize += 2;
+                        }
+                    }
+                    printer_proprietor::debug(printerProprietorTid, strBuff);
 
                     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
                     curTrain->stoppingSensor = lastSensor;
