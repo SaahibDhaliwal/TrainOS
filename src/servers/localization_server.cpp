@@ -12,6 +12,7 @@
 #include "console_server.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
+#include "localization_helper.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server_protocol.h"
@@ -29,132 +30,6 @@
 #include "turnout.h"
 
 using namespace localization_server;
-
-// reverse, nextsensor, 0
-void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNextSensor, int distance) {
-    // did our recursion bring us to an impacted sensor?
-    if (start != newNextSensor->reverse && start->type == NodeType::SENSOR) {
-        start->reverse->distToNextSensor = distance;
-        start->reverse->nextSensor = newNextSensor;
-        // ASSERT(0, "reached sensor %s with next sensor as: %s", start->reverse->name, newNextSensor->name);
-        return;
-    }
-
-    TrackNode* nextNode = start;  // might not be needed
-    while (nextNode->type != NodeType::SENSOR || nextNode == newNextSensor->reverse) {
-        if (nextNode->type == NodeType::BRANCH) {
-            // go down each path and set an impacted sensor for each
-
-            setAllImpactedSensors(nextNode->edge[DIR_STRAIGHT].dest, turnouts, newNextSensor,
-                                  distance + nextNode->edge[DIR_STRAIGHT].dist);
-
-            setAllImpactedSensors(nextNode->edge[DIR_CURVED].dest, turnouts, newNextSensor,
-                                  distance + nextNode->edge[DIR_CURVED].dist);
-
-            // after this, we can assume all those other sensors have been updated
-            return;
-
-        } else if (nextNode->type == NodeType::EXIT) {
-            // ASSERT(0, "hit exit node after branch");
-            return;
-        } else {
-            distance += nextNode->edge[DIR_AHEAD].dist;
-            nextNode = nextNode->edge[DIR_AHEAD].dest;
-        }
-    }
-
-    // we get here if we reached a sensor and didn't need to branch
-    // need to reverse since we're working backwards
-    nextNode->reverse->distToNextSensor = distance;
-    nextNode->reverse->nextSensor = newNextSensor;
-    // ASSERT(0, "reached sensor %s with next sensor as: %s (no branch)", nextNode->reverse->name, newNextSensor->name);
-    return;
-}
-
-// follows the track state to update the starting sensor's next sensor
-//  note: start must be a sensor
-void setNextSensor(TrackNode* start, Turnout* turnouts) {
-    int mmTotalDist = start->edge[DIR_AHEAD].dist;
-    TrackNode* nextNode = start->edge[DIR_AHEAD].dest;
-    bool deadendFlag = false;
-    while (nextNode->type != NodeType::SENSOR) {
-        if (nextNode->type == NodeType::BRANCH) {
-            // if we hit a branch node, there are two different edges to take
-            // so look at our inital turnout state to know which sensor is next
-            if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::CURVED) {
-                mmTotalDist += nextNode->edge[DIR_CURVED].dist;
-                nextNode = nextNode->edge[DIR_CURVED].dest;
-            } else {
-                mmTotalDist += nextNode->edge[DIR_STRAIGHT].dist;
-                nextNode = nextNode->edge[DIR_STRAIGHT].dest;
-            }
-        } else if (nextNode->type == NodeType::EXIT) {  // pretty sure ENTER nodes do have a next sensor!
-            // ex: sensor A2, A14, A15 don't have a next sensor
-            deadendFlag = true;
-            break;
-        } else {
-            mmTotalDist += nextNode->edge[DIR_AHEAD].dist;
-            nextNode = nextNode->edge[DIR_AHEAD].dest;
-        }
-    }
-
-    if (!deadendFlag) {
-        start->nextSensor = nextNode;
-        start->distToNextSensor = mmTotalDist;
-    } else {
-        start->nextSensor = nullptr;
-        start->distToNextSensor = 0;
-    }
-}
-
-// ensure your starting node is not a sensor
-TrackNode* getNextSensor(TrackNode* start, Turnout* turnouts) {
-    TrackNode* nextNode = nullptr;
-    if (start->type != NodeType::BRANCH) {
-        nextNode = start->edge[DIR_AHEAD].dest;
-    } else if (turnouts[turnoutIdx(start->num)].state == SwitchState::STRAIGHT) {
-        if (start->num == 153 || start->num == 155) {
-            nextNode = start->reverse->edge[DIR_AHEAD].dest->reverse->edge[DIR_CURVED].dest;
-        } else {
-            nextNode = start->edge[DIR_CURVED].dest;
-        }
-    } else {
-        nextNode = start->edge[DIR_CURVED].dest;
-    }
-
-    bool deadendFlag = false;
-    while (nextNode->type != NodeType::SENSOR) {
-        if (nextNode->type == NodeType::BRANCH) {
-            // if we hit a branch node, there are two different edges to take
-            // so look at our inital turnout state to know which sensor is next
-            if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::CURVED) {
-                nextNode = nextNode->edge[DIR_CURVED].dest;
-            } else {
-                nextNode = nextNode->edge[DIR_STRAIGHT].dest;
-            }
-        } else if (nextNode->type == NodeType::EXIT) {  // pretty sure ENTER nodes do have a next sensor!
-            // ex: sensor A2, A14, A15 don't have a next sensor
-            deadendFlag = true;
-            break;
-        } else {
-            nextNode = nextNode->edge[DIR_AHEAD].dest;
-        }
-    }
-    if (!deadendFlag) {
-        return nextNode;
-    } else {
-        // ASSERT(0, "There was no next sensor");
-        return nullptr;
-    }
-}
-
-#define MAX_SENSORS 80
-void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
-    for (int i = 0; i < MAX_SENSORS; i++) {  // only need to look through first 80 indices (16 * 5)
-        // do a dfs for the next sensor
-        setNextSensor(&track[i], turnouts);
-    }
-}
 
 void StopTrain() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
@@ -593,7 +468,6 @@ void LocalizationServer() {
                                     // update turnouts
                                     turnouts[turnoutIdx(node->num)].state = SwitchState::CURVED;
                                     // add to turnout queue
-                                    // uart_printf(CONSOLE, "node->num: %d", node->num);
                                     turnoutQueue.push(
                                         std::pair<char, char>(34, (node->num)));  // dont want to static_cast it
                                     if (node->num == 153 || node->num == 155) {
@@ -605,10 +479,11 @@ void LocalizationServer() {
                                         turnoutQueue.push(
                                             std::pair<char, char>(33, (node->num - 1)));  // dont want to static_cast it
                                     }
-                                    // take the branch's merge node and work backwards to get the next sensor
-                                    TrackNode* impactedSensor = getNextSensor(node->reverse, turnouts);
-                                    // then update the impacted sensors nextSensor
-                                    setNextSensor(impactedSensor->reverse, turnouts);
+                                    // go down the branch node to find the next sensor
+                                    TrackNode* newNextSensor = getNextSensor(node, turnouts);
+                                    // then update the impacted sensors before our branch node
+                                    // ASSERT(newNextSensor != nullptr, "there is no sensor after this branch");
+                                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
                                 }
                             }
 
@@ -627,8 +502,9 @@ void LocalizationServer() {
                                         turnouts[turnoutIdx(node->num - 1)].state = SwitchState::CURVED;
                                         turnoutQueue.push(std::pair<char, char>(34, (node->num - 1)));
                                     }
-                                    TrackNode* impactedSensor = getNextSensor(node->reverse, turnouts);
-                                    setNextSensor(impactedSensor->reverse, turnouts);
+                                    TrackNode* newNextSensor = getNextSensor(node, turnouts);
+                                    // ASSERT(newNextSensor != nullptr, "there is no sensor after this branch");
+                                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
                                 }
                             }
                         } else {
@@ -670,13 +546,13 @@ void LocalizationServer() {
 
                     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
                     curTrain->stoppingSensor = lastSensor;
-                    // char debugBuff[400] = {0};
-                    // printer_proprietor::formatToString(
-                    //     debugBuff, 400,
-                    //     "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance:
-                    //     %d", lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
-                    //     curTrain->stoppingDistance);
-                    // printer_proprietor::debug(printerProprietorTid, debugBuff);
+                    char debugBuff[400] = {0};
+                    printer_proprietor::formatToString(
+                        debugBuff, 400,
+                        "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance: %d ",
+                        lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
+                        curTrain->stoppingDistance);
+                    printer_proprietor::debug(printerProprietorTid, debugBuff);
                 }
 
                 // check if this sensor is the one a train is waiting for
