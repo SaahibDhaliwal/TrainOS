@@ -1,10 +1,8 @@
 #include "printer_proprietor.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "display_refresher.h"
 #include "generic_protocol.h"

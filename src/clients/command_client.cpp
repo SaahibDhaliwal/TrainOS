@@ -2,7 +2,6 @@
 
 #include "command.h"
 #include "command_server.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
 #include "name_server_protocol.h"

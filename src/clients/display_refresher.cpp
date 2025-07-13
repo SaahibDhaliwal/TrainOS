@@ -1,7 +1,6 @@
 
 #include "display_refresher.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "name_server_protocol.h"
 #include "printer_proprietor_protocol.h"

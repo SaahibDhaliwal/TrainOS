@@ -1,6 +1,8 @@
 #ifndef __COMMAND_SERVER_PROTOCOL__
 #define __COMMAND_SERVER_PROTOCOL__
 
+constexpr const char* COMMAND_SERVER_NAME = "command_server";
+
 namespace command_server {
 enum class Command : char { MESSAGE, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };

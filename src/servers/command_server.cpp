@@ -1,11 +1,9 @@
 #include "command_server.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "command_client.h"
 #include "command_server_protocol.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
 #include "localization_server.h"

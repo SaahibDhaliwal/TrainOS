@@ -6,6 +6,8 @@
 #include "command.h"
 #include "command_server_protocol.h"
 
+constexpr const char* PRINTER_PROPRIETOR_NAME = "printer_proprietor";
+
 namespace printer_proprietor {
 enum class Command : char {
     PRINTC,

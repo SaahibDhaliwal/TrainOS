@@ -2,7 +2,6 @@
 
 #include <cstdarg>
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"

@@ -1,7 +1,6 @@
 #include "train.h"
 
 #include "command.h"
-#include "marklin_command_protocol.h"
 #include "marklin_server_protocol.h"
 #include "queue.h"
 #include "rpi.h"

@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
@@ -11,7 +10,6 @@
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "localization_server_protocol.h"
-#include "marklin_command_protocol.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server.h"

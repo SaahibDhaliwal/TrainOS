@@ -44,7 +44,7 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
         for (int i = 0; i < numberOfDirs; i += 1) {
             TrackEdge* edge = &curNode->edge[dirs[i]];
             TrackNode* destNode = edge->dest;
-            int64_t newDistToDest = curDist + edge->dist;
+            uint64_t newDistToDest = curDist + edge->dist;
 
             ASSERT(destNode != nullptr);
 

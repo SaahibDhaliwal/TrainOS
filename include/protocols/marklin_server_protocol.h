@@ -1,6 +1,8 @@
 #ifndef __MARKLIN_SERVER_PROTOCOL__
 #define __MARKLIN_SERVER_PROTOCOL__
 
+constexpr const char* MARKLIN_SERVER_NAME = "marklin_server";
+
 namespace marklin_server {
 
 enum class Command : char {
