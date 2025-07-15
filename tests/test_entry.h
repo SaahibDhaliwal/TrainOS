@@ -7,8 +7,8 @@
 void runTests() {
     // RUN_TEST(runContextSwitchTest);
     // RUN_TEST(runPriorityQueueTest);
-    // RUN_TEST(runUnorderedMapTest);
-    RUN_TEST(runPathfindingTest);
+    RUN_TEST(runUnorderedMapTest);
+    // RUN_TEST(runPathfindingTest);
 
     while (true) {
         __asm__ volatile("wfe");

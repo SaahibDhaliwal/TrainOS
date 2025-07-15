@@ -37,4 +37,11 @@ int getFastVelocitySeed(int trainIdx);
 int getStoppingVelocitySeed(int trainIdx);
 int getStoppingDistSeed(int trainIdx);
 
+// void TrainTask14();
+// void TrainTask15();
+// void TrainTask16();
+// void TrainTask17();
+// void TrainTask18();
+// void TrainTask55();
+
 #endif

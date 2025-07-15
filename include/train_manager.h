@@ -9,12 +9,14 @@
 #include "track_data.h"
 #include "train.h"
 #include "turnout.h"
+#include "zone.h"
 
 class TrainManager {
    private:
     Train trains[MAX_TRAINS];
     TrackNode track[TRACK_MAX];
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
+    TrainReservation trainReservation;
 
     int marklinServerTid;
     int printerProprietorTid;

@@ -49,6 +49,8 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
 #endif
     initTrackSensorInfo(track, turnouts);  // sets every sensor's "nextSensor" according to track state
 
+    trainReservation.initialize(track);
+
     // uncomment this for testing offtrack
     //  trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
     //  trains[trainNumToIndex(16)].active = true;
@@ -86,7 +88,6 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             trains[trainIdx].sensorWhereSpeedChangeStarted = trains[trainIdx].sensorBehind;
             laps = 0;
             newSensorsPassed = 0;
-
             break;
         }
         case Command::REVERSE_TRAIN: {
@@ -101,7 +102,6 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
                 reverseTid = sys::Create(40, &marklin_server::reverseTrainTask);
                 trains[trainIdx].reversing = true;
             }
-
             break;
         }
         case Command::SET_TURNOUT: {
@@ -109,18 +109,14 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             char turnoutNumber = receiveBuffer[2];
 
             int index = turnoutIdx(turnoutNumber);
-
             turnouts[index].state = static_cast<SwitchState>(turnoutDirection);
 
             marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
-
             // go down our branch to find which sensor is next
             TrackNode* newNextSensor = getNextSensor(&track[(2 * index) + 80], turnouts);
             ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
             // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
             setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
-            // ASSERT(0, "REACHED HERE");
-
             break;
         }
         case Command::SOLENOID_OFF: {
@@ -215,21 +211,19 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             trains[trainIndex].stoppingDistance = stoppingDistance;
             trains[trainIndex].sensorWhereSpeedChangeStarted = trains[trainIndex].sensorBehind;
 
+            // might be worth deprecating this
             if (trainNumber == 55) {
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_10, trainNumber);
             } else {
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, trainNumber);
             }
-            char sendBuff[100];
 
             trains[trainIndex].velocity = getStoppingVelocitySeed(trainIndex);
             while (!velocitySamples.empty()) {
                 velocitySamples.pop();
             }
-
             laps = 0;
             newSensorsPassed = 0;
-
             break;
         }
         default: {
@@ -258,8 +252,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
 
 #if defined(TRACKA)
     if (box == 'B' && (sensorNum == 9 || sensorNum == 10)) {
-        emptyReply(clientTid);
-        continue;
+        return;
     }
 #endif
 
@@ -276,6 +269,30 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         curTrain->sensorBehind = curSensor;
         curTrain->sensorAhead = curSensor->nextSensor;
         curTrain->sensorWhereSpeedChangeStarted = curSensor;
+
+        char debugBuff[200] = {0};
+
+        if (!trainReservation.reservationAttempt(curSensor, curTrain->id)) {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d failed to reserved zone %d on startup",
+                                               curTrain->id, trainReservation.trackNodeToZoneNum(curSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+            marklin_server::setTrainSpeed(marklinServerTid, 15, curTrain->id);  // hard stop
+        } else {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d reserved zone %d on startup", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+        }
+        if (!trainReservation.reservationAttempt(curSensor->nextSensor, curTrain->id)) {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d failed to reserved zone %d", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->nextSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, curTrain->id);  // soft stop
+        } else {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d reserved zone %d on startup", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->nextSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+        }
+
     } else {
 #if defined(TRACKA)
         if (curSensor != curTrain->sensorAhead) {
@@ -449,6 +466,27 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             stopTrainIndex = trainNumToIndex(curTrain->id);  // assuming only one train is given the stop command
         }
 
+        char debugBuff[200] = {0};
+        if (!trainReservation.reservationAttempt(curSensor->nextSensor, curTrain->id)) {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d failed to reserved zone %d", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->nextSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, curTrain->id);  // soft stop
+        } else {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d reserved zone %d", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->nextSensor));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+        }
+
+        if (!trainReservation.freeReservation(curSensor->reverse, curTrain->id)) {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d failed to unreserved zone %d", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->reverse));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+        } else {
+            printer_proprietor::formatToString(debugBuff, 200, " Train %d unreserved zone %d", curTrain->id,
+                                               trainReservation.trackNodeToZoneNum(curSensor->reverse));
+            printer_proprietor::debug(printerProprietorTid, debugBuff);
+        }
         printer_proprietor::updateTrainStatus(printerProprietorTid, curTrain->id, curTrain->velocity);
 
         prevSensorPredicitionMicros = curTrain->sensorAheadMicros;
