@@ -32,6 +32,8 @@ void PrinterProprietor() {
     int sensorBufferIdx = 0;
     bool isSensorBufferParityEven = true;
 
+    bool isDebugLogBufferParityEven = true;
+
     unsigned int measurementMessages = 0;
     unsigned int debugMessages = 0;
 
@@ -130,8 +132,13 @@ void PrinterProprietor() {
                 break;
             }
             case Command::DEBUG: {
-                WITH_HIDDEN_CURSOR(consoleServerTid, print_debug(consoleServerTid, debugMessages, &receiveBuffer[2]));
-                debugMessages += 1;
+                if (debugMessages == 0) {
+                    isDebugLogBufferParityEven = !isDebugLogBufferParityEven;
+                }
+
+                WITH_HIDDEN_CURSOR(consoleServerTid, print_debug(consoleServerTid, debugMessages, &receiveBuffer[1],
+                                                                 isDebugLogBufferParityEven));
+                debugMessages = (debugMessages + 1) % DEBUG_BUFFER_SIZE;
                 break;
             }
             default: {

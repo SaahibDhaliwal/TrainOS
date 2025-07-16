@@ -139,7 +139,7 @@ int Printf(uint32_t tid, const char* fmt, ...) {
 
         int len = strlen(str);
         for (int i = len; i < width && outPos < sizeof(out) - 1; i++) {
-            out[outPos++] = ' ';
+            out[outPos++] = '0';
         }
 
         while (*str && outPos < sizeof(out) - 1) {

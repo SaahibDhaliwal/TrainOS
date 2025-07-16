@@ -79,7 +79,10 @@ void print_train_status(uint32_t consoleTid, const char* message);
 void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message);
 
 /*********** DEBUG ********************************/
-void print_debug(uint32_t consoleTid, int row, const char* message);
+
+#define DEBUG_BUFFER_SIZE 31
+
+void print_debug(uint32_t consoleTid, int row, const char* message, bool evenParity);
 
 /*********** STARTUP ********************************/
 

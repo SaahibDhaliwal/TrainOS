@@ -351,9 +351,77 @@ void print_train_status(uint32_t consoleTid, const char* message) {
 #define DEBUG_START_ROW 32
 #define DEBUG_START_COL 0
 
-void print_debug(uint32_t consoleTid, int row, const char* message) {
-    console_server::Printf(consoleTid, "\033[%d;%dHDebug:", DEBUG_START_ROW, DEBUG_START_COL);
-    console_server::Printf(consoleTid, "\033[%d;%dH\033[K%s", DEBUG_START_ROW + row + 1, DEBUG_START_COL, message);
+void print_debug_window(uint32_t consoleTid) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", DEBUG_START_ROW, DEBUG_START_COL);
+    // clang-format off
+    const char* lines[] = {
+        "                                                          Debug Window ",   
+        "┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",  
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "│                                                                                                                          │",
+        "└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\n"
+    };
+    // clang-format on
+
+    int num_lines = sizeof(lines) / sizeof(lines[0]);
+
+    for (int i = 0; i < num_lines; i += 1) {
+        console_server::Printf(consoleTid, "\033[%d;%dH%s", DEBUG_START_ROW + i, DEBUG_START_COL, lines[i]);
+    }
+}
+
+void print_debug(uint32_t consoleTid, int row, const char* message, bool evenParity) {
+    uint64_t micros = timerGet();
+
+    uint32_t total_seconds = micros / 1000000;
+    uint32_t minutes = total_seconds / 60;
+    uint32_t seconds = total_seconds % 60;
+
+    uint32_t rem_micros = micros % 1000000;
+    uint32_t millis = rem_micros / 1000;
+
+    console_server::Printf(consoleTid, "\033[%d;%dH", DEBUG_START_ROW + row + 2, DEBUG_START_COL);
+    clear_current_line(consoleTid);
+    console_server::Printf(consoleTid, "│\033[%d;%dH│", DEBUG_START_ROW + row + 2, DEBUG_START_COL + 124);
+
+    if (evenParity) {
+        cursor_sharp_green(consoleTid);
+    } else {
+        cursor_sharp_orange(consoleTid);
+    }
+
+    console_server::Printf(consoleTid, "\033[%d;%dH[%2u:%2u.%3u]  %s", DEBUG_START_ROW + row + 2, DEBUG_START_COL + 2,
+                           minutes, seconds, millis, message);
 }
 
 /*********** STARTUP  ********************************/
@@ -370,6 +438,8 @@ void startup_print(int consoleTid) {
 
     print_turnout_table(consoleTid);
     print_sensor_table(consoleTid);
+
+    print_debug_window(consoleTid);
 
     cursor_soft_pink(consoleTid);
     print_command_prompt_blocked(consoleTid);
