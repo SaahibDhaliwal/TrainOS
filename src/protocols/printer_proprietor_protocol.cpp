@@ -192,14 +192,89 @@ void startupPrint(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainStatus(int tid, int trainNum, uint64_t velocity) {
+void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::UPDATE_TRAIN);
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_VELOCITY);
+    unsigned int decimal = velocity % 1000;
+    unsigned int integer = velocity / 1000;
+    // formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u      mm/s", trainIndex + 1, velocity / 1000,
+    if (decimal < 10 && integer < 10) {  // two digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u     mm/s ", trainIndex + 1,
+                       velocity / 1000, decimal);
+    } else if ((decimal < 100 && integer < 10) || (decimal < 10 && integer < 100)) {  // three digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u    mm/s ", trainIndex + 1, integer,
+                       decimal);
+    } else if ((decimal < 100 && integer < 1000) || (decimal < 1000 && integer < 100)) {  // four digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u   mm/s ", trainIndex + 1, integer,
+                       decimal);
+    } else if ((decimal < 1000 && integer < 10000) || (decimal < 10000 && integer < 1000)) {  // five digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u  mm/s", trainIndex + 1, integer, decimal);
+    } else {  // six or more digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u mm/s", trainIndex + 1, integer, decimal);
+    }
 
-    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "[Train %u]: Velocity Estimate: %u.%u mm/s       ",
-                   trainNum, velocity / 1000, velocity % 1000);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
+
+void updateTrainDistance(int tid, int trainIndex, int64_t distance) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_DISTANCE);
+    trainIndex++;
+
+    // some silly checking. I'm not proud of this
+    if (distance < 0) {
+        if (distance < -1000 && distance > -10000) {  // three digits plus negative
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
+        } else if (distance < -100) {  // three total
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
+        } else if (distance < -10) {
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
+        } else {  // does this ever happen?
+            return;
+        }
+
+    } else if (distance < 10) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
+    } else if (distance < 100) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
+    } else if (distance < 1000) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
+    } else {  // does this ever happen?
+        return;
+    }
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainStatus(int tid, int trainIndex, bool isActive) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_STATUS);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c.", trainIndex + 1,
+                   isActive);  // period so "false" doesn't concat our string
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainNextSensor(int tid, int trainIndex, char sensorBox, unsigned int sensorNum) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_SENSOR);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u  ", trainIndex + 1, sensorBox, sensorNum);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainZone(int tid, int trainIndex, const char* zoneString) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s", zoneString);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+// void updateTrainZone(int tid, int trainIndex, int zoneNum) {
+//     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+//     sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
+//     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u", trainIndex + 1, zoneNum);
+//     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+// }
 
 void updateTrainStatus(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaT) {

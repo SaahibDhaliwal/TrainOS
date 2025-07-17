@@ -6,6 +6,7 @@
 #include "rpi.h"
 #include "string.h"
 #include "timer.h"
+#include "train.h"
 #include "turnout.h"
 
 /*********** CURSOR ********************************/
@@ -287,7 +288,7 @@ void refresh_clocks(int tid, unsigned int idleTime) {
 }
 
 /*********** COMMAND  ********************************/
-#define COMMAND_PROMPT_START_ROW 29
+#define COMMAND_PROMPT_START_ROW 43
 #define COMMAND_PROMPT_START_COL 0
 
 void command_feedback(int tid, command_server::Reply reply) {
@@ -302,17 +303,17 @@ void command_feedback(int tid, command_server::Reply reply) {
     }  // if
 }
 
-void print_command_feedback(uint32_t consoleTid, command_server::Reply reply) {
-    cursor_down_one(consoleTid);
-    clear_current_line(consoleTid);
-    if (reply == command_server::Reply::SUCCESS) {
-        cursor_soft_green(consoleTid);
-        console_server::Puts(consoleTid, 0, "✔ Command accepted");
-    } else {
-        cursor_soft_red(consoleTid);
-        console_server::Puts(consoleTid, 0, "✖ Invalid command");
-    }  // if
-}
+// void print_command_feedback(uint32_t consoleTid, command_server::Reply reply) {
+//     cursor_down_one(consoleTid);
+//     clear_current_line(consoleTid);
+//     if (reply == command_server::Reply::SUCCESS) {
+//         cursor_soft_green(consoleTid);
+//         console_server::Puts(consoleTid, 0, "✔ Command accepted");
+//     } else {
+//         cursor_soft_red(consoleTid);
+//         console_server::Puts(consoleTid, 0, "✖ Invalid command");
+//     }  // if
+// }
 
 void print_initial_command_prompt(uint32_t consoleTid) {
     console_server::Printf(consoleTid, "\033[%d;%dH", COMMAND_PROMPT_START_ROW, COMMAND_PROMPT_START_COL);
@@ -346,16 +347,92 @@ void print_train_status(uint32_t consoleTid, const char* message) {
     console_server::Puts(consoleTid, 0, message);
 }
 
+/*********** TRAINS ********************************/
+#define TRAIN_START_ROW 29
+#define TRAIN_START_COL 0
+#define TRAIN_BOX_DIFF 38
+void print_train_table(uint32_t consoleTid) {
+    // clang-format off
+    const char* lines[] = {
+        "                Train 14                              Train 15                              Train 16                              Train 17                              Train 18                              Train 55              ",   
+        "  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐",
+        "  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │",
+        "  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │",
+        "  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │",
+        "  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │",
+        "  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │",
+        "  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │",
+        "  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │",
+        "  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │",
+        "  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │",
+        "  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘"
+    };
+    // clang-format on
+
+    int num_lines = sizeof(lines) / sizeof(lines[0]);
+
+    for (int i = 0; i < num_lines; i += 1) {
+        console_server::Printf(consoleTid, "\033[%d;%dH%s", TRAIN_START_ROW + i, TRAIN_START_COL, lines[i]);
+    }
+}
+void change_train_status(uint32_t consoleTid, int trainIndex, bool isActive) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 2,
+                           (TRAIN_START_COL + 14) + (trainIndex * TRAIN_BOX_DIFF));
+    if (isActive) {
+        cursor_soft_green(consoleTid);
+        console_server::Puts(consoleTid, 0, "ACTIVE  ");
+        cursor_white(consoleTid);
+        // also set orientation (will need to change on reverse or if we go from active to inactive)
+        console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 8,
+                               (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
+        console_server::Puts(consoleTid, 0, "Forward");
+    } else {
+        cursor_soft_red(consoleTid);
+        console_server::Puts(consoleTid, 0, "INACTIVE");
+        //  cursor_white(consoleTid);
+    }
+}
+
+void init_train_status(uint32_t consoleTid) {
+    for (int i = 0; i < MAX_TRAINS; i += 1) {
+        change_train_status(consoleTid, i, false);
+    }
+}
+
+void update_train_velocity(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 3,
+                           (TRAIN_START_COL + 24) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
+void update_train_sensor(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 4,
+                           (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
+void update_train_distance(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 5,
+                           (TRAIN_START_COL + 28) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
+void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH        \033[8D", TRAIN_START_ROW + 7,
+                           (TRAIN_START_COL + 12) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
 /*********** DEBUG  ********************************/
 
-#define DEBUG_START_ROW 32
+#define DEBUG_START_ROW 46
 #define DEBUG_START_COL 0
 
 void print_debug_window(uint32_t consoleTid) {
     console_server::Printf(consoleTid, "\033[%d;%dH", DEBUG_START_ROW, DEBUG_START_COL);
     // clang-format off
     const char* lines[] = {
-        "                                                          Debug Window ",   
+        "                                                     Debug Window ",   
         "┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
         "│                                                                                                                          │",
         "│                                                                                                                          │",
@@ -366,24 +443,6 @@ void print_debug_window(uint32_t consoleTid) {
         "│                                                                                                                          │",
         "│                                                                                                                          │",
         "│                                                                                                                          │",  
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
-        "│                                                                                                                          │",
         "│                                                                                                                          │",
         "│                                                                                                                          │",
         "│                                                                                                                          │",
@@ -438,6 +497,10 @@ void startup_print(int consoleTid) {
 
     print_turnout_table(consoleTid);
     print_sensor_table(consoleTid);
+
+    print_train_table(consoleTid);
+    init_train_status(consoleTid);
+    cursor_white(consoleTid);
 
     print_debug_window(consoleTid);
 

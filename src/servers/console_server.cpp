@@ -75,7 +75,7 @@ void ConsoleServer() {
 
     RingBuffer<char, Config::CONSOLE_QUEUE_SIZE> charQueue;
 
-    int notifierPriority = 63;  // TODO: think about this prio
+    int notifierPriority = 35;  // TODO: think about this prio
 
     int txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
     int rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);

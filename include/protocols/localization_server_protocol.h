@@ -16,6 +16,8 @@ enum class Command : char {
     SOLENOID_OFF,
     SET_STOP,
     RESET_TRACK,
+    MAKE_RESERVATION,
+    FREE_RESERVATION,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -37,6 +39,9 @@ void solenoidOff(int tid);
 void resetTrack(int tid);
 
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
+
+void makeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff);
+void freeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff);
 
 }  // namespace localization_server
 

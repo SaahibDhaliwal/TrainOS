@@ -19,7 +19,11 @@ enum class Command : char {
     COMMAND_FEEDBACK,
     UPDATE_TURNOUT,
     UPDATE_SENSOR,
-    UPDATE_TRAIN,
+    UPDATE_TRAIN_VELOCITY,
+    UPDATE_TRAIN_STATUS,
+    UPDATE_TRAIN_DISTANCE,
+    UPDATE_TRAIN_SENSOR,
+    UPDATE_TRAIN_ZONE,
     MEASUREMENT,
     DEBUG,
     KILL,
@@ -43,12 +47,18 @@ void clearCommandPrompt(int tid);
 void backspace(int tid);
 void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
 void updateSensor(int tid, char sensorBox, unsigned int sensorNum, int64_t lastEstimate, int64_t nextSample);
-void updateTrainStatus(int tid, int trainNum, uint64_t velocity);
+
 void startupPrint(int tid);
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaD);
 int formatToString(char* buff, int buffSize, const char* fmt, ...);
 void debug(int tid, const char* str);
+// trains
+void updateTrainStatus(int tid, int trainIndex, bool isActive);
+void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity);
+void updateTrainDistance(int tid, int trainIndex, int64_t distance);
+void updateTrainNextSensor(int tid, int trainIndex, char sensorBox, unsigned int sensorNum);
+void updateTrainZone(int tid, int trainIndex, const char* zoneString);
 }  // namespace printer_proprietor
 
 #endif

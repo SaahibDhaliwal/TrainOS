@@ -127,8 +127,29 @@ void PrinterProprietor() {
 
                 break;
             }
-            case Command::UPDATE_TRAIN: {
-                WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, &receiveBuffer[1]));
+            case Command::UPDATE_TRAIN_STATUS: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   change_train_status(consoleServerTid, receiveBuffer[1] - 1, receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_VELOCITY: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_velocity(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_DISTANCE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_distance(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_SENSOR: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_sensor(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ZONE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_zone(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
                 break;
             }
             case Command::DEBUG: {

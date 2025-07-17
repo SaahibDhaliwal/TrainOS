@@ -14,6 +14,7 @@
 class TrainManager {
    private:
     Train trains[MAX_TRAINS];
+    uint32_t trainTasks[MAX_TRAINS];
     TrackNode track[TRACK_MAX];
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
     TrainReservation trainReservation;
@@ -46,8 +47,11 @@ class TrainManager {
     void processReverse();
     void processTurnoutNotifier();
     void processStopping();
+    void processTrainRequest(char* receiveBuffer, char* replyBuffer);
     // getters
     uint32_t getReverseTid();
+    uint32_t getSmallestTrainTid();
+    uint32_t getLargestTrainTid();
 };
 
 #endif

@@ -33,15 +33,11 @@ struct Train {
 
 void initializeTrains(Train *trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
+int trainIndexToNum(int trainIndex);
 int getFastVelocitySeed(int trainIdx);
 int getStoppingVelocitySeed(int trainIdx);
 int getStoppingDistSeed(int trainIdx);
 
-// void TrainTask14();
-// void TrainTask15();
-// void TrainTask16();
-// void TrainTask17();
-// void TrainTask18();
-// void TrainTask55();
+void TrainTask();
 
 #endif

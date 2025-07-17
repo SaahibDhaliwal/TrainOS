@@ -277,7 +277,7 @@ void CommandServer() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    uint32_t terminalTid = sys::Create(20, &CommandTask);
+    uint32_t terminalTid = sys::Create(23, &CommandTask);
     uint32_t localizationTid = sys::Create(25, &LocalizationServer);
 
     for (;;) {

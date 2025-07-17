@@ -30,7 +30,7 @@ Reply replyFromByte(char c) {
 void setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber) {
     char sendBuf[6] = {0};
     sendBuf[0] = toByte(Command::SET_SPEED);
-
+    // train speed is always two digits (we add 16) so this is fine
     trainSpeed *= 100;
     trainSpeed += trainNumber;
     ui2a(trainSpeed, 10, sendBuf + 1);
@@ -87,6 +87,27 @@ void setStopLocation(int tid, int trainNumber, char box, int sensorNum, int offs
 void resetTrack(int tid) {
     char sendBuf = toByte(Command::RESET_TRACK);
     int res = sys::Send(tid, &sendBuf, 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+// either returns your zone num (sucess) or zero (failure)
+void makeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::MAKE_RESERVATION);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1, box,
+                                       sensorNum);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
+    handleSendResponse(res, tid);
+}
+
+void freeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+
+    sendBuf[0] = toByte(Command::FREE_RESERVATION);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1, box,
+                                       sensorNum);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
     handleSendResponse(res, tid);
 }
 

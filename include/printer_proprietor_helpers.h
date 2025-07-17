@@ -69,18 +69,26 @@ void refresh_clocks(int tid, unsigned int idleTime);
 /*********** COMMAND ********************************/
 
 void command_feedback(int tid, command_server::Reply reply);
-void print_command_feedback(uint32_t consoleTid, command_server::Reply reply);
+// void print_command_feedback(uint32_t consoleTid, command_server::Reply reply);
 void print_initial_command_prompt(uint32_t consoleTid);
 void print_clear_command_prompt(uint32_t consoleTid);
 void print_command_prompt_blocked(uint32_t consoleTid);
 
 /*********** MEASURMENTS ********************************/
-void print_train_status(uint32_t consoleTid, const char* message);
+
 void print_measurement(uint32_t consoleTid, unsigned int measurementNum, const char* message);
+
+/*********** TRAINS ********************************/
+// void print_train_status(uint32_t consoleTid, const char* message);
+void change_train_status(uint32_t consoleTid, int trainIndex, bool isActive);
+void update_train_velocity(uint32_t consoleTid, int trainIndex, const char* msg);
+void update_train_sensor(uint32_t consoleTid, int trainIndex, const char* msg);
+void update_train_distance(uint32_t consoleTid, int trainIndex, const char* msg);
+void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg);
 
 /*********** DEBUG ********************************/
 
-#define DEBUG_BUFFER_SIZE 31
+#define DEBUG_BUFFER_SIZE 14
 
 void print_debug(uint32_t consoleTid, int row, const char* message, bool evenParity);
 

@@ -51,7 +51,6 @@ void TurnoutNotifier() {
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
     int marklinServerTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
-
     int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
     ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER PROPRIETOR\r\n");
 
@@ -74,6 +73,7 @@ void TurnoutNotifier() {
                                           turnoutIdx(replyBuff[1]));
 
         char sendBuff[100] = {0};
+        // oh this is why
         if (replyBuff[0] == 33) {
             printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to straight", replyBuff[1]);
         } else {
@@ -111,7 +111,7 @@ void LocalizationServer() {
 
     TrainManager trainManager(marklinServerTid, printerProprietorTid, clockServerTid, stoppingTid, turnoutNotifierTid);
 
-    uint32_t sensorTid = sys::Create(20, &SensorTask);
+    uint32_t sensorTid = sys::Create(24, &SensorTask);
 
     for (;;) {
         uint32_t clientTid;
@@ -137,6 +137,12 @@ void LocalizationServer() {
             trainManager.processStopping();
         } else if (clientTid == turnoutNotifierTid) {
             trainManager.processTurnoutNotifier();
+
+        } else if (clientTid >= trainManager.getSmallestTrainTid() && clientTid <= trainManager.getLargestTrainTid()) {
+            char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+            trainManager.processTrainRequest(receiveBuffer, replyBuff);
+            // ASSERT(0, "replyBuff[1]: %u strlen(replyBuff): %u", replyBuff[1], strlen(replyBuff) - 1);
+            sys::Reply(clientTid, replyBuff, strlen(replyBuff));
 
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
