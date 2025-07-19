@@ -1,5 +1,7 @@
 {
   "files.associations": {
+    "*.typ": "st",
+    "*.h": "cpp",
     "*.embeddedhtml": "html",
     "cstdint": "cpp",
     "cassert": "cpp",
@@ -60,6 +62,7 @@
     "unordered_set": "cpp",
     "span": "cpp",
     "iterator": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "*.inc": "cpp"
   }
 }

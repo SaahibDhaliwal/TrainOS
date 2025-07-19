@@ -1,6 +1,9 @@
 #include "zone.h"
 
-void TrainReservation::initialize(TrackNode* track) {
+#include "printer_proprietor_protocol.h"
+
+void TrainReservation::initialize(TrackNode* track, uint32_t printerProprietorTid) {
+    this->printerProprietorTid = printerProprietorTid;
     for (int i = 0; i < ZONE_COUNT; i++) {
         zoneArray[i].zoneNum = i;
     }
@@ -63,6 +66,16 @@ bool TrainReservation::freeReservation(TrackNode* sensor, unsigned int trainNumb
     ASSERT(search != nullptr, "That node doesn't exist in the map. Are you sure it wasn't an ex/en?");
     ZoneSegment* result = *search;
     ASSERT(result != nullptr, "We allocated a nullptr in the map, oops");
+
+    char debugBuff1[200] = {0};
+    printer_proprietor::formatToString(debugBuff1, 200, "TRYING TO FREE ZONE %d, WITH SENSOR %s", result->zoneNum,
+                                       sensor->name);
+
+    printer_proprietor::debug(printerProprietorTid, debugBuff1);
+
+    printer_proprietor::debugPrintF(printerProprietorTid, "RESULT TRIN NUMBER: %d, ACTUAL TRAIN NUMBER: %d",
+                                    result->trainNumber, trainNumber);
+
     if (result->trainNumber == trainNumber) {
         result->reserved = false;
         return true;

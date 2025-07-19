@@ -20,6 +20,7 @@ struct ZoneSegment {
 
 class TrainReservation {
    private:
+    uint32_t printerProprietorTid;
     ZoneSegment zoneArray[ZONE_COUNT];
     UnorderedMap<TrackNode*, ZoneSegment*, TRACK_MAX> zoneMap;
 
@@ -30,7 +31,7 @@ class TrainReservation {
 
    public:
     uint32_t trackNodeToZoneNum(TrackNode* track);
-    void initialize(TrackNode* track);
+    void initialize(TrackNode* track, uint32_t printerProprietorTid);
     bool isSectionReserved(TrackNode* start);
     bool reservationAttempt(TrackNode* entrySensor, unsigned int trainNumber);
     bool freeReservation(TrackNode* sensor, unsigned int trainNumber);

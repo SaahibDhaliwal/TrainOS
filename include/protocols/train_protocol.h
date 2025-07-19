@@ -4,7 +4,7 @@
 
 namespace train_server {
 enum class Command : char {
-    NEXT_SENSOR = 3,
+    NEW_SENSOR = 3,
     // SKIPPED_SENSOR,
     SET_SPEED,
     // RESERVATION_RESULT,
@@ -14,9 +14,9 @@ enum class Command : char {
 };
 enum class Reply : char {
     SUCCESS = 1,
-    RESERVATION_SUCESS,
+    RESERVATION_SUCCESS,
     RESERVATION_FAILURE,
-    FREE_SUCESS,
+    FREE_SUCCESS,
     FREE_FAILURE,
     INVALID_SERVER,
     COUNT,

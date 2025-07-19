@@ -1,12 +1,16 @@
 #ifndef __SENSOR__
-#define __SENSOR_
+#define __SENSOR__
 #include "cstdint"
 
 #define SENSOR_BUFFER_SIZE 11
 
-typedef struct {
+struct Sensor {
     char box;
     uint8_t num;
-} Sensor;
+
+    bool operator==(const Sensor& other) const {
+        return box == other.box && num == other.num;
+    }
+};
 
 #endif

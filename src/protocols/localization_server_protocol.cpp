@@ -90,23 +90,23 @@ void resetTrack(int tid) {
     handleSendResponse(res, tid);
 }
 
-// either returns your zone num (sucess) or zero (failure)
-void makeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff) {
+// either returns your zone num (success) or zero (failure)
+void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::MAKE_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1, box,
-                                       sensorNum);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
+                                       sensor.box, sensor.num);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
     handleSendResponse(res, tid);
 }
 
-void freeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff) {
+void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
 
     sendBuf[0] = toByte(Command::FREE_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1, box,
-                                       sensorNum);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
+                                       sensor.box, sensor.num);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
     handleSendResponse(res, tid);
 }

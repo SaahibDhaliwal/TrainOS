@@ -175,12 +175,12 @@ void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateSensor(int tid, char sensorBox, unsigned int sensorNum, int64_t timeDiff, int64_t distDiff) {
+void updateSensor(int tid, Sensor sensor, int64_t timeDiff, int64_t distDiff) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_SENSOR);
 
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u #Time Diff:%4d ms   Distance Diff:%4d mm",
-                   sensorBox, sensorNum, timeDiff, distDiff);
+                   sensor.box, sensor.num, timeDiff, distDiff);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
@@ -254,11 +254,11 @@ void updateTrainStatus(int tid, int trainIndex, bool isActive) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainNextSensor(int tid, int trainIndex, char sensorBox, unsigned int sensorNum) {
+void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_SENSOR);
 
-    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u  ", trainIndex + 1, sensorBox, sensorNum);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u  ", trainIndex + 1, sensor.box, sensor.num);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
@@ -307,6 +307,18 @@ void debug(int tid, const char* str) {
     sendBuf[0] = toByte(Command::DEBUG);
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s", str);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void debugPrintF(int tid, const char* fmt, ...) {
+    char out[Config::MAX_MESSAGE_LENGTH];
+    out[0] = toByte(Command::DEBUG);
+    va_list va;
+    va_start(va, fmt);
+    int len = formatToBuffer(out + 1, Config::MAX_MESSAGE_LENGTH - 1, fmt, va);
+    va_end(va);
+
+    int res = sys::Send(tid, out, strlen(out) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }
 

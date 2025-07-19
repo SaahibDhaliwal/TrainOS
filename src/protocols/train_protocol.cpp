@@ -30,13 +30,10 @@ Reply replyFromByte(char c) {
 void sendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox, unsigned int nextSensorNum,
                     uint64_t distance) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::NEXT_SENSOR);
-    // ASSERT(0, "currentBox: %c currentSensorNum: %d nextBox: %c nextSensorNum: %d", currentBox, currentSensorNum,
-    //    nextBox, nextSensorNum);
+    sendBuf[0] = toByte(Command::NEW_SENSOR);
     printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%d", currentBox,
                                        static_cast<char>(currentSensorNum), nextBox, static_cast<char>(nextSensorNum),
                                        distance);
-    // ASSERT(0, "formatted string output: sendbuf[1]: %c sendbuf[2]: %d", sendBuf[1], sendBuf[2]);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

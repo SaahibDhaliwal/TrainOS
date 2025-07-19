@@ -51,7 +51,7 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
 #endif
     initTrackSensorInfo(track, turnouts);  // sets every sensor's "nextSensor" according to track state
 
-    trainReservation.initialize(track);
+    trainReservation.initialize(track, printerProprietorTid);
 
     for (int i = 0; i < MAX_TRAINS; i++) {
         char sendBuff[5] = {0};
@@ -539,6 +539,7 @@ void TrainManager::processStopping() {
     trains[stopTrainIndex].stoppingDistance = getStoppingDistSeed(stopTrainIndex);
 }
 
+// TODO: FIX THIS, FILLING IN INDEXES OF REPLY BUFFER WITHOUT EVEN KNOWING HOW LONG IT IS, strlen cannot fix this
 void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
@@ -553,15 +554,23 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
             }
 
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
+
+            TrackNode* curSensor = &track[targetTrackNodeIdx];
+
             if (trainReservation.reservationAttempt(&track[targetTrackNodeIdx], trainIndexToNum(trainIndex))) {
-                replyBuffer[0] = toByte(train_server::Reply::RESERVATION_SUCESS);
-                replyBuffer[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
-                // ASSERT(0, "replybuff[1]: %u zonenum is: %u tracknodeIdx: %u", replyBuffer[1],
-                //        trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]), targetTrackNodeIdx);
+                replyBuffer[0] = toByte(train_server::Reply::RESERVATION_SUCCESS);
+
+                uint32_t zoneNum = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
+                char nextBox = curSensor->nextSensor->name[0];
+                unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
+
+                printer_proprietor::formatToString(replyBuffer + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d", zoneNum,
+                                                   nextBox, static_cast<char>(nextSensorNum),
+                                                   curSensor->distToNextSensor);
+
                 return;
             }
             replyBuffer[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
-            // ASSERT(0, "reservation failure...");
             return;
             break;
         }
@@ -575,10 +584,11 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
                 targetTrackNodeIdx = ((box - 'A') * 16) + (sensornum - 1);  // our target's index in the
             }
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
+
             bool result =
                 trainReservation.freeReservation(track[targetTrackNodeIdx].reverse, trainIndexToNum(trainIndex));
             if (result) {
-                replyBuffer[0] = toByte(train_server::Reply::FREE_SUCESS);
+                replyBuffer[0] = toByte(train_server::Reply::FREE_SUCCESS);
                 replyBuffer[1] = trainReservation.trackNodeToZoneNum(track[targetTrackNodeIdx].reverse);
                 return;
             }

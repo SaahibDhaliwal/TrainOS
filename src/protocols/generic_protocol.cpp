@@ -43,6 +43,15 @@ int emptyReceive(uint32_t* outSenderTid) {
     return res;
 }
 
+uint64_t uIntReceive(uint32_t* outSenderTid) {
+    char receiveBuffer[21] = {0};  // max digits is 20
+    int res = sys::Receive(outSenderTid, receiveBuffer, 21);
+    if (res < 0) return -1;
+    unsigned int result = 0;
+    a2ui(receiveBuffer, 10, &result);
+    return result;
+}
+
 int charReply(int clientTid, char reply) {
     int res = sys::Reply(clientTid, &reply, 1);
     handleSendResponse(res, clientTid);

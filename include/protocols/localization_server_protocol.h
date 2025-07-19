@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "sensor.h"
+
 // #include "command.h"
 // #include "command_server_protocol.h"
 constexpr const char* LOCALIZATION_SERVER_NAME = "localization_server";
@@ -40,8 +42,8 @@ void resetTrack(int tid);
 
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 
-void makeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff);
-void freeReservation(int tid, int trainIndex, char box, unsigned int sensorNum, char* replyBuff);
+void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 
 }  // namespace localization_server
 
