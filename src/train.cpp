@@ -188,7 +188,7 @@ void TrainTask() {
     bool recentZoneAddedFlag = false;
 
     Sensor zoneEntraceSensorAhead;                        // sensor ahead of train marking a zone entrace
-    uint64_t distanceToZoneEntraceSensorAhead = 0;        // mm, static
+    uint64_t distanceToZoneNextZone = 0;                  // mm, static
     uint64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
@@ -244,6 +244,7 @@ void TrainTask() {
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
                     distanceToSensorAhead = distance;
+                    distanceToZoneNextZone = distance;
 
                     if (!prevSensorHitMicros) {
                         prevSensorHitMicros = curMicros;
@@ -268,7 +269,6 @@ void TrainTask() {
 
                                 unsigned int distance = 0;
                                 a2ui(&replyBuff[4], 10, &distance);
-                                distanceToZoneEntraceSensorAhead = distance;
 
                                 break;
                             }
@@ -339,10 +339,9 @@ void TrainTask() {
                                               ? (distanceToSensorAhead - distTravelledSinceLastSensorHit)
                                               : 0);
 
-            distRemainingToZoneEntranceSensorAhead =
-                ((distanceToZoneEntraceSensorAhead > distTravelledSinceLastSensorHit)
-                     ? (distanceToZoneEntraceSensorAhead - distTravelledSinceLastSensorHit)
-                     : 0);
+            distRemainingToZoneEntranceSensorAhead = ((distanceToZoneNextZone > distTravelledSinceLastSensorHit)
+                                                          ? (distanceToZoneNextZone - distTravelledSinceLastSensorHit)
+                                                          : 0);
 
             // if our stop will end up in the next zone, reserve it
             if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
@@ -373,7 +372,7 @@ void TrainTask() {
 
                         // remaining dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
                         // new zoneEntranceSensorAhead
-                        distanceToZoneEntraceSensorAhead = distanceToSensorAhead + distance;
+                        distanceToZoneNextZone = distanceToZoneNextZone + distance;
                         recentZoneAddedFlag = true;
 
                         break;
