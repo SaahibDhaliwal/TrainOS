@@ -32,6 +32,12 @@ class RingBuffer {
         return &buffer[head];
     }
 
+    T* back() {
+        if (empty()) return nullptr;
+        size_t lastPos = (tail + CAPACITY - 1) % CAPACITY;
+        return &buffer[lastPos];
+    }
+
     size_t size() const {
         return count;
     }
