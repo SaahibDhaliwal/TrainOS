@@ -121,7 +121,7 @@ void TrainNotifier() {
 struct ZoneExit {
     Sensor sensorMarkingExit;
     unsigned int zoneNum;
-    int64_t offsetFromExitSensor;
+    uint64_t distanceToExitSensor;  // mm
 };
 
 using namespace train_server;
@@ -166,13 +166,13 @@ void TrainTask() {
     uint64_t velocitySamplesNumeratorSum = 0;
     uint64_t velocitySamplesDenominatorSum = 0;
 
-    Sensor sensorAhead;                  // sensor ahead of train
-    Sensor sensorBehind;                 // sensor behind train
-    uint64_t distanceToSensorAhead = 0;  // mm
+    Sensor sensorAhead;                       // sensor ahead of train
+    Sensor sensorBehind;                      // sensor behind train
+    uint64_t distanceToSensorAhead = 0;       // mm, static
+    uint64_t distRemainingToSensorAhead = 0;  // mm, dynamic
 
     // ********** SENSOR MANAGEMENT ****************
 
-    int64_t currentDistancePrediction = 0;
     uint64_t prevSensorHitMicros = 0;
     uint64_t prevDistance = 0;
     int64_t prevSensorPredicitionMicros = 0;
@@ -186,13 +186,10 @@ void TrainTask() {
     RingBuffer<ZoneExit, 16> zoneExits;
     bool zoneStatusChange = false;
     bool recentZoneAddedFlag = false;
-    uint64_t prevReservationMicros = 0;
 
-    Sensor upcomingZoneEntraceSensor;  // sensor ahead of train marking a zone entrace
-    Sensor sensorBehind;               // sensor behind train
-
-    uint64_t distanceToNextZoneEntraceSensor = 0;  // mm
-    Sensor nextZoneEntraceSensor;
+    Sensor zoneEntraceSensorAhead;                        // sensor ahead of train marking a zone entrace
+    uint64_t distanceToZoneEntraceSensorAhead = 0;        // mm, static
+    uint64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
 
@@ -252,14 +249,12 @@ void TrainTask() {
 
                     if (!prevSensorHitMicros) {
                         prevSensorHitMicros = curMicros;
-                        prevReservationMicros = curMicros;
 
                         ASSERT(velocityEstimate != 0, "We should have a seed initialized by now");
 
-                        // make our train active
-                        printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);
+                        printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);  // train active
 
-                        // for the initial sensor, reserve the zone we are on
+                        // reserve current zone on initial sensor hit
                         char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
                         localization_server::makeReservation(parentTid, trainIndex, curSensor, replyBuff);
 
@@ -270,12 +265,12 @@ void TrainTask() {
                                     "[Train %u] Initial Reservation with zone %u with sensor %c%u", myTrainNumber,
                                     replyBuff[1], curSensor.box, curSensor.num);
 
-                                nextZoneEntraceSensor =
+                                zoneEntraceSensorAhead =
                                     Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
 
                                 unsigned int distance = 0;
                                 a2ui(&replyBuff[4], 10, &distance);
-                                distanceToNextZoneEntraceSensor = distance;
+                                distanceToZoneEntraceSensorAhead = distance;
 
                                 break;
                             }
@@ -312,7 +307,6 @@ void TrainTask() {
                         curMicros + (distance * 1000 * 1000000 / velocityEstimate);  // when will hit sensorAhead
 
                     prevSensorHitMicros = curMicros;
-                    // unreserve the last sensor
 
                     int64_t estimateTimeDiffmicros = (curMicros - prevSensorPredicitionMicros);
                     int64_t estimateTimeDiffms = estimateTimeDiffmicros / 1000;
@@ -336,44 +330,51 @@ void TrainTask() {
                 emptyReply(clientTid);
             }
 
-            uint64_t microsDeltaT = curMicros - prevSensorHitMicros;
-            uint64_t microsSinceLastNoti = curMicros - prevNotificationMicros;
+            uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
+            uint64_t timeSinceLastNoti = curMicros - prevNotificationMicros;    // micros
 
-            // how many milliseconds since last time we hit a sensor? multiply that by our velocity to get distance
-            int64_t estimateDistanceTravelledmm = ((int64_t)velocityEstimate * microsDeltaT) / 1000000000;
-            currentDistancePrediction = distanceToSensorAhead - estimateDistanceTravelledmm;
+            uint64_t distTravelledSinceLastSensorHit =
+                ((int64_t)velocityEstimate * timeSinceLastSensorHit) / 1000000000;  // mm
 
-            // we should check if our stopping distance position has gotten over a sensor since last time
-            // if it is, then we make a reservation request. if it fails, issue a stop command
-            if (currentDistancePrediction <= STOPPING_THRESHOLD + stoppingDistance) {
-                // make a reservation request for that sensor
-                // should this spin up a high priority courier? Or reply to one we already have?
+            distRemainingToSensorAhead = ((distanceToSensorAhead > distTravelledSinceLastSensorHit)
+                                              ? (distanceToSensorAhead - distTravelledSinceLastSensorHit)
+                                              : 0);
+
+            distRemainingToZoneEntranceSensorAhead =
+                ((distanceToZoneEntraceSensorAhead > distTravelledSinceLastSensorHit)
+                     ? (distanceToZoneEntraceSensorAhead - distTravelledSinceLastSensorHit)
+                     : 0);
+
+            // if our stop will end up in the next zone, reserve it
+            if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
+                // TODO: should this spin up a high priority courier? Or reply to one we already have?
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-
-                localization_server::makeReservation(parentTid, trainIndex, sensorAhead, replyBuff);
+                localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
 
                 switch (replyFromByte(replyBuff[0])) {
                     case Reply::RESERVATION_SUCCESS: {
-                        // add our new zone we just reserved:
-                        ZoneExit zoneExit{.sensorMarkingExit = sensorAhead,
-                                          .zoneNum = static_cast<unsigned int>(replyBuff[1]),
-                                          .offsetFromExitSensor = REAR_OF_TRAIN - currentDistancePrediction};
-                        zoneExits.push(zoneExit);
+                        uint64_t distToExitSensor = ((distRemainingToZoneEntranceSensorAhead > REAR_OF_TRAIN)
+                                                         ? (distRemainingToZoneEntranceSensorAhead - REAR_OF_TRAIN)
+                                                         : 0);
 
+                        ZoneExit zoneExit{.sensorMarkingExit = zoneEntraceSensorAhead,
+                                          .zoneNum = static_cast<unsigned int>(replyBuff[1]),
+                                          .distanceToExitSensor = distToExitSensor};
+                        zoneExits.push(zoneExit);
                         zoneStatusChange = true;
 
-                        printer_proprietor::debugPrintF(printerProprietorTid,
-                                                        "[Train %u] Made Reservation with zone %d with sensor: %c%d",
-                                                        myTrainNumber, replyBuff[1], sensorAhead.box, sensorAhead.num);
+                        printer_proprietor::debugPrintF(
+                            printerProprietorTid, "[Train %u] Made Reservation. Zone: %d, Zone Entrance Sensor: %c%d",
+                            myTrainNumber, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
 
-                        sensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
-
-                        unsigned int distance = 0;  // WRONG? was a uint64_t, now we're casting to unsigned int
+                        // we have a new zone entrace sensor we care about
+                        zoneEntraceSensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
+                        unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
                         a2ui(&replyBuff[4], 10, &distance);
-                        distanceToSensorAhead = std::max((int)currentDistancePrediction, 0) + distance;
 
-                        prevReservationMicros = curMicros;
-
+                        // remaining dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
+                        // new zoneEntranceSensorAhead
+                        distanceToZoneEntraceSensorAhead = distRemainingToZoneEntranceSensorAhead + distance;
                         break;
                     }
                     case Reply::RESERVATION_FAILURE: {
@@ -399,7 +400,7 @@ void TrainTask() {
             }
 
             if (distanceToSensorAhead > 0 && !slowingDown && !stopped) {
-                printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, currentDistancePrediction);
+                printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
             } else if (((curMicros - slowingDown) / 1000) > 1000 * 6) {  // 6 seconds for slowing down?
                 // insert acceleration model here
                 slowingDown = 0;
@@ -408,11 +409,8 @@ void TrainTask() {
                 // try and make a reservation request again. If it works, go back to your speed?
             }
 
-            for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {
+            for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit sensors
                 Sensor reservationSensor = (*it).sensorMarkingExit;
-
-                // printer_proprietor::debugPrintF(printerProprietorTid, "WE HAVE A ZONE EXIT WITH SENSOR: %c%d",
-                //                                 reservationSensorBox, reservationSensorNum);
 
                 if (reservationSensor == sensorAhead && recentZoneAddedFlag) {
                     // this should only potentially happen on the last one, if we just added a zone and don't want to
@@ -421,11 +419,11 @@ void TrainTask() {
                     continue;
                 }
 
-                int64_t estimateDistanceTravelledmm = ((int64_t)velocityEstimate * microsSinceLastNoti) / 1000000000;
-                (*it).offsetFromExitSensor += estimateDistanceTravelledmm;
+                uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000;  // mm
+                (*it).distanceToExitSensor -= distanceTravelledSinceLastNoti;
             }
 
-            while (!zoneExits.empty() && zoneExits.front()->offsetFromExitSensor >= 0) {  // can we free any zones?
+            while (!zoneExits.empty() && zoneExits.front()->distanceToExitSensor <= 0) {  // can we free any zones?
                 Sensor reservationSensor = zoneExits.front()->sensorMarkingExit;
 
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
