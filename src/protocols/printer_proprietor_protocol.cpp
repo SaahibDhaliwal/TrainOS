@@ -216,7 +216,7 @@ void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainDistance(int tid, int trainIndex, int64_t distance) {
+void updateTrainDistance(int tid, int trainIndex, uint64_t distance) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_DISTANCE);
     trainIndex++;

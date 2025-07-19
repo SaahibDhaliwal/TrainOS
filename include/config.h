@@ -13,8 +13,8 @@ constexpr int MAX_MESSAGE_LENGTH = 2048;
 constexpr int MAX_COMMAND_LENGTH = 256;
 constexpr int EXPERIMENT_COUNT = 2;
 constexpr uint32_t TICK_SIZE = 10000;
-constexpr int MARKLIN_QUEUE_SIZE = 5012;
-constexpr int CONSOLE_QUEUE_SIZE = 10024;
+constexpr int MARKLIN_QUEUE_SIZE = 8192;
+constexpr int CONSOLE_QUEUE_SIZE = 16384;
 }  // namespace Config
 
 #endif /* config.h */

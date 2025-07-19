@@ -67,14 +67,11 @@ bool TrainReservation::freeReservation(TrackNode* sensor, unsigned int trainNumb
     ZoneSegment* result = *search;
     ASSERT(result != nullptr, "We allocated a nullptr in the map, oops");
 
-    char debugBuff1[200] = {0};
-    printer_proprietor::formatToString(debugBuff1, 200, "TRYING TO FREE ZONE %d, WITH SENSOR %s", result->zoneNum,
-                                       sensor->name);
+    // printer_proprietor::debugPrintF(printerProprietorTid, "TRYING TO FREE ZONE %d, WITH SENSOR %s", result->zoneNum,
+    //                                 sensor->name);
 
-    printer_proprietor::debug(printerProprietorTid, debugBuff1);
-
-    printer_proprietor::debugPrintF(printerProprietorTid, "RESULT TRIN NUMBER: %d, ACTUAL TRAIN NUMBER: %d",
-                                    result->trainNumber, trainNumber);
+    // printer_proprietor::debugPrintF(printerProprietorTid, "RESULT TRIN NUMBER: %d, ACTUAL TRAIN NUMBER: %d",
+    //                                 result->trainNumber, trainNumber);
 
     if (result->trainNumber == trainNumber) {
         result->reserved = false;

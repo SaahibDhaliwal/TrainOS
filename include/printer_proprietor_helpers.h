@@ -88,7 +88,7 @@ void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg);
 
 /*********** DEBUG ********************************/
 
-#define DEBUG_BUFFER_SIZE 14
+#define DEBUG_BUFFER_SIZE 24
 
 void print_debug(uint32_t consoleTid, int row, const char* message, bool evenParity);
 

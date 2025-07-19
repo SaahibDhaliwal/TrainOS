@@ -243,9 +243,7 @@ void TrainTask() {
 
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
-
-                    printer_proprietor::debugPrintF(printerProprietorTid, "HIT NEW SENSOR %c%d", curSensor.box,
-                                                    curSensor.num);
+                    distanceToSensorAhead = distance;
 
                     if (!prevSensorHitMicros) {
                         prevSensorHitMicros = curMicros;
@@ -306,15 +304,15 @@ void TrainTask() {
                     sensorAheadMicros =
                         curMicros + (distance * 1000 * 1000000 / velocityEstimate);  // when will hit sensorAhead
 
-                    prevSensorHitMicros = curMicros;
-
                     int64_t estimateTimeDiffmicros = (curMicros - prevSensorPredicitionMicros);
                     int64_t estimateTimeDiffms = estimateTimeDiffmicros / 1000;
                     int64_t estimateDistanceDiffmm = ((int64_t)velocityEstimate * estimateTimeDiffmicros) / 1000000000;
                     printer_proprietor::updateSensor(printerProprietorTid, curSensor, estimateTimeDiffms,
                                                      estimateDistanceDiffmm);
                     printer_proprietor::updateTrainNextSensor(printerProprietorTid, trainIndex, sensorAhead);
+
                     sensorBehind = curSensor;
+                    prevSensorHitMicros = curMicros;
 
                     break;
                 }
@@ -375,7 +373,7 @@ void TrainTask() {
 
                         // remaining dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
                         // new zoneEntranceSensorAhead
-                        distanceToZoneEntraceSensorAhead = distRemainingToZoneEntranceSensorAhead + distance;
+                        distanceToZoneEntraceSensorAhead = distanceToSensorAhead + distance;
                         recentZoneAddedFlag = true;
 
                         break;
