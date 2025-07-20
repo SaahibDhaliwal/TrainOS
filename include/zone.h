@@ -28,7 +28,7 @@ struct ZoneExit {
 class TrainReservation {
    private:
     uint32_t printerProprietorTid;
-    ZoneSegment zoneArray[ZONE_COUNT];
+    ZoneSegment zoneArray[ZONE_COUNT + 1];
     UnorderedMap<TrackNode*, ZoneSegment*, TRACK_MAX> zoneMap;
 
     void initZoneA(TrackNode* track);

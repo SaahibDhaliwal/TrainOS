@@ -4,7 +4,7 @@
 
 void TrainReservation::initialize(TrackNode* track, uint32_t printerProprietorTid) {
     this->printerProprietorTid = printerProprietorTid;
-    for (int i = 0; i < ZONE_COUNT; i++) {
+    for (int i = 0; i < ZONE_COUNT + 1; i++) {
         zoneArray[i].zoneNum = i;
     }
 #if defined(TRACKA)
@@ -36,7 +36,7 @@ ZoneSegment* TrainReservation::mapchecker(TrackNode* entrySensor) {
 
 // should be done on sensor tracknodes
 bool TrainReservation::reservationAttempt(TrackNode* entrySensor, unsigned int trainNumber) {
-    ASSERT(entrySensor->type == NodeType::SENSOR);
+    ASSERT(entrySensor->type == NodeType::SENSOR, "gave node that was instead named: %s", entrySensor->name);
 
     ZoneSegment* result = mapchecker(entrySensor);
     if (!result->reserved) {
@@ -265,6 +265,12 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     // // ------  10 ---------
     // zoneMap.insert(&trackArray[142], &zoneArray[        ]);
     // zoneMap.insert(&trackArray[143], &zoneArray[        ]);
+    zoneMap.insert(&trackArray[144], &zoneArray[8]);
+    zoneMap.insert(&trackArray[145], &zoneArray[6]);
+    zoneMap.insert(&trackArray[146], &zoneArray[6]);
+    zoneMap.insert(&trackArray[147], &zoneArray[10]);
+    zoneMap.insert(&trackArray[148], &zoneArray[32]);
+    zoneMap.insert(&trackArray[149], &zoneArray[22]);
 }
 
 void TrainReservation::initZoneB(TrackNode* trackArray) {
@@ -283,7 +289,7 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[11], &zoneArray[1]);
     zoneMap.insert(&trackArray[12], &zoneArray[32]);
     zoneMap.insert(&trackArray[13], &zoneArray[30]);
-    zoneMap.insert(&trackArray[14], &zoneArray[29]);
+    zoneMap.insert(&trackArray[14], &zoneArray[1]);
     zoneMap.insert(&trackArray[15], &zoneArray[32]);
     // -------------------- B
     zoneMap.insert(&trackArray[16], &zoneArray[14]);
@@ -421,15 +427,15 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[123], &zoneArray[20]);
     // ------  EN / EX---------
     // // ------  1 ---------
-    // zoneMap.insert(&trackArray[124], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[125], &zoneArray[        ]);
-    // // ------  2 ---------
-    // zoneMap.insert(&trackArray[126], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[127], &zoneArray[        ]);
-    // // ------  3 ---------
-    // zoneMap.insert(&trackArray[128], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[129], &zoneArray[        ]);
-    // // ------  4 ---------
+    zoneMap.insert(&trackArray[124], &zoneArray[20]);
+    zoneMap.insert(&trackArray[125], &zoneArray[20]);
+    // ------  2 ---------
+    zoneMap.insert(&trackArray[126], &zoneArray[20]);
+    zoneMap.insert(&trackArray[127], &zoneArray[20]);
+    // ------  3 ---------
+    zoneMap.insert(&trackArray[128], &zoneArray[7]);
+    zoneMap.insert(&trackArray[129], &zoneArray[7]);
+    // ------  4 ---------
     // zoneMap.insert(&trackArray[130], &zoneArray[        ]);
     // zoneMap.insert(&trackArray[131], &zoneArray[        ]);
     // // ------  5 ---------
@@ -446,4 +452,11 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     // // ------  10 ---------
     // zoneMap.insert(&trackArray[138], &zoneArray[        ]);
     // zoneMap.insert(&trackArray[139], &zoneArray[        ]);
+    // ------  FAKE SENSORS ---------
+    zoneMap.insert(&trackArray[140], &zoneArray[8]);
+    zoneMap.insert(&trackArray[141], &zoneArray[6]);
+    zoneMap.insert(&trackArray[142], &zoneArray[6]);
+    zoneMap.insert(&trackArray[143], &zoneArray[10]);
+    zoneMap.insert(&trackArray[144], &zoneArray[32]);
+    zoneMap.insert(&trackArray[145], &zoneArray[22]);
 }

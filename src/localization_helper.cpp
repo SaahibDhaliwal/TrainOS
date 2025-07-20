@@ -1,6 +1,7 @@
 #include "localization_helper.h"
 
 #include "cstdint"
+#include "test_utils.h"
 
 // using namespace localization_server;
 // reverse, nextsensor, 0
@@ -127,4 +128,30 @@ void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
         // do a dfs for the next sensor
         setNextSensor(&track[i], turnouts);
     }
+// also our new sensors
+#if defined(TRACKA)
+    setNextSensor(&track[144], turnouts);
+    setNextSensor(&track[145], turnouts);
+    setNextSensor(&track[146], turnouts);
+    setNextSensor(&track[147], turnouts);
+    setNextSensor(&track[148], turnouts);
+    setNextSensor(&track[149], turnouts);
+#else
+    setNextSensor(&track[140], turnouts);
+    setNextSensor(&track[141], turnouts);
+    setNextSensor(&track[142], turnouts);
+    setNextSensor(&track[143], turnouts);
+    setNextSensor(&track[144], turnouts);
+    setNextSensor(&track[145], turnouts);  // these do not
+
+    ASSERT(track[38].nextSensor->name == "F4", "sensors were mapped wrong. C7 next sensor name: %s num: %d",
+           track[38].nextSensor->name, track[38].nextSensor->num);  // c7
+    ASSERT(track[38].nextSensor->num == 4, "sensors were mapped wrong. C7 next sensor num: %s num: %d",
+           track[38].nextSensor->num);  // c7
+    // ASSERT(track[35].nextSensor->name == "F1", "sensors were mapped wrong. C4 next sensor name: %s num: %d",
+    //        track[38].nextSensor->name, track[38].nextSensor->num);  // c4
+    // ASSERT(track[36].nextSensor->name == "F2", "sensors were mapped wrong");  // c5
+    // ASSERT(track[75].nextSensor->name == "F3", "sensors were mapped wrong");  // e12
+
+#endif
 }

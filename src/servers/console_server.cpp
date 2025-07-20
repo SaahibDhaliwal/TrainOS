@@ -216,11 +216,10 @@ void ConsoleServer() {
         while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
             unsigned char ch = *charQueue.pop();
             uartPutTX(CONSOLE, ch);
-            charQueue2.push(ch);  // onto our logger
+            // charQueue2.push(ch);  // onto our logger
             drainedAny = true;
         }
 
-        // TODO: FIX ME
         if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT && drainedAny) {
             emptyReply(txNotifier);  // re-enable TX interrupts
             waitForTx = true;

@@ -4,10 +4,10 @@
 #include <cstdint>
 
 // maximum number of nodes in a layout
-static constexpr int TRACK_MAX = 144;
+static constexpr int TRACK_MAX = 150;
 
 // node kinds
-enum class NodeType { NONE, SENSOR, BRANCH, MERGE, ENTER, EXIT };
+enum class NodeType { NONE, SENSOR, BRANCH, MERGE, ENTER, EXIT, FAKE_SENSOR };
 
 // directions
 static constexpr int DIR_AHEAD = 0;

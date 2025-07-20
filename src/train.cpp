@@ -9,7 +9,7 @@
 #include "sensor.h"
 #include "test_utils.h"
 
-static const int trainAddresses[MAX_TRAINS] = {14, 15, 16, 17, 18, 55};
+static const int trainAddresses[MAX_TRAINS] = {13, 14, 15, 17, 18, 55};
 // train 55 is 10H
 
 static const int trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833, 596914, 266566, 627366, 525104};
@@ -128,6 +128,27 @@ void TrainTask() {
     emptyReply(clientTid);
 
     int trainIndex = trainNumToIndex(myTrainNumber);
+    char* trainColour = nullptr;
+    switch (myTrainNumber) {
+        case 13:
+            trainColour = "\033[38;5;33m[Train 13]:\033[m";
+            break;
+        case 14:
+            trainColour = "\033[38;5;99m[Train 14]:\033[m";
+            break;
+        case 15:
+            trainColour = "\033[38;5;163m[Train 15]:\033[m";
+            break;
+        case 17:
+            trainColour = "\033[38;5;51m[Train 17]:\033[m";
+            break;
+        case 18:
+            trainColour = "\033[38;5;154m[Train 18]:\033[m";
+            break;
+        case 55:
+            trainColour = "\033[38;5;226m[Train 55]:\033[m";
+            break;
+    }
 
     char sendBuff[40] = {0};
     printer_proprietor::formatToString(sendBuff, 40, "Train_%d", myTrainNumber);
@@ -149,7 +170,6 @@ void TrainTask() {
     uint8_t speed = 0;              // Marklin Box Unit
     uint64_t stoppingDistance = 0;  // mm
 
-    // bool stopping = false;
     uint64_t slowingDown = 0;
     bool stopped = true;
     bool reversing = false;
@@ -231,16 +251,27 @@ void TrainTask() {
                 case Command::NEW_SENSOR: {
                     int64_t curMicros = timerGet();
                     emptyReply(clientTid);  // reply right away to reduce latency
-
+                    if (newSensorsPassed > 1 && sensorAhead.box != 'F') {
+                        ASSERT(receiveBuff[1] == sensorAhead.box &&
+                                   static_cast<uint8_t>(receiveBuff[2]) == sensorAhead.num,
+                               "Train %u was not expecting this sensor to come next");
+                    }
                     Sensor curSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
+
                     sensorAhead = Sensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+
+                    ASSERT(sensorAhead.num <= 16 && sensorAhead.num >= 1, "got some bad sensor num: %u",
+                           static_cast<uint8_t>(receiveBuff[4]));
+                    ASSERT(curSensor.num <= 16 && curSensor.num >= 1, "got some bad sensor num: %u",
+                           static_cast<uint8_t>(receiveBuff[2]));
 
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
-                    distanceToSensorAhead = distance;
+                    distanceToSensorAhead = distance;  // might actually be more if we pass a fake sensor
                     distanceToZoneEntraceSensorAhead = distance;
 
                     if (!prevSensorHitMicros) {
+                        // ***************************  FIRST SENSOR HIT  ***************************
                         prevSensorHitMicros = curMicros;
 
                         ASSERT(velocityEstimate != 0, "We should have a seed initialized by now");
@@ -254,9 +285,8 @@ void TrainTask() {
                         switch (replyFromByte(replyBuff[0])) {
                             case Reply::RESERVATION_SUCCESS: {
                                 printer_proprietor::debugPrintF(
-                                    printerProprietorTid,
-                                    "[Train %u] Initial Reservation with zone %u with sensor %c%u", myTrainNumber,
-                                    replyBuff[1], curSensor.box, curSensor.num);
+                                    printerProprietorTid, "%s Initial Reservation with zone %u with sensor %c%u",
+                                    trainColour, replyBuff[1], curSensor.box, curSensor.num);
 
                                 zoneEntraceSensorAhead =
                                     Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
@@ -269,9 +299,9 @@ void TrainTask() {
                                 break;
                             }
                             default: {
-                                printer_proprietor::debugPrintF(
-                                    printerProprietorTid, "[Train %u] Initial Reservation FAILED with sensor %c%u",
-                                    myTrainNumber, curSensor.box, curSensor.num);
+                                printer_proprietor::debugPrintF(printerProprietorTid,
+                                                                "%s Initial Reservation FAILED with sensor %c%u",
+                                                                trainColour, curSensor.box, curSensor.num);
                                 break;
                             }
                         }
@@ -292,6 +322,7 @@ void TrainTask() {
                             (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
                         uint64_t lastEstimate = velocityEstimate;
                         velocityEstimate = ((lastEstimate * 15) + nextSample) >> 4;  // alpha = 1/8
+                        newSensorsPassed = 5;
                     }
 
                     printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
@@ -341,9 +372,15 @@ void TrainTask() {
                      : 0);
 
             // if our stop will end up in the next zone, reserve it
-            if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
+            // fix this wack ass logic with flags
+            if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !slowingDown &&
+                !stopped) {
                 // TODO: should this spin up a high priority courier? Or reply to one we already have?
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+                // printer_proprietor::debugPrintF(printerProprietorTid,
+                //                                 "[Train %u] Attempting reservation with Zone Entrance Sensor: %c%d",
+                //                                 myTrainNumber, zoneEntraceSensorAhead.box,
+                //                                 zoneEntraceSensorAhead.num);
                 localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
 
                 switch (replyFromByte(replyBuff[0])) {
@@ -356,10 +393,12 @@ void TrainTask() {
                                           .distanceToExitSensor = distToExitSensor};
                         zoneExits.push(zoneExit);
                         zoneStatusChange = true;
+                        // [38;5;46m"
 
+                        // \033[%u;5;46m
                         printer_proprietor::debugPrintF(
-                            printerProprietorTid, "[Train %u] Made Reservation. Zone: %d, Zone Entrance Sensor: %c%d",
-                            myTrainNumber, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
+                            printerProprietorTid, "%s Made Reservation. Zone: %d, Zone Entrance Sensor: %c%d",
+                            trainColour, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
 
                         // we have a new zone entrace sensor we care about
                         zoneEntraceSensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
@@ -382,9 +421,9 @@ void TrainTask() {
                         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
                         slowingDown = curMicros;
 
-                        printer_proprietor::debugPrintF(printerProprietorTid,
-                                                        "[Train %u] FAILED Reservation for zone %d with sensor: %c%d",
-                                                        myTrainNumber, replyBuff[1], sensorAhead.box, sensorAhead.num);
+                        printer_proprietor::debugPrintF(
+                            printerProprietorTid, "%s FAILED Reservation for zone %d with sensor: %c%d", trainColour,
+                            replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
 
                         // try again in a bit? after we stopped?
                         break;
@@ -403,8 +442,16 @@ void TrainTask() {
                 // insert acceleration model here
                 slowingDown = 0;
                 stopped = true;
+                prevNotificationMicros = curMicros;
+                // emptyReply(clientTid);
+                continue;
             } else if (stopped) {
                 // try and make a reservation request again. If it works, go back to your speed?
+                prevNotificationMicros = curMicros;
+                continue;
+            } else {
+                prevNotificationMicros = curMicros;
+                continue;
             }
 
             for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit sensors
@@ -435,8 +482,8 @@ void TrainTask() {
                 switch (replyFromByte(replyBuff[0])) {
                     case Reply::FREE_SUCCESS: {
                         printer_proprietor::debugPrintF(
-                            printerProprietorTid, "[Train %u] Freed Reservation with zone: %d with sensor: %c%d",
-                            myTrainNumber, replyBuff[1], reservationSensor.box, reservationSensor.num);
+                            printerProprietorTid, "%s Freed Reservation with zone: %d with sensor: %c%d", trainColour,
+                            replyBuff[1], reservationSensor.box, reservationSensor.num);
 
                         zoneStatusChange = true;
                         zoneExits.pop();
@@ -445,8 +492,8 @@ void TrainTask() {
                     }
                     default: {
                         printer_proprietor::debugPrintF(printerProprietorTid,
-                                                        "[Train %u] Freed Reservation FAILED with sensor %c%d",
-                                                        myTrainNumber, reservationSensor.box, reservationSensor.num);
+                                                        "%s Freed Reservation FAILED with sensor %c%d", trainColour,
+                                                        reservationSensor.box, reservationSensor.num);
                         break;
                     }
                 }

@@ -132,12 +132,9 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
         }
             //         case Command::SET_STOP: {
             //             int trainNumber = static_cast<int>(receiveBuffer[1]);
-
             //             int trainIndex = trainNumToIndex(trainNumber);
-
             //             if (trains[trainIndex].stopping) break;
             //             trains[trainIndex].stopping = true;
-
             //             char box = receiveBuffer[2];
             //             int nodeNum = static_cast<int>(receiveBuffer[3]);
             //             char* buff = &receiveBuffer[4];
@@ -153,7 +150,6 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             //             if (negativeFlag) {
             //                 signedOffset *= -1;
             //             }
-
             //             int targetTrackNodeIdx = 0;
             //             if (box >= 'A' && box <= 'E') {
             //                 targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);  // our target's index in the
@@ -174,12 +170,10 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             //                 if (nodeNum == 7) targetTrackNodeIdx -= 2;
             //             }
             // #endif
-
             //             // if signed offset is a big negative number, then we're fine
             //             // but if larger than our stopping distance, we need to choose a new target
             //             int stoppingDistance = trains[trainIndex].stoppingDistance - signedOffset;
             //             TrackNode* targetNode = &track[targetTrackNodeIdx];
-
             //             // iterate over nodes until the difference is larger than zero
             //             // "fakes" a target that is within our stopping distance
             //             while (stoppingDistance < 0) {
@@ -200,18 +194,15 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             //                     targetNode = targetNode->edge[DIR_AHEAD].dest;
             //                 }
             //             }
-
             //             trains[trainIndex].targetNode = targetNode;
             //             trains[trainIndex].stoppingDistance = stoppingDistance;
             //             trains[trainIndex].sensorWhereSpeedChangeStarted = trains[trainIndex].sensorBehind;
-
             //             // might be worth deprecating this
             //             if (trainNumber == 55) {
             //                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_10, trainNumber);
             //             } else {
             //                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, trainNumber);
             //             }
-
             //             trains[trainIndex].velocity = getStoppingVelocitySeed(trainIndex);
             //             while (!velocitySamples.empty()) {
             //                 velocitySamples.pop();
@@ -225,6 +216,12 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
         }
     }
 }
+
+// //if this breaks things while reversing within zone 32, my bad
+// bool isSpecialSensor(TrackNode* sensor){
+//     if(sensor->name == "C14" || sensor->name == "A3" || sensor->name == "" || sensor->name == "" || sensor->name ==
+//     "" ||)
+// }
 
 void TrainManager::processSensorReading(char* receiveBuffer) {
     int64_t curMicros = timerGet();
@@ -266,6 +263,8 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     //     }
     // }
 
+    // for when a train has been initialized and hasn't hit a first sensor, we check to see if it isn't another train's
+    // sensor that is spamming
     char debugBuff[200] = {0};
     if (curTrain != nullptr && !curTrain->sensorBehind) {
         // go through all the trains to see if it's one of theirs right now
@@ -300,6 +299,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
 
     // we should maybe check this before searching through the trains?
     TrackNode* prevSensor = curTrain->sensorBehind;
+
     if (curSensor == prevSensor) {
         return;
     }
@@ -308,6 +308,9 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         // prevMicros = curMicros;
         curTrain->sensorBehind = curSensor;
         curTrain->sensorAhead = curSensor->nextSensor;
+        if (curSensor->nextSensor->name[0] == 'F') {
+            curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
+        }
         curTrain->sensorWhereSpeedChangeStarted = curSensor;
 
     } else {
@@ -322,45 +325,40 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         }
         // #endif
         // newSensorsPassed++;
-
+        //
         // uint64_t microsDeltaT = curMicros - prevMicros;
         // uint64_t mmDeltaD = prevSensor->distToNextSensor;
-
+        //
         // if (velocitySamples.empty()) {
         //     velocitySamplesNumeratorSum = 0;
         //     velocitySamplesDenominatorSum = 0;
         // }
-
+        //
         // #if defined(TRACKA)
         //                 if (newSensorsPassed >= 5) {
         // #else
         //                 if (newSensorsPassed >= 5 && curSensor != &track[3]) {
         // #endif
-
+        //
         //                     if (velocitySamples.full()) {
         //                         std::pair<uint64_t, uint64_t>* p = velocitySamples.front();
         //                         velocitySamplesNumeratorSum -= p->first;
         //                         velocitySamplesDenominatorSum -= p->second;
         //                         velocitySamples.pop();
         //                     }
-
         //                     velocitySamples.push({mmDeltaD, microsDeltaT});
         //                     velocitySamplesNumeratorSum += mmDeltaD;
         //                     velocitySamplesDenominatorSum += microsDeltaT;
-
         //                     uint64_t sample_mm_per_s_x1000 =
         //                         (velocitySamplesNumeratorSum * 1000000) * 1000 /
         //                         velocitySamplesDenominatorSum;  // microm/micros with a *1000 for decimals
-
         //                     // this is still alpha w 1/8
         //                     uint64_t oldVelocity = curTrain->velocity;
         //                     curTrain->velocity = ((oldVelocity * 15) + sample_mm_per_s_x1000) >> 4;
         //                 }
-
         // if (curTrain->sensorWhereSpeedChangeStarted == curSensor) {
         //     laps++;
         // }
-
         // if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
         //     RingBuffer<TrackNode*, 1000> path;
         //     computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, path);
@@ -427,7 +425,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         } else {
         //             edgeDistance += node->edge[DIR_AHEAD].dist;
         //         }
-
         //         if (!lastSensor) {
         //             travelledDistance += edgeDistance;
         //             if (node->type == NodeType::SENSOR && travelledDistance >= curTrain->stoppingDistance) {
@@ -438,7 +435,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         debugPath[counter] = node->name;
         //         counter++;
         //     }
-
         // if we need to update our turnouts, reply to the task right away
         //     if (!turnoutQueue.empty()) {
         //         char sendBuff[3];
@@ -447,10 +443,8 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         sys::Reply(turnoutNotifierTid, sendBuff, 3);
         //         stopTurnoutNotifier = true;
         //     }
-
         //     char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
         //     int strSize = 1;
-
         //     for (int i = counter - 1; i >= 0; i--) {
         //         strcpy(strBuff + strSize, debugPath[i]);
         //         strSize += strlen(debugPath[i]);
@@ -460,7 +454,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         }
         //     }
         //     printer_proprietor::debug(printerProprietorTid, strBuff);
-
         //     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
         //     curTrain->stoppingSensor = lastSensor;
         //     char debugBuff[400] = {0};
@@ -471,7 +464,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //         curTrain->stoppingDistance);
         //     printer_proprietor::debug(printerProprietorTid, debugBuff);
         // }
-
         // check if this sensor is the one a train is waiting for
         // if (curTrain->stopping && curTrain->stoppingSensor == curSensor) {
         //     // reply to our stopping task with a calculated amount of ticks to delay
@@ -481,13 +473,13 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         //     uIntReply(stoppingTid, numOfTicks);
         //     stopTrainIndex = trainNumToIndex(curTrain->id);  // assuming only one train is given the stop command
         // }
-
         // printer_proprietor::updateTrainStatus(printerProprietorTid, curTrain->id, curTrain->velocity);
-
         // prevSensorPredicitionMicros = curTrain->sensorAheadMicros;
-
         // update next sensor
         curTrain->sensorAhead = curSensor->nextSensor;
+        if (curSensor->nextSensor->name[0] == 'F') {
+            curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
+        }
 
         // curTrain->sensorAheadMicros = curMicros + (curSensor->distToNextSensor * 1000 * 1000000 /
         // curTrain->velocity);
@@ -497,9 +489,17 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     }
     char nextBox = curSensor->nextSensor->name[0];
     unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
+    if (nextBox == 'F') {
+        nextSensorNum = curSensor->nextSensor->num;
+    }
     // ASSERT(0, "box: %c sensorNum: %d nextBox: %c nextSensorNum: %d", box, sensorNum, nextBox, nextSensorNum);
     // ASSERT(0, "TID is: %d curtrain id: %d index is: %d", trainTasks[trainNumToIndex(curTrain->id)], curTrain->id,
     //        trainNumToIndex(curTrain->id));
+    // uint64_t nextSensorDistance = curSensor->distToNextSensor;
+    // if (curSensor->nextSensor->name[0] == 'F') {
+    //     nextSensorDistance = curSensor->distToNextSensor + curSensor->nextSensor->distToNextSensor;
+    // }
+    // ASSERT(box != 'C' && sensorNum != 7, "nextBox: %c nextSensorNum: %u", nextBox, nextSensorNum);
     train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
                                  curSensor->distToNextSensor);
 }
@@ -539,6 +539,18 @@ void TrainManager::processStopping() {
     trains[stopTrainIndex].stoppingDistance = getStoppingDistSeed(stopTrainIndex);
 }
 
+void trackNodeFromSensor(int* trackNodeIndex, char box, unsigned int sensorNum) {
+    if (box >= 'A' && box <= 'E') {
+        *trackNodeIndex = ((box - 'A') * 16) + (sensorNum - 1);  // our target's index in the
+    } else {
+#if defined(TRACKA)
+        *trackNodeIndex = 144 + (sensorNum - 1);
+#else
+        *trackNodeIndex = 140 + (sensorNum - 1);
+#endif
+    }
+}
+
 // TODO: FIX THIS, FILLING IN INDEXES OF REPLY BUFFER WITHOUT EVEN KNOWING HOW LONG IT IS, strlen cannot fix this
 void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
     Command command = commandFromByte(receiveBuffer[0]);
@@ -549,9 +561,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
             unsigned int sensornum = receiveBuffer[3];
 
             int targetTrackNodeIdx = -1;
-            if (box >= 'A' && box <= 'E') {
-                targetTrackNodeIdx = ((box - 'A') * 16) + (sensornum - 1);  // our target's index in the
-            }
+            trackNodeFromSensor(&targetTrackNodeIdx, box, sensornum);
 
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
 
@@ -562,7 +572,11 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
 
                 uint32_t zoneNum = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
                 char nextBox = curSensor->nextSensor->name[0];
+
                 unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
+                if (nextBox == 'F') {
+                    nextSensorNum = curSensor->nextSensor->num;
+                }
 
                 printer_proprietor::formatToString(replyBuffer + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d", zoneNum,
                                                    nextBox, static_cast<char>(nextSensorNum),
@@ -571,6 +585,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
                 return;
             }
             replyBuffer[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
+            replyBuffer[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
             return;
             break;
         }
@@ -580,9 +595,8 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
             unsigned int sensornum = receiveBuffer[3];
 
             int targetTrackNodeIdx = -1;
-            if (box >= 'A' && box <= 'E') {
-                targetTrackNodeIdx = ((box - 'A') * 16) + (sensornum - 1);  // our target's index in the
-            }
+            trackNodeFromSensor(&targetTrackNodeIdx, box, sensornum);
+
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
 
             bool result =

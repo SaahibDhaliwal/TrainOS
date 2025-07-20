@@ -749,10 +749,11 @@ void init_tracka(TrackNode *track) {
     track[88].edge[DIR_STRAIGHT].src = &track[88];
     track[88].edge[DIR_STRAIGHT].dest = &track[34];
     track[88].edge[DIR_STRAIGHT].dist = 239;
-    track[88].edge[DIR_CURVED].reverse = &track[92].edge[DIR_CURVED];
+    track[88].edge[DIR_CURVED].reverse = &track[146].edge[DIR_AHEAD];  // f3 -:
     track[88].edge[DIR_CURVED].src = &track[88];
-    track[88].edge[DIR_CURVED].dest = &track[93];
-    track[88].edge[DIR_CURVED].dist = 371;
+    track[88].edge[DIR_CURVED].dest = &track[147];  // br 5 -> f4
+    track[88].edge[DIR_CURVED].dist = 185;
+
     track[89].name = "MR5";
     track[89].type = NodeType::MERGE;
     track[89].num = 5;
@@ -769,10 +770,10 @@ void init_tracka(TrackNode *track) {
     track[90].edge[DIR_STRAIGHT].src = &track[90];
     track[90].edge[DIR_STRAIGHT].dest = &track[46];
     track[90].edge[DIR_STRAIGHT].dist = 239;
-    track[90].edge[DIR_CURVED].reverse = &track[114].edge[DIR_CURVED];
+    track[90].edge[DIR_CURVED].reverse = &track[144].edge[DIR_AHEAD];
     track[90].edge[DIR_CURVED].src = &track[90];
-    track[90].edge[DIR_CURVED].dest = &track[115];
-    track[90].edge[DIR_CURVED].dist = 371;
+    track[90].edge[DIR_CURVED].dest = &track[145];  // to f2
+    track[90].edge[DIR_CURVED].dist = 185;
     track[91].name = "MR6";
     track[91].type = NodeType::MERGE;
     track[91].num = 6;
@@ -789,10 +790,10 @@ void init_tracka(TrackNode *track) {
     track[92].edge[DIR_STRAIGHT].src = &track[92];
     track[92].edge[DIR_STRAIGHT].dest = &track[58];
     track[92].edge[DIR_STRAIGHT].dist = 231;
-    track[92].edge[DIR_CURVED].reverse = &track[88].edge[DIR_CURVED];
+    track[92].edge[DIR_CURVED].reverse = &track[147].edge[DIR_AHEAD];
     track[92].edge[DIR_CURVED].src = &track[92];
-    track[92].edge[DIR_CURVED].dest = &track[89];
-    track[92].edge[DIR_CURVED].dist = 371;
+    track[92].edge[DIR_CURVED].dest = &track[146];  // to f3
+    track[92].edge[DIR_CURVED].dist = 185;
     track[93].name = "MR7";
     track[93].type = NodeType::MERGE;
     track[93].num = 7;
@@ -869,10 +870,10 @@ void init_tracka(TrackNode *track) {
     track[100].edge[DIR_STRAIGHT].src = &track[100];
     track[100].edge[DIR_STRAIGHT].dest = &track[102];
     track[100].edge[DIR_STRAIGHT].dist = 188;
-    track[100].edge[DIR_CURVED].reverse = &track[106].edge[DIR_STRAIGHT];
+    track[100].edge[DIR_CURVED].reverse = &track[148].edge[DIR_AHEAD];
     track[100].edge[DIR_CURVED].src = &track[100];
-    track[100].edge[DIR_CURVED].dest = &track[107];
-    track[100].edge[DIR_CURVED].dist = 495;
+    track[100].edge[DIR_CURVED].dest = &track[149];  // to f6
+    track[100].edge[DIR_CURVED].dist = 228;
     track[101].name = "MR11";
     track[101].type = NodeType::MERGE;
     track[101].num = 11;
@@ -925,10 +926,10 @@ void init_tracka(TrackNode *track) {
     track[106].type = NodeType::BRANCH;
     track[106].num = 14;
     track[106].reverse = &track[107];
-    track[106].edge[DIR_STRAIGHT].reverse = &track[100].edge[DIR_CURVED];
+    track[106].edge[DIR_STRAIGHT].reverse = &track[149].edge[DIR_AHEAD];  // reverse is f6 -> mr14
     track[106].edge[DIR_STRAIGHT].src = &track[106];
-    track[106].edge[DIR_STRAIGHT].dest = &track[101];
-    track[106].edge[DIR_STRAIGHT].dist = 495;
+    track[106].edge[DIR_STRAIGHT].dest = &track[148];  // to F5
+    track[106].edge[DIR_STRAIGHT].dist = 267;
     track[106].edge[DIR_CURVED].reverse = &track[43].edge[DIR_AHEAD];
     track[106].edge[DIR_CURVED].src = &track[106];
     track[106].edge[DIR_CURVED].dest = &track[42];
@@ -1204,6 +1205,68 @@ void init_tracka(TrackNode *track) {
     track[143].name = "EX10";
     track[143].type = NodeType::EXIT;
     track[143].reverse = &track[142];
+
+    // fake sensor
+    track[144].name = "F1";
+    track[144].type = NodeType::FAKE_SENSOR;
+    track[144].num = 1;
+    track[144].reverse = &track[144];
+    // f1 -> mr6
+    track[144].edge[DIR_AHEAD].reverse = &track[77].edge[DIR_CURVED];  // reverse is br 6 -> f2
+    track[144].edge[DIR_AHEAD].src = &track[144];
+    track[144].edge[DIR_AHEAD].dest = &track[91];  // merge 6
+    track[144].edge[DIR_AHEAD].dist = 185;
+
+    track[145].name = "F2";
+    track[145].type = NodeType::FAKE_SENSOR;
+    track[145].num = 2;
+    track[145].reverse = &track[145];
+    // f2 -> mr 18
+    track[145].edge[DIR_AHEAD].reverse = &track[114].edge[DIR_CURVED];  // reverse is br 18 -> f1
+    track[145].edge[DIR_AHEAD].src = &track[141];
+    track[145].edge[DIR_AHEAD].dest = &track[115];  // merge 18
+    track[145].edge[DIR_AHEAD].dist = 185;
+
+    track[146].name = "F3";
+    track[146].type = NodeType::FAKE_SENSOR;
+    track[146].num = 3;
+    track[146].reverse = &track[146];
+    // f3->mr5
+    track[146].edge[DIR_AHEAD].reverse = &track[88].edge[DIR_CURVED];  // reverse is br 5 -> f4
+
+    track[146].edge[DIR_AHEAD].src = &track[142];
+    track[146].edge[DIR_AHEAD].dest = &track[89];  // merge 5
+    track[146].edge[DIR_AHEAD].dist = 185;
+
+    track[147].name = "F4";
+    track[147].type = NodeType::FAKE_SENSOR;
+    track[147].num = 4;
+    track[147].reverse = &track[142];
+    // f4->mr7
+    track[147].edge[DIR_AHEAD].reverse = &track[92].edge[DIR_CURVED];  // reverse is br 7 -> f3
+    track[147].edge[DIR_AHEAD].src = &track[143];
+    track[147].edge[DIR_AHEAD].dest = &track[93];  // merge 7
+    track[147].edge[DIR_AHEAD].dist = 185;
+
+    track[148].name = "F5";
+    track[148].type = NodeType::FAKE_SENSOR;
+    track[148].num = 5;
+    track[148].reverse = &track[145];
+    // f5->mr11
+    track[148].edge[DIR_AHEAD].reverse = &track[100].edge[DIR_CURVED];  // reverse is br 11 -> f6
+    track[148].edge[DIR_AHEAD].src = &track[144];
+    track[148].edge[DIR_AHEAD].dest = &track[101];  // merge 11
+    track[148].edge[DIR_AHEAD].dist = 228;          // 185 + 43;
+
+    track[149].name = "F6";
+    track[149].type = NodeType::FAKE_SENSOR;
+    track[149].num = 6;
+    track[149].reverse = &track[144];
+    // f6->mr14
+    track[149].edge[DIR_AHEAD].reverse = &track[92].edge[DIR_CURVED];  // reverse is br 14->F5
+    track[149].edge[DIR_AHEAD].src = &track[145];
+    track[149].edge[DIR_AHEAD].dest = &track[107];  // merge 14
+    track[149].edge[DIR_AHEAD].dist = 267;
 }
 
 // TRACK A DONE. NEXT IS TRACK B
@@ -1940,10 +2003,10 @@ void init_trackb(TrackNode *track) {
     track[88].edge[DIR_STRAIGHT].src = &track[88];
     track[88].edge[DIR_STRAIGHT].dest = &track[34];
     track[88].edge[DIR_STRAIGHT].dist = 239;
-    track[88].edge[DIR_CURVED].reverse = &track[92].edge[DIR_CURVED];
+    track[88].edge[DIR_CURVED].reverse = &track[142].edge[DIR_AHEAD];
     track[88].edge[DIR_CURVED].src = &track[88];
-    track[88].edge[DIR_CURVED].dest = &track[93];
-    track[88].edge[DIR_CURVED].dist = 371;
+    track[88].edge[DIR_CURVED].dest = &track[143];  // br 5 -> f4
+    track[88].edge[DIR_CURVED].dist = 185;
     track[89].name = "MR5";
     track[89].type = NodeType::MERGE;
     track[89].num = 5;
@@ -1960,10 +2023,10 @@ void init_trackb(TrackNode *track) {
     track[90].edge[DIR_STRAIGHT].src = &track[90];
     track[90].edge[DIR_STRAIGHT].dest = &track[46];
     track[90].edge[DIR_STRAIGHT].dist = 239;
-    track[90].edge[DIR_CURVED].reverse = &track[114].edge[DIR_CURVED];
+    track[90].edge[DIR_CURVED].reverse = &track[140].edge[DIR_AHEAD];
     track[90].edge[DIR_CURVED].src = &track[90];
-    track[90].edge[DIR_CURVED].dest = &track[115];
-    track[90].edge[DIR_CURVED].dist = 371;
+    track[90].edge[DIR_CURVED].dest = &track[141];  // to f2
+    track[90].edge[DIR_CURVED].dist = 185;
     track[91].name = "MR6";
     track[91].type = NodeType::MERGE;
     track[91].num = 6;
@@ -1980,10 +2043,10 @@ void init_trackb(TrackNode *track) {
     track[92].edge[DIR_STRAIGHT].src = &track[92];
     track[92].edge[DIR_STRAIGHT].dest = &track[58];
     track[92].edge[DIR_STRAIGHT].dist = 231;
-    track[92].edge[DIR_CURVED].reverse = &track[88].edge[DIR_CURVED];
+    track[92].edge[DIR_CURVED].reverse = &track[143].edge[DIR_AHEAD];
     track[92].edge[DIR_CURVED].src = &track[92];
-    track[92].edge[DIR_CURVED].dest = &track[89];
-    track[92].edge[DIR_CURVED].dist = 371;
+    track[92].edge[DIR_CURVED].dest = &track[142];  // to f3
+    track[92].edge[DIR_CURVED].dist = 185;
     track[93].name = "MR7";
     track[93].type = NodeType::MERGE;
     track[93].num = 7;
@@ -2060,10 +2123,10 @@ void init_trackb(TrackNode *track) {
     track[100].edge[DIR_STRAIGHT].src = &track[100];
     track[100].edge[DIR_STRAIGHT].dest = &track[102];
     track[100].edge[DIR_STRAIGHT].dist = 188;
-    track[100].edge[DIR_CURVED].reverse = &track[106].edge[DIR_STRAIGHT];
+    track[100].edge[DIR_CURVED].reverse = &track[144].edge[DIR_AHEAD];
     track[100].edge[DIR_CURVED].src = &track[100];
-    track[100].edge[DIR_CURVED].dest = &track[107];
-    track[100].edge[DIR_CURVED].dist = 495;
+    track[100].edge[DIR_CURVED].dest = &track[145];  // to f6
+    track[100].edge[DIR_CURVED].dist = 228;          // 495;
     track[101].name = "MR11";
     track[101].type = NodeType::MERGE;
     track[101].num = 11;
@@ -2116,13 +2179,13 @@ void init_trackb(TrackNode *track) {
     track[106].type = NodeType::BRANCH;
     track[106].num = 14;
     track[106].reverse = &track[107];
-    track[106].edge[DIR_STRAIGHT].reverse = &track[100].edge[DIR_CURVED];
+    track[106].edge[DIR_STRAIGHT].reverse = &track[145].edge[DIR_AHEAD];  // reverse is f6 -> mr14
     track[106].edge[DIR_STRAIGHT].src = &track[106];
-    track[106].edge[DIR_STRAIGHT].dest = &track[101];
-    track[106].edge[DIR_STRAIGHT].dist = 495;
+    track[106].edge[DIR_STRAIGHT].dest = &track[144];  // to F5
+    track[106].edge[DIR_STRAIGHT].dist = 267;
     track[106].edge[DIR_CURVED].reverse = &track[43].edge[DIR_AHEAD];
     track[106].edge[DIR_CURVED].src = &track[106];
-    track[106].edge[DIR_CURVED].dest = &track[42];
+    track[106].edge[DIR_CURVED].dest = &track[42];  // is c11
     track[106].edge[DIR_CURVED].dist = 333;
     track[107].name = "MR14";
     track[107].type = NodeType::MERGE;
@@ -2192,6 +2255,7 @@ void init_trackb(TrackNode *track) {
     track[113].edge[DIR_AHEAD].src = &track[113];
     track[113].edge[DIR_AHEAD].dest = &track[77];
     track[113].edge[DIR_AHEAD].dist = 43;
+
     track[114].name = "BR18";
     track[114].type = NodeType::BRANCH;
     track[114].num = 18;
@@ -2200,10 +2264,12 @@ void init_trackb(TrackNode *track) {
     track[114].edge[DIR_STRAIGHT].src = &track[114];
     track[114].edge[DIR_STRAIGHT].dest = &track[39];
     track[114].edge[DIR_STRAIGHT].dist = 231;
-    track[114].edge[DIR_CURVED].reverse = &track[90].edge[DIR_CURVED];
+    // br 18 -> f1
+    track[114].edge[DIR_CURVED].reverse = &track[141].edge[DIR_AHEAD];  // f2 -> mr18
     track[114].edge[DIR_CURVED].src = &track[114];
-    track[114].edge[DIR_CURVED].dest = &track[91];
-    track[114].edge[DIR_CURVED].dist = 371;
+    track[114].edge[DIR_CURVED].dest = &track[140];  // fake sensor f1
+    track[114].edge[DIR_CURVED].dist = 185;
+
     track[115].name = "MR18";
     track[115].type = NodeType::MERGE;
     track[115].num = 18;
@@ -2212,6 +2278,7 @@ void init_trackb(TrackNode *track) {
     track[115].edge[DIR_AHEAD].src = &track[115];
     track[115].edge[DIR_AHEAD].dest = &track[88];
     track[115].edge[DIR_AHEAD].dist = 155;
+
     track[116].name = "BR153";
     track[116].type = NodeType::BRANCH;
     track[116].num = 153;
@@ -2372,4 +2439,66 @@ void init_trackb(TrackNode *track) {
     track[139].name = "EX10";
     track[139].type = NodeType::EXIT;
     track[139].reverse = &track[138];
+
+    // fake sensor
+    track[140].name = "F1";
+    track[140].type = NodeType::SENSOR;
+    track[140].num = 1;
+    track[140].reverse = &track[141];
+    // f1 -> mr6
+    track[140].edge[DIR_AHEAD].reverse = &track[77].edge[DIR_CURVED];  // reverse is br 6 -> f2
+    track[140].edge[DIR_AHEAD].src = &track[140];
+    track[140].edge[DIR_AHEAD].dest = &track[91];  // merge 6
+    track[140].edge[DIR_AHEAD].dist = 185;
+
+    track[141].name = "F2";
+    track[141].type = NodeType::SENSOR;
+    track[141].num = 2;
+    track[141].reverse = &track[140];
+    // f2 -> mr 18
+    track[141].edge[DIR_AHEAD].reverse = &track[114].edge[DIR_CURVED];  // reverse is br 18 -> f1
+    track[141].edge[DIR_AHEAD].src = &track[141];
+    track[141].edge[DIR_AHEAD].dest = &track[115];  // merge 18
+    track[141].edge[DIR_AHEAD].dist = 185;
+
+    track[142].name = "F3";
+    track[142].type = NodeType::SENSOR;
+    track[142].num = 3;
+    track[142].reverse = &track[143];
+    // f3->mr5
+    track[142].edge[DIR_AHEAD].reverse = &track[88].edge[DIR_CURVED];  // reverse is br 5 -> f4
+
+    track[142].edge[DIR_AHEAD].src = &track[142];
+    track[142].edge[DIR_AHEAD].dest = &track[89];  // merge 5
+    track[142].edge[DIR_AHEAD].dist = 185;
+
+    track[143].name = "F4";
+    track[143].type = NodeType::SENSOR;
+    track[143].num = 4;
+    track[143].reverse = &track[142];
+    // f4->mr7
+    track[143].edge[DIR_AHEAD].reverse = &track[92].edge[DIR_CURVED];  // reverse is br 7 -> f3
+    track[143].edge[DIR_AHEAD].src = &track[143];
+    track[143].edge[DIR_AHEAD].dest = &track[93];  // merge 7
+    track[143].edge[DIR_AHEAD].dist = 185;
+
+    track[144].name = "F5";
+    track[144].type = NodeType::SENSOR;
+    track[144].num = 5;
+    track[144].reverse = &track[145];
+    // f5->mr11
+    track[144].edge[DIR_AHEAD].reverse = &track[100].edge[DIR_CURVED];  // reverse is br 11 -> f6
+    track[144].edge[DIR_AHEAD].src = &track[144];
+    track[144].edge[DIR_AHEAD].dest = &track[101];  // merge 11
+    track[144].edge[DIR_AHEAD].dist = 228;          // 185 + 43;
+
+    track[145].name = "F6";
+    track[145].type = NodeType::SENSOR;
+    track[145].num = 6;
+    track[145].reverse = &track[144];
+    // f6->mr14
+    track[145].edge[DIR_AHEAD].reverse = &track[92].edge[DIR_CURVED];  // reverse is br 14->F5
+    track[145].edge[DIR_AHEAD].src = &track[145];
+    track[145].edge[DIR_AHEAD].dest = &track[107];  // merge 14
+    track[145].edge[DIR_AHEAD].dist = 267;
 }
