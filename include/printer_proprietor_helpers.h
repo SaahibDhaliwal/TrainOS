@@ -84,6 +84,7 @@ void change_train_status(uint32_t consoleTid, int trainIndex, bool isActive);
 void update_train_velocity(uint32_t consoleTid, int trainIndex, const char* msg);
 void update_train_sensor(uint32_t consoleTid, int trainIndex, const char* msg);
 void update_train_distance(uint32_t consoleTid, int trainIndex, const char* msg);
+void update_train_zone_sensor(uint32_t consoleTid, int trainIndex, const char* msg);
 void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg);
 
 /*********** DEBUG ********************************/

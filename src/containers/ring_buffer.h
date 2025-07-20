@@ -63,6 +63,10 @@ class RingBuffer {
             return rb->buffer[pos];
         }
 
+        T* operator->() const {
+            return &rb->buffer[pos];
+        }
+
         Iterator& operator++() {
             pos = (pos + 1) % CAPACITY;
             --remaining;

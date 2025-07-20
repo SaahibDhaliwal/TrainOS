@@ -9,9 +9,11 @@
 #include "name_server_protocol.h"
 #include "printer_proprietor_helpers.h"
 #include "printer_proprietor_protocol.h"
+#include "ring_buffer.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
+#include "train.h"
 #include "turnout.h"
 
 using namespace printer_proprietor;
@@ -36,6 +38,8 @@ void PrinterProprietor() {
 
     unsigned int measurementMessages = 0;
     unsigned int debugMessages = 0;
+
+    RingBuffer<char[Config::MAX_MESSAGE_LENGTH], 10> trainZones[MAX_TRAINS];
 
     for (;;) {
         uint32_t clientTid;
@@ -150,6 +154,11 @@ void PrinterProprietor() {
             case Command::UPDATE_TRAIN_ZONE: {
                 WITH_HIDDEN_CURSOR(consoleServerTid,
                                    update_train_zone(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ZONE_SENSOR: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_zone_sensor(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
                 break;
             }
             case Command::DEBUG: {

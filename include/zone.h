@@ -1,6 +1,7 @@
 #ifndef __ZONE__
 #define __ZONE__
 
+#include "sensor.h"
 #include "train.h"
 #include "turnout.h"
 #include "unordered_map.h"
@@ -16,6 +17,11 @@ struct ZoneSegment {
     // to determine whether a train is in the zone but ahead, so safe to enter slowly
     ZoneSegment* previousZone = nullptr;
     // TrackNode* branch;
+};
+
+struct ZoneExit {
+    Sensor sensorMarkingExit;
+    uint64_t distanceToExitSensor;  // mm
 };
 
 class TrainReservation {

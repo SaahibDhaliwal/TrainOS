@@ -5,7 +5,9 @@
 
 #include "command.h"
 #include "command_server_protocol.h"
+#include "ring_buffer.h"
 #include "sensor.h"
+#include "zone.h"
 
 constexpr const char* PRINTER_PROPRIETOR_NAME = "printer_proprietor";
 
@@ -24,6 +26,7 @@ enum class Command : char {
     UPDATE_TRAIN_STATUS,
     UPDATE_TRAIN_DISTANCE,
     UPDATE_TRAIN_SENSOR,
+    UPDATE_TRAIN_ZONE_SENSOR,
     UPDATE_TRAIN_ZONE,
     MEASUREMENT,
     DEBUG,
@@ -61,7 +64,8 @@ void updateTrainStatus(int tid, int trainIndex, bool isActive);
 void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity);
 void updateTrainDistance(int tid, int trainIndex, uint64_t distance);
 void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor);
-void updateTrainZone(int tid, int trainIndex, const char* zoneString);
+void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor);
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ZoneExit, 16> zoneExits);
 }  // namespace printer_proprietor
 
 #endif

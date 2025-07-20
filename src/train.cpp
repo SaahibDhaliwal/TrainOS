@@ -103,7 +103,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
 #define STOPPING_THRESHOLD 50
 // sensor bar to back, in mm
 // this will need to be a variable and changed when we do reverses
-#define REAR_OF_TRAIN -200
+#define DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN 200
 
 void TrainNotifier() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
@@ -117,12 +117,6 @@ void TrainNotifier() {
     }
     sys::Exit();
 }
-
-struct ZoneExit {
-    Sensor sensorMarkingExit;
-    unsigned int zoneNum;
-    uint64_t distanceToExitSensor;  // mm
-};
 
 using namespace train_server;
 
@@ -188,7 +182,7 @@ void TrainTask() {
     bool recentZoneAddedFlag = false;
 
     Sensor zoneEntraceSensorAhead;                        // sensor ahead of train marking a zone entrace
-    uint64_t distanceToZoneNextZone = 0;                  // mm, static
+    uint64_t distanceToZoneEntraceSensorAhead = 0;        // mm, static
     uint64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
@@ -244,7 +238,7 @@ void TrainTask() {
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
                     distanceToSensorAhead = distance;
-                    distanceToZoneNextZone = distance;
+                    distanceToZoneEntraceSensorAhead = distance;
 
                     if (!prevSensorHitMicros) {
                         prevSensorHitMicros = curMicros;
@@ -266,10 +260,12 @@ void TrainTask() {
 
                                 zoneEntraceSensorAhead =
                                     Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
+                                printer_proprietor::updateTrainZoneSensor(printerProprietorTid, trainIndex,
+                                                                          zoneEntraceSensorAhead);
 
                                 unsigned int distance = 0;
                                 a2ui(&replyBuff[4], 10, &distance);
-
+                                printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
                                 break;
                             }
                             default: {
@@ -339,9 +335,10 @@ void TrainTask() {
                                               ? (distanceToSensorAhead - distTravelledSinceLastSensorHit)
                                               : 0);
 
-            distRemainingToZoneEntranceSensorAhead = ((distanceToZoneNextZone > distTravelledSinceLastSensorHit)
-                                                          ? (distanceToZoneNextZone - distTravelledSinceLastSensorHit)
-                                                          : 0);
+            distRemainingToZoneEntranceSensorAhead =
+                ((distanceToZoneEntraceSensorAhead > distTravelledSinceLastSensorHit)
+                     ? (distanceToZoneEntraceSensorAhead - distTravelledSinceLastSensorHit)
+                     : 0);
 
             // if our stop will end up in the next zone, reserve it
             if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
@@ -351,12 +348,10 @@ void TrainTask() {
 
                 switch (replyFromByte(replyBuff[0])) {
                     case Reply::RESERVATION_SUCCESS: {
-                        uint64_t distToExitSensor = ((distRemainingToZoneEntranceSensorAhead > REAR_OF_TRAIN)
-                                                         ? (distRemainingToZoneEntranceSensorAhead - REAR_OF_TRAIN)
-                                                         : 0);
+                        uint64_t distToExitSensor =
+                            distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
 
                         ZoneExit zoneExit{.sensorMarkingExit = zoneEntraceSensorAhead,
-                                          .zoneNum = static_cast<unsigned int>(replyBuff[1]),
                                           .distanceToExitSensor = distToExitSensor};
                         zoneExits.push(zoneExit);
                         zoneStatusChange = true;
@@ -367,13 +362,17 @@ void TrainTask() {
 
                         // we have a new zone entrace sensor we care about
                         zoneEntraceSensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
+                        printer_proprietor::updateTrainZoneSensor(printerProprietorTid, trainIndex,
+                                                                  zoneEntraceSensorAhead);
+
                         unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
                         a2ui(&replyBuff[4], 10, &distance);
 
-                        // remaining dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
+                        //  dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
                         // new zoneEntranceSensorAhead
-                        distanceToZoneNextZone = distanceToZoneNextZone + distance;
+                        distanceToZoneEntraceSensorAhead = distanceToZoneEntraceSensorAhead + distance;
                         recentZoneAddedFlag = true;
+                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
 
                         break;
                     }
@@ -440,6 +439,7 @@ void TrainTask() {
 
                         zoneStatusChange = true;
                         zoneExits.pop();
+                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
                         break;
                     }
                     default: {
@@ -450,20 +450,6 @@ void TrainTask() {
                     }
                 }
             }
-
-            // if (zoneStatusChange) {
-            //     ASSERT(!zoneExits.empty(), " the zone buffer was empty but we said there was a status change");
-            //     // set up char buff
-            //     char strBuff[200] = {0};
-            //     int strSize = 0;
-            //     for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {
-            //         int zonenum = (*it).second.first;
-            //         printer_proprietor::formatToString(strBuff + strSize, 200, "%u ", zonenum);
-            //         strSize += strlen(strBuff);
-            //     }
-            //     printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, strBuff);
-            //     zoneStatusChange = false;
-            // }
 
             prevNotificationMicros = curMicros;
             emptyReply(clientTid);

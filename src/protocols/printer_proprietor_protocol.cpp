@@ -4,9 +4,11 @@
 
 #include "config.h"
 #include "generic_protocol.h"
+#include "ring_buffer.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "util.h"
+#include "zone.h"
 
 namespace printer_proprietor {
 
@@ -263,18 +265,30 @@ void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainZone(int tid, int trainIndex, const char* zoneString) {
+void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
-    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s", zoneString);
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE_SENSOR);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u ", trainIndex + 1, sensor.box, sensor.num);
+
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
-// void updateTrainZone(int tid, int trainIndex, int zoneNum) {
-//     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-//     sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
-//     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u", trainIndex + 1, zoneNum);
-//     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
-// }
+
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ZoneExit, 16> zoneExits) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
+    sendBuf[1] = static_cast<char>(trainIndex + 1);
+
+    int strSize = 2;
+
+    for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {
+        printer_proprietor::formatToString(sendBuf + strSize, Config::MAX_MESSAGE_LENGTH - strSize - 1, "%u ",
+                                           it->zoneNum);
+        strSize += strlen(sendBuf);
+    }
+
+    sys::Send(tid, sendBuf, strSize + 1, nullptr, 0);
+}
 
 void updateTrainStatus(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaT) {

@@ -360,7 +360,7 @@ void print_train_table(uint32_t consoleTid) {
         "  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │",
         "  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │  │ Next Sensor:                     │",
         "  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │  │ Distance From Sensor:            │",
-        "  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │  │ Reserved Ahead Of:               │",
+        "  │ Zone Ahead Entrance Sensor:      │  │ Zone Ahead Entrance Sensor:      │  │ Zone Ahead Entrance Sensor:      │  │ Zone Ahead Entrance Sensor:      │  │ Zone Ahead Entrance Sensor:      │  │ Zone Ahead Entrance Sensor:      │",
         "  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │",
         "  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │",
         "  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │",
@@ -417,8 +417,14 @@ void update_train_distance(uint32_t consoleTid, int trainIndex, const char* msg)
     console_server::Puts(consoleTid, 0, msg);
 }
 
+void update_train_zone_sensor(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 6,
+                           (TRAIN_START_COL + 33) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
 void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg) {
-    console_server::Printf(consoleTid, "\033[%d;%dH        \033[8D", TRAIN_START_ROW + 7,
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 7,
                            (TRAIN_START_COL + 12) + (trainIndex * TRAIN_BOX_DIFF));
     console_server::Puts(consoleTid, 0, msg);
 }
