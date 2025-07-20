@@ -352,6 +352,7 @@ void TrainTask() {
                             distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
 
                         ZoneExit zoneExit{.sensorMarkingExit = zoneEntraceSensorAhead,
+                                          .zoneNum = static_cast<unsigned int>(replyBuff[1]),
                                           .distanceToExitSensor = distToExitSensor};
                         zoneExits.push(zoneExit);
                         zoneStatusChange = true;

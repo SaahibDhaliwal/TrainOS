@@ -21,6 +21,7 @@ struct ZoneSegment {
 
 struct ZoneExit {
     Sensor sensorMarkingExit;
+    unsigned int zoneNum;
     uint64_t distanceToExitSensor;  // mm
 };
 
