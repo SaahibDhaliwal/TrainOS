@@ -373,6 +373,7 @@ void TrainTask() {
 
             // if our stop will end up in the next zone, reserve it
             // fix this wack ass logic with flags
+            printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
             if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !slowingDown &&
                 !stopped) {
                 // TODO: should this spin up a high priority courier? Or reply to one we already have?

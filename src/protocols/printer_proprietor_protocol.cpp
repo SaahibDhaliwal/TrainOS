@@ -248,6 +248,36 @@ void updateTrainDistance(int tid, int trainIndex, uint64_t distance) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void updateTrainZoneDistance(int tid, int trainIndex, uint64_t distance) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE_DISTANCE);
+    trainIndex++;
+
+    // some silly checking. I'm not proud of this
+    if (distance < 0) {
+        if (distance < -1000 && distance > -10000) {  // three digits plus negative
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
+        } else if (distance < -100) {  // three total
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
+        } else if (distance < -10) {
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
+        } else {  // does this ever happen?
+            return;
+        }
+
+    } else if (distance < 10) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
+    } else if (distance < 100) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
+    } else if (distance < 1000) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
+    } else {  // does this ever happen?
+        return;
+    }
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
 void updateTrainStatus(int tid, int trainIndex, bool isActive) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_STATUS);

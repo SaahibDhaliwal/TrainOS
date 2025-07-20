@@ -156,6 +156,11 @@ void PrinterProprietor() {
                                    update_train_zone(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
                 break;
             }
+            case Command::UPDATE_TRAIN_ZONE_DISTANCE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid, update_train_zone_distance(consoleServerTid, receiveBuffer[1] - 1,
+                                                                                &receiveBuffer[2]));
+                break;
+            }
             case Command::UPDATE_TRAIN_ZONE_SENSOR: {
                 WITH_HIDDEN_CURSOR(consoleServerTid,
                                    update_train_zone_sensor(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
