@@ -197,8 +197,9 @@ void TrainTask() {
     uint64_t prevNotificationMicros = 0;
 
     // ********* RESERVATION MANAGEMENT ************
+    RingBuffer<ReservedZone, 16> reservedZones;
     RingBuffer<ZoneExit, 16> zoneExits;
-    bool zoneStatusChange = false;
+
     bool recentZoneAddedFlag = false;
 
     Sensor zoneEntraceSensorAhead;                        // sensor ahead of train marking a zone entrace
@@ -295,7 +296,11 @@ void TrainTask() {
 
                                 unsigned int distance = 0;
                                 a2ui(&replyBuff[4], 10, &distance);
-                                printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
+
+                                ReservedZone reservation{.sensorMarkingEntrance = curSensor,
+                                                         .zoneNum = static_cast<uint8_t>(replyBuff[1])};
+                                reservedZones.push(reservation);
+                                printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
                                 break;
                             }
                             default: {
@@ -353,7 +358,7 @@ void TrainTask() {
             uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
             uint64_t timeSinceLastNoti = 0;                                     // micros
 
-            if (!prevNotificationMicros) {  // skip first notification so we have a delta T
+            if (!prevNotificationMicros) {  // first notification
                 timeSinceLastNoti = curMicros - prevSensorHitMicros;
             } else {
                 timeSinceLastNoti = curMicros - prevNotificationMicros;
@@ -389,14 +394,15 @@ void TrainTask() {
                         uint64_t distToExitSensor =
                             distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
 
+                        ReservedZone reservation{.sensorMarkingEntrance = zoneEntraceSensorAhead,
+                                                 .zoneNum = static_cast<uint8_t>(replyBuff[1])};
+                        reservedZones.push(reservation);
+
+                        // let's create an exit entry for a previous zone
                         ZoneExit zoneExit{.sensorMarkingExit = zoneEntraceSensorAhead,
-                                          .zoneNum = static_cast<unsigned int>(replyBuff[1]),
                                           .distanceToExitSensor = distToExitSensor};
                         zoneExits.push(zoneExit);
-                        zoneStatusChange = true;
-                        // [38;5;46m"
 
-                        // \033[%u;5;46m
                         printer_proprietor::debugPrintF(
                             printerProprietorTid, "%s Made Reservation. Zone: %d, Zone Entrance Sensor: %c%d",
                             trainColour, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
@@ -413,7 +419,7 @@ void TrainTask() {
                         // new zoneEntranceSensorAhead
                         distanceToZoneEntraceSensorAhead = distanceToZoneEntraceSensorAhead + distance;
                         recentZoneAddedFlag = true;
-                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
+                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
 
                         break;
                     }
@@ -486,9 +492,9 @@ void TrainTask() {
                             printerProprietorTid, "%s Freed Reservation with zone: %d with sensor: %c%d", trainColour,
                             replyBuff[1], reservationSensor.box, reservationSensor.num);
 
-                        zoneStatusChange = true;
                         zoneExits.pop();
-                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, zoneExits);
+                        reservedZones.pop();
+                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
                         break;
                     }
                     default: {

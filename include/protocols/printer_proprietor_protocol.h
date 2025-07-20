@@ -66,7 +66,7 @@ void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity);
 void updateTrainDistance(int tid, int trainIndex, uint64_t distance);
 void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor);
 void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor);
-void updateTrainZone(int tid, int trainIndex, RingBuffer<ZoneExit, 16> zoneExits);
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 16> reservedZones);
 void updateTrainZoneDistance(int tid, int trainIndex, uint64_t distance);
 }  // namespace printer_proprietor
 

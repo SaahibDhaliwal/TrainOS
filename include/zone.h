@@ -21,8 +21,12 @@ struct ZoneSegment {
 
 struct ZoneExit {
     Sensor sensorMarkingExit;
-    unsigned int zoneNum;
     uint64_t distanceToExitSensor;  // mm
+};
+
+struct ReservedZone {
+    Sensor sensorMarkingEntrance;
+    uint8_t zoneNum;
 };
 
 class TrainReservation {

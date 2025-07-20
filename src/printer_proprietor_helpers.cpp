@@ -427,6 +427,9 @@ void update_train_zone_sensor(uint32_t consoleTid, int trainIndex, const char* m
 void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg) {
     console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 7,
                            (TRAIN_START_COL + 12) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, "                       ");
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 7,
+                           (TRAIN_START_COL + 12) + (trainIndex * TRAIN_BOX_DIFF));
     console_server::Puts(consoleTid, 0, msg);
 }
 

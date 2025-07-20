@@ -304,17 +304,17 @@ void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainZone(int tid, int trainIndex, RingBuffer<ZoneExit, 16> zoneExits) {
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 16> reservedZones) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
     sendBuf[1] = static_cast<char>(trainIndex + 1);
 
     int strSize = 2;
 
-    for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {
+    for (auto it = reservedZones.begin(); it != reservedZones.end(); ++it) {
         printer_proprietor::formatToString(sendBuf + strSize, Config::MAX_MESSAGE_LENGTH - strSize - 1, "%u ",
                                            it->zoneNum);
-        strSize += strlen(sendBuf);
+        strSize += strlen(sendBuf + strSize);
     }
 
     sys::Send(tid, sendBuf, strSize + 1, nullptr, 0);
