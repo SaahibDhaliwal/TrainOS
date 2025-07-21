@@ -46,13 +46,20 @@ void setTrainSpeed(int tid, unsigned int trainSpeed) {
     int res = sys::Send(tid, sendBuf, 5, nullptr, 0);
     handleSendResponse(res, tid);
 }
-// void setTrainSpeed(int tid, char* trainSpeed) {
-//     char sendBuf[2] = {0};
-//     sendBuf[0] = toByte(Command::SET_SPEED);
-//     sendBuf[1] = trainSpeed[0];
-//     sendBuf[2] = trainSpeed[1];
-//     int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);  // is this bad?
-//     handleSendResponse(res, tid);
-// }
+void reverseTrain(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::REVERSE);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, uint64_t offset) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::STOP_SENSOR);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u", currentBox,
+                                       currentSensorNum, offset);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
 
 }  // namespace train_server

@@ -2,12 +2,15 @@
 #define __TRAIN_PROTOCOL__
 #include <cstdint>
 
+#include "sensor.h"
+
 namespace train_server {
 enum class Command : char {
     NEW_SENSOR = 3,
     // SKIPPED_SENSOR,
     SET_SPEED,
-    // RESERVATION_RESULT,
+    REVERSE,
+    STOP_SENSOR,
     // LOCATION_QUERY,
     COUNT,
     UNKNOWN_COMMAND
@@ -34,6 +37,10 @@ Reply replyFromByte(char c);
 void sendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox, unsigned int nextSensorNum,
                     uint64_t distance);
 void setTrainSpeed(int tid, unsigned int trainSpeed);
+
+void reverseTrain(int tid);
+
+void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, uint64_t offset);
 
 }  // namespace train_server
 

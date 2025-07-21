@@ -32,7 +32,7 @@ class TrainManager {
     int stopTrainIndex = 0;
     uint32_t delayTicks = 0;
     RingBuffer<std::pair<uint64_t, uint64_t>, 10> velocitySamples;  // pair<mm(deltaD), micros(deltaT)>
-    int64_t prevSensorPredicitionMicros = 0;
+    int64_t prevSensorMicros = 0;
     uint64_t velocitySamplesNumeratorSum = 0;
     uint64_t velocitySamplesDenominatorSum = 0;
     RingBuffer<std::pair<char, char>, 100> turnoutQueue;
@@ -40,18 +40,21 @@ class TrainManager {
     RingBuffer<int, MAX_TRAINS> reversingTrains;
 
    public:
-    TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t stoppingTid,
-                 uint32_t turnoutNotifierTid);
+    TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);
     void processInputCommand(char* receiveBuffer);
     void processSensorReading(char* receiveBuffer);
     void processReverse();
     void processTurnoutNotifier();
     void processStopping();
     void processTrainRequest(char* receiveBuffer, char* replyBuffer);
+    void reverseTrain(int trainIndex);
+    void setTrainStop(char* receiveBuffer);
     // getters
     uint32_t getReverseTid();
     uint32_t getSmallestTrainTid();
     uint32_t getLargestTrainTid();
+    TrackNode* getTrack();
+    Turnout* getTurnouts();
 };
 
 #endif

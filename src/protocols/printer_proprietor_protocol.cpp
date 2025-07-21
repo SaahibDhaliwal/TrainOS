@@ -333,6 +333,13 @@ void updateTrainStatus(int tid, const char* srcName, const char* dstName, const 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void updateTrainOrientation(int tid, int trainIndex, bool isForward) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ORIENTATION);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c.", trainIndex + 1, isForward);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaT) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};

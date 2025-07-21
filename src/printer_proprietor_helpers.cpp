@@ -384,9 +384,7 @@ void change_train_status(uint32_t consoleTid, int trainIndex, bool isActive) {
         console_server::Puts(consoleTid, 0, "ACTIVE  ");
         cursor_white(consoleTid);
         // also set orientation (will need to change on reverse or if we go from active to inactive)
-        console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 8,
-                               (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
-        console_server::Puts(consoleTid, 0, "Forward");
+        update_train_orientation(consoleTid, trainIndex, true);
     } else {
         cursor_soft_red(consoleTid);
         console_server::Puts(consoleTid, 0, "INACTIVE");
@@ -437,6 +435,16 @@ void update_train_zone_distance(uint32_t consoleTid, int trainIndex, const char*
     console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 11,
                            (TRAIN_START_COL + 24) + (trainIndex * TRAIN_BOX_DIFF));
     console_server::Puts(consoleTid, 0, msg);
+}
+
+void update_train_orientation(uint32_t consoleTid, int trainIndex, bool isForward) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 8,
+                           (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
+    if (isForward) {
+        console_server::Puts(consoleTid, 0, "Forward ");
+    } else {
+        console_server::Puts(consoleTid, 0, "Backward");
+    }
 }
 
 /*********** DEBUG  ********************************/

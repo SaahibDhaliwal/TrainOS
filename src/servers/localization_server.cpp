@@ -26,24 +26,25 @@
 #include "track_data.h"
 #include "train.h"
 #include "train_manager.h"
+#include "train_protocol.h"
 #include "turnout.h"
 
 using namespace localization_server;
 
-void StopTrain() {
-    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
-    int parentTid = sys::MyParentTid();
-    char replyBuff[8];  // assuming our ticks wont be more than 99999 ticks
-    unsigned int delayAmount = 0;
-    for (;;) {
-        int res = sys::Send(parentTid, nullptr, 0, replyBuff, 7);
-        handleSendResponse(res, parentTid);
-        a2ui(replyBuff, 10, &delayAmount);
-        clock_server::Delay(clockServerTid, delayAmount);
-    }
-    sys::Exit();
-}
+// void StopTrain() {
+//     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+//     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+//     int parentTid = sys::MyParentTid();
+//     char replyBuff[8];  // assuming our ticks wont be more than 99999 ticks
+//     unsigned int delayAmount = 0;
+//     for (;;) {
+//         int res = sys::Send(parentTid, nullptr, 0, replyBuff, 7);
+//         handleSendResponse(res, parentTid);
+//         a2ui(replyBuff, 10, &delayAmount);
+//         clock_server::Delay(clockServerTid, delayAmount);
+//     }
+//     sys::Exit();
+// }
 
 #define DONE_TURNOUTS 1
 void TurnoutNotifier() {
@@ -100,16 +101,16 @@ void LocalizationServer() {
     int commandServerTid = name_server::WhoIs(COMMAND_SERVER_NAME);
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    uint32_t stoppingTid = sys::Create(42, &StopTrain);
+    // uint32_t stoppingTid = sys::Create(42, &StopTrain);
     uint32_t client = 0;
-    int res = sys::Receive(&client, nullptr, 0);
-    ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
+    // int res = sys::Receive(&client, nullptr, 0);
+    // ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
 
     uint32_t turnoutNotifierTid = sys::Create(30, &TurnoutNotifier);
-    res = sys::Receive(&client, nullptr, 0);
+    sys::Receive(&client, nullptr, 0);
     ASSERT(client == turnoutNotifierTid, "localization startup received from someone besides the turnoutNotifier task");
 
-    TrainManager trainManager(marklinServerTid, printerProprietorTid, clockServerTid, stoppingTid, turnoutNotifierTid);
+    TrainManager trainManager(marklinServerTid, printerProprietorTid, clockServerTid, turnoutNotifierTid);
 
     uint32_t sensorTid = sys::Create(24, &SensorTask);
 
@@ -120,30 +121,79 @@ void LocalizationServer() {
         receiveBuffer[msgLen] = '\0';
 
         if (clientTid == commandServerTid) {
-            trainManager.processInputCommand(receiveBuffer);
-            emptyReply(clientTid);
+            // trainManager.processInputCommand(receiveBuffer);
+            Command command = commandFromByte(receiveBuffer[0]);
+            switch (command) {
+                case Command::SET_SPEED: {
+                    trainManager.processInputCommand(receiveBuffer);
+                    break;
+                }
+                case Command::REVERSE_TRAIN: {
+                    int trainNumber = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
+                    int trainIdx = trainNumToIndex(trainNumber);
+                    // tell the train manager to tell the train to start reversing
+                    trainManager.reverseTrain(trainIdx);
+                    break;
+                }
+                case Command::SET_TURNOUT: {
+                    char turnoutDirection = receiveBuffer[1];
+                    char turnoutNumber = receiveBuffer[2];
+                    Turnout* turnouts = trainManager.getTurnouts();
+                    TrackNode* track = trainManager.getTrack();
 
+                    int index = turnoutIdx(turnoutNumber);
+                    turnouts[index].state = static_cast<SwitchState>(turnoutDirection);
+
+                    marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
+                    // go down our branch to find which sensor is next
+                    // we pass the tracknode of our branch
+                    TrackNode* newNextSensor = getNextSensor(&track[(2 * index) + 80], turnouts);
+                    ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
+                    // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
+                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                    break;
+                }
+                case Command::SOLENOID_OFF: {
+                    marklin_server::solenoidOff(marklinServerTid);
+                    break;
+                }
+                case Command::RESET_TRACK: {
+                    // this can be more efficient in the future, like checking how the current switch
+                    // state compares to the default
+#if defined(TRACKA)
+                    initialTurnoutConfigTrackA(trainManager.getTurnouts());
+                    initializeTurnouts(trainManager.getTurnouts(), marklinServerTid, printerProprietorTid,
+                                       clockServerTid);
+#else
+                    initialTurnoutConfigTrackB(trainManager.getTurnouts());
+                    initializeTurnouts(trainManager.getTurnouts(), marklinServerTid, printerProprietorTid,
+                                       clockServerTid);
+#endif
+                    initTrackSensorInfo(trainManager.getTrack(), trainManager.getTurnouts());
+                    break;
+                }
+                case Command::SET_STOP: {
+                    trainManager.setTrainStop(receiveBuffer);
+                    break;
+                }
+                default: {
+                    ASSERT(1 == 2, "bad localization server command");
+                }
+            }
+            emptyReply(clientTid);
         } else if (clientTid == sensorTid) {
             trainManager.processSensorReading(receiveBuffer);
             emptyReply(clientTid);
-
         } else if (clientTid == trainManager.getReverseTid()) {
             trainManager.processReverse();
             // no need to reply, reverse task is dead
-        } else if (clientTid == stoppingTid) {
-            // we have delayed enough, issue the stop command:
-            // ideally, we know which train this is (we are the localization server)
-            // current implementation only works for one train
-            trainManager.processStopping();
         } else if (clientTid == turnoutNotifierTid) {
             trainManager.processTurnoutNotifier();
-
         } else if (clientTid >= trainManager.getSmallestTrainTid() && clientTid <= trainManager.getLargestTrainTid()) {
             char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
             trainManager.processTrainRequest(receiveBuffer, replyBuff);
             // ASSERT(0, "replyBuff[1]: %u strlen(replyBuff): %u", replyBuff[1], strlen(replyBuff) - 1);
             sys::Reply(clientTid, replyBuff, strlen(replyBuff));
-
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
         }

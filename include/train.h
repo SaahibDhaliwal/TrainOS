@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "ring_buffer.h"
 #include "track_data.h"
 
 #define MAX_TRAINS 6
@@ -29,6 +30,7 @@ struct Train {
     TrackNode *stoppingSensor;
     uint64_t whereToIssueStop;
     TrackNode *sensorWhereSpeedChangeStarted;
+    RingBuffer<TrackNode *, 1000> path;
 };
 
 void initializeTrains(Train *trains, int marklinServerTid);
