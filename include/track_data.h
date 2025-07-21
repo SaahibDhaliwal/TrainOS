@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "sensor.h"
+
 // maximum number of nodes in a layout
 static constexpr int TRACK_MAX = 150;
 
@@ -43,6 +45,7 @@ struct TrackNode {
 void init_tracka(TrackNode* track);
 void init_trackb(TrackNode* track);
 
+int trackNodeIdxFromSensor(const Sensor& sensor);
 // helper: map sensor box ('A'/'B') and number to an index
 int sensor_index(char box, int num);
 

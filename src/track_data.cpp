@@ -1,6 +1,8 @@
 /* THIS FILE IS GENERATED CODE -- DO NOT EDIT */
 
 #include "track_data.h"
+
+#include "sensor.h"
 // void *memset(void *s, int c, unsigned int n) {
 //     unsigned char *p = (unsigned char *)s;
 //     while (n-- > 0) {
@@ -12,6 +14,18 @@
 void basic_init(TrackNode *track) {
     for (int i = 0; i < TRACK_MAX; i++) {
         track[i].id = i;
+    }
+}
+
+int trackNodeIdxFromSensor(const Sensor &sensor) {
+    if (sensor.box >= 'A' && sensor.box <= 'E') {
+        return ((sensor.box - 'A') * 16) + (sensor.num - 1);  // our target's index in the
+    } else {
+#if defined(TRACKA)
+        return 144 + (sensor.num - 1);
+#else
+        return 140 + (sensor.num - 1);
+#endif
     }
 }
 

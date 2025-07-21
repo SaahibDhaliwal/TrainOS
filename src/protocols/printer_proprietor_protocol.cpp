@@ -304,7 +304,7 @@ void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 16> reservedZones) {
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
     sendBuf[1] = static_cast<char>(trainIndex + 1);

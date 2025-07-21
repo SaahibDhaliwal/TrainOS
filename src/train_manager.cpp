@@ -272,29 +272,16 @@ void TrainManager::processStopping() {
     trains[stopTrainIndex].stopping = false;
 }
 
-void trackNodeFromSensor(int* trackNodeIndex, char box, unsigned int sensorNum) {
-    if (box >= 'A' && box <= 'E') {
-        *trackNodeIndex = ((box - 'A') * 16) + (sensorNum - 1);  // our target's index in the
-    } else {
-#if defined(TRACKA)
-        *trackNodeIndex = 144 + (sensorNum - 1);
-#else
-        *trackNodeIndex = 140 + (sensorNum - 1);
-#endif
-    }
-}
-
 // TODO: FIX THIS, FILLING IN INDEXES OF REPLY BUFFER WITHOUT EVEN KNOWING HOW LONG IT IS, strlen cannot fix this
 void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::MAKE_RESERVATION: {
             int trainIndex = (receiveBuffer[1]) - 1;
-            char box = receiveBuffer[2];
-            unsigned int sensornum = receiveBuffer[3];
 
-            int targetTrackNodeIdx = -1;
-            trackNodeFromSensor(&targetTrackNodeIdx, box, sensornum);
+            Sensor zoneEntranceSensor{.box = receiveBuffer[2], .num = receiveBuffer[3]};
+
+            int targetTrackNodeIdx = trackNodeIdxFromSensor(zoneEntranceSensor);
 
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
 
@@ -324,11 +311,10 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
         }
         case Command::FREE_RESERVATION: {
             int trainIndex = receiveBuffer[1] - 1;
-            char box = receiveBuffer[2];
-            unsigned int sensornum = receiveBuffer[3];
 
-            int targetTrackNodeIdx = -1;
-            trackNodeFromSensor(&targetTrackNodeIdx, box, sensornum);
+            Sensor zoneExitSensor{.box = receiveBuffer[2], .num = receiveBuffer[3]};
+
+            int targetTrackNodeIdx = trackNodeIdxFromSensor(zoneExitSensor);
 
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
 

@@ -66,3 +66,54 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
     }
     path.push(cur);
 }
+
+void computeShortestDistancesFromSource(TrackNode* source, uint64_t distRow[TRACK_MAX]) {
+    for (int i = 0; i < TRACK_MAX; i++) {
+        distRow[i] = UINT64_MAX;
+    }
+    PriorityQueue<std::pair<uint64_t, TrackNode*>, TRACK_MAX> pq;
+
+    uint64_t sourceNum = source->id;
+    distRow[sourceNum] = 0;
+    pq.push({0, source});
+
+    while (!pq.empty()) {
+        auto [curDist, curNode] = pq.top();
+        pq.pop();
+
+        if (curDist > distRow[curNode->id]) continue;  // stale pq entry
+        if (curNode->type == NodeType::EXIT) continue;
+
+        int dirs[2];
+        int numberOfDirs = 0;
+
+        if (curNode->type == NodeType::BRANCH) {
+            dirs[numberOfDirs++] = DIR_STRAIGHT;
+            dirs[numberOfDirs++] = DIR_CURVED;
+        } else {
+            dirs[numberOfDirs++] = DIR_AHEAD;
+        }
+
+        for (int i = 0; i < numberOfDirs; i += 1) {
+            TrackEdge* edge = &curNode->edge[dirs[i]];
+            TrackNode* destNode = edge->dest;
+            uint64_t newDistToDest = curDist + edge->dist;
+
+            ASSERT(destNode != nullptr);
+
+            if (newDistToDest < distRow[destNode->id]) {
+                distRow[destNode->id] = newDistToDest;
+
+                if (curNode->type != NodeType::EXIT) {
+                    pq.push({distRow[destNode->id], destNode});
+                }
+            }
+        }
+    }
+}
+
+void initializeDistanceMatrix(TrackNode* track, uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX]) {
+    for (int i = 0; i < TRACK_MAX; ++i) {
+        computeShortestDistancesFromSource(&track[i], distanceMatrix[i]);
+    }
+}

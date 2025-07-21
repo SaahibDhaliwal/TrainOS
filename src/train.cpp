@@ -4,6 +4,7 @@
 
 #include "command.h"
 #include "marklin_server_protocol.h"
+#include "pathfinding.h"
 #include "queue.h"
 #include "rpi.h"
 #include "sensor.h"
@@ -250,6 +251,17 @@ void TrainTask() {
 
     uint32_t reverseTid = 0;
 
+    TrackNode track[TRACK_MAX];
+
+#if defined(TRACKA)
+    init_tracka(track);
+#else
+
+    init_trackb(track);
+#endif
+    uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
+    initializeDistanceMatrix(track, distanceMatrix);
+
     ///////////////////////// VARIABLES /////////////////////////////////
 
     // ************ STATIC TRAIN STATE *************
@@ -290,8 +302,8 @@ void TrainTask() {
     uint64_t prevNotificationMicros = 0;
 
     // ********* RESERVATION MANAGEMENT ************
-    RingBuffer<ReservedZone, 16> reservedZones;
-    RingBuffer<ZoneExit, 16> zoneExits;
+    RingBuffer<ReservedZone, 32> reservedZones;
+    RingBuffer<ZoneExit, 32> zoneExits;
 
     bool recentZoneAddedFlag = false;
 
@@ -375,7 +387,8 @@ void TrainTask() {
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
                     distanceToSensorAhead = distance;  // might actually be more if we pass a fake sensor
-                    distanceToZoneEntraceSensorAhead = distance;
+
+                    int curSensorIdx = trackNodeIdxFromSensor(curSensor);
 
                     if (!prevSensorHitMicros || stopped) {
                         // ***************************  FIRST SENSOR HIT  ***************************
@@ -399,8 +412,13 @@ void TrainTask() {
                                 printer_proprietor::updateTrainZoneSensor(printerProprietorTid, trainIndex,
                                                                           zoneEntraceSensorAhead);
 
-                                unsigned int distance = 0;
-                                a2ui(&replyBuff[4], 10, &distance);
+                                int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
+
+                                // unsigned int distance = 0;
+                                // a2ui(&replyBuff[4], 10, &distance);
+
+                                distanceToZoneEntraceSensorAhead =
+                                    distanceMatrix[curSensorIdx][zoneEntraceSensorAheadIdx];
 
                                 ReservedZone reservation{.sensorMarkingEntrance = curSensor,
                                                          .zoneNum = static_cast<uint8_t>(replyBuff[1])};
@@ -423,6 +441,10 @@ void TrainTask() {
                     }
 
                     // *************************** AFTER FIRST SENSOR HIT  ***************************
+
+                    int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
+                    distanceToZoneEntraceSensorAhead = distanceMatrix[curSensorIdx][zoneEntraceSensorAheadIdx];
+
                     newSensorsPassed++;
                     uint64_t microsDeltaT = curMicros - prevSensorHitMicros;
                     uint64_t mmDeltaD = prevDistance;
@@ -466,7 +488,7 @@ void TrainTask() {
                     prevSensorHitMicros = curMicros;
 
                     // if you had a zone
-                    if (!(zoneExits.front()->sensorMarkingExit == curSensor) && !zoneExits.empty()) {
+                    if (!zoneExits.empty() && !(zoneExits.front()->sensorMarkingExit == curSensor)) {
                         // check
                         while (!zoneExits.empty() && !(zoneExits.front()->sensorMarkingExit == curSensor)) {
                             Sensor reservationSensor = zoneExits.front()->sensorMarkingExit;
@@ -611,7 +633,12 @@ void TrainTask() {
 
                         //  dist to prevZoneEntranceSensorAhead + dist between prevZoneEntranceSensorAhead &
                         // new zoneEntranceSensorAhead
-                        distanceToZoneEntraceSensorAhead = distanceToZoneEntraceSensorAhead + distance;
+
+                        int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
+                        int sensorAheadIdx = trackNodeIdxFromSensor(sensorAhead);
+                        distanceToZoneEntraceSensorAhead =
+                            distanceMatrix[sensorAheadIdx][zoneEntraceSensorAheadIdx] + distanceToSensorAhead;
+
                         recentZoneAddedFlag = true;
                         printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
 
