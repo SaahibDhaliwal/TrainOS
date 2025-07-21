@@ -1,14 +1,26 @@
 #include "train.h"
 
 #include <algorithm>
+#include <utility>
 
+#include "clock_server_protocol.h"
 #include "command.h"
+#include "config.h"
+#include "generic_protocol.h"
+#include "localization_server_protocol.h"
 #include "marklin_server_protocol.h"
+#include "name_server_protocol.h"
 #include "pathfinding.h"
+#include "printer_proprietor_protocol.h"
 #include "queue.h"
+#include "ring_buffer.h"
 #include "rpi.h"
 #include "sensor.h"
+#include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "timer.h"
+#include "train_protocol.h"
+#include "util.h"
 
 static const int trainAddresses[MAX_TRAINS] = {13, 14, 15, 17, 18, 55};
 // train 55 is 10H
@@ -151,21 +163,6 @@ uint64_t velocityFromSpeed(int trainIndex, int speed) {
             return TRAIN_STOP;
     }
 }
-
-#include <algorithm>
-#include <utility>
-
-#include "clock_server_protocol.h"
-#include "config.h"
-#include "generic_protocol.h"
-#include "localization_server_protocol.h"
-#include "name_server_protocol.h"
-#include "printer_proprietor_protocol.h"
-#include "ring_buffer.h"
-#include "sys_call_stubs.h"
-#include "timer.h"
-#include "train_protocol.h"
-#include "util.h"
 
 #define TASK_MSG_SIZE 20
 #define NOTIFIER_PRIORITY 15

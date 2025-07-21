@@ -114,6 +114,7 @@ void computeShortestDistancesFromSource(TrackNode* source, uint64_t distRow[TRAC
 
 void initializeDistanceMatrix(TrackNode* track, uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX]) {
     for (int i = 0; i < TRACK_MAX; ++i) {
+        if (track[i].type == NodeType::EXIT) continue;
         computeShortestDistancesFromSource(&track[i], distanceMatrix[i]);
     }
 }

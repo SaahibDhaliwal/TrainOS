@@ -1,6 +1,15 @@
 #include "pathfinding.h"
 #include "ring_buffer.h"
 
+void distanceMatrixTest() {
+    TrackNode track[TRACK_MAX];
+    init_trackb(track);
+
+    uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
+
+    initializeDistanceMatrix(track, distanceMatrix);
+}
+
 void dijkstraTest() {
     TrackNode track[TRACK_MAX];
     init_trackb(track);
@@ -43,5 +52,6 @@ void dijkstraTest() {
 }
 
 void runPathfindingTest() {
+    distanceMatrixTest();
     // dijkstraTest2();
 }

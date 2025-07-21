@@ -6,7 +6,13 @@
 #include "sensor.h"
 
 // maximum number of nodes in a layout
+#if defined(TRACKA)
 static constexpr int TRACK_MAX = 150;
+
+#else
+static constexpr int TRACK_MAX = 146;
+
+#endif
 
 // node kinds
 enum class NodeType { NONE, SENSOR, BRANCH, MERGE, ENTER, EXIT, FAKE_SENSOR };
