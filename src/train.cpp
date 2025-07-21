@@ -461,26 +461,27 @@ void TrainTask() {
                 continue;
             }
 
-            for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit sensors
-                Sensor zoneExitSensor = (*it).sensorMarkingExit;
+            // for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit sensors
+            //     Sensor zoneExitSensor = (*it).sensorMarkingExit;
 
-                if (zoneExitSensor == zoneExits.back()->sensorMarkingExit && recentZoneAddedFlag) {
-                    // this should only potentially happen on the last one, if we just added a zone and don't want to
-                    //  subtract our travelled distance to it on the same iteration we added it (wait until next notif)
-                    recentZoneAddedFlag = false;
-                    continue;
-                }
+            //     if (zoneExitSensor == zoneExits.back()->sensorMarkingExit && recentZoneAddedFlag) {
+            //         // this should only potentially happen on the last one, if we just added a zone and don't want to
+            //         //  subtract our travelled distance to it on the same iteration we added it (wait until next
+            //         notif) recentZoneAddedFlag = false; continue;
+            //     }
 
-                uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000;  // mm
+            //     uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000;  // mm
 
-                uint64_t distanceToZoneExitSensor = (*it).distanceToExitSensor;
+            //     uint64_t distanceToZoneExitSensor = (*it).distanceToExitSensor;
 
-                (*it).distanceToExitSensor = (distanceToZoneExitSensor > distanceTravelledSinceLastNoti)
-                                                 ? (distanceToZoneExitSensor - distanceTravelledSinceLastNoti)
-                                                 : 0;
-            }
+            //     (*it).distanceToExitSensor = (distanceToZoneExitSensor > distanceTravelledSinceLastNoti)
+            //                                      ? (distanceToZoneExitSensor - distanceTravelledSinceLastNoti)
+            //                                      : 0;
+            // }
 
-            while (!zoneExits.empty() && zoneExits.front()->distanceToExitSensor <= 0) {  // can we free any zones?
+            if (!zoneExits.empty() && zoneExits.front()->sensorMarkingExit == sensorBehind &&
+                distTravelledSinceLastSensorHit >=
+                    DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN) {  // can we free any zones?
                 Sensor reservationSensor = zoneExits.front()->sensorMarkingExit;
 
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
