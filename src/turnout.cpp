@@ -44,23 +44,23 @@ void initialTurnoutConfigTrackA(Turnout* turnouts) {
     turnouts[3].state = SwitchState::STRAIGHT;
     turnouts[4].state = SwitchState::CURVED;
     turnouts[5].state = SwitchState::STRAIGHT;
-    turnouts[6].state = SwitchState::STRAIGHT;
+    turnouts[6].state = SwitchState::CURVED;
     turnouts[7].state = SwitchState::CURVED;
     turnouts[8].state = SwitchState::CURVED;
     turnouts[9].state = SwitchState::STRAIGHT;
-    turnouts[10].state = SwitchState::CURVED;
+    turnouts[10].state = SwitchState::STRAIGHT;
     turnouts[11].state = SwitchState::CURVED;
     turnouts[12].state = SwitchState::STRAIGHT;
     turnouts[13].state = SwitchState::CURVED;
     turnouts[14].state = SwitchState::CURVED;
     turnouts[15].state = SwitchState::STRAIGHT;
     turnouts[16].state = SwitchState::STRAIGHT;
-    turnouts[17].state = SwitchState::CURVED;
+    turnouts[17].state = SwitchState::STRAIGHT;
     // double switches
-    turnouts[18].state = SwitchState::CURVED;    // 153
-    turnouts[19].state = SwitchState::STRAIGHT;  // 154
-    turnouts[20].state = SwitchState::CURVED;    // 155
-    turnouts[21].state = SwitchState::STRAIGHT;  // 156
+    turnouts[18].state = SwitchState::STRAIGHT;
+    turnouts[19].state = SwitchState::CURVED;
+    turnouts[20].state = SwitchState::CURVED;
+    turnouts[21].state = SwitchState::STRAIGHT;
 }
 
 void initialTurnoutConfigTrackB(Turnout* turnouts) {

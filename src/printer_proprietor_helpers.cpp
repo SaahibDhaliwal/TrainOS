@@ -354,7 +354,7 @@ void print_train_status(uint32_t consoleTid, const char* message) {
 void print_train_table(uint32_t consoleTid) {
     // clang-format off
     const char* lines[] = {
-        "                Train 13                              Train 14                              Train 1                              Train 17                              Train 18                              Train 55              ",   
+        "                Train 13                              Train 14                              Train 15                              Train 17                              Train 18                              Train 55              ",   
         "  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐",
         "  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │  │ Status:                          │",
         "  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │  │ Velocity Estimate:               │",
@@ -365,7 +365,7 @@ void print_train_table(uint32_t consoleTid) {
         "  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │",
         "  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │",
         "  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │",
-        "  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │",
+        "  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneExitDist    :                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │",
         "  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘"
     };
     // clang-format on

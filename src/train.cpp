@@ -441,6 +441,37 @@ void TrainTask() {
                     //     (curMicros - prevSensorHitMicros) / 1000);
                     prevSensorHitMicros = curMicros;
 
+                    // if you had a zone
+                    if (!(zoneExits.front()->sensorMarkingExit == curSensor) && !zoneExits.empty()) {
+                        // check
+                        while (!zoneExits.empty() && !(zoneExits.front()->sensorMarkingExit == curSensor)) {
+                            Sensor reservationSensor = zoneExits.front()->sensorMarkingExit;
+                            char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+                            localization_server::freeReservation(parentTid, trainIndex, reservationSensor, replyBuff);
+
+                            switch (replyFromByte(replyBuff[0])) {
+                                case Reply::FREE_SUCCESS: {
+                                    printer_proprietor::debugPrintF(
+                                        printerProprietorTid,
+                                        "%s \033[48;5;17m (Backup) Freed Reservation with zone: %d with sensor: %c%d",
+                                        trainColour, replyBuff[1], reservationSensor.box, reservationSensor.num);
+
+                                    zoneExits.pop();
+                                    reservedZones.pop();
+                                    printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex,
+                                                                        reservedZones);
+                                    break;
+                                }
+                                default: {
+                                    printer_proprietor::debugPrintF(
+                                        printerProprietorTid, "%s (Backup) Freed Reservation FAILED with sensor %c%d",
+                                        trainColour, reservationSensor.box, reservationSensor.num);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     break;
                 }
                 case Command::REVERSE: {
@@ -610,9 +641,13 @@ void TrainTask() {
             //                                      : 0;
             // }
 
+            // printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
+            //                                             distTravelledSinceLastSensorHit);
+            // zoneExits.front()->distanceToExitSensor <=
+            //  DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN + 10)
             if (!zoneExits.empty() && zoneExits.front()->sensorMarkingExit == sensorBehind &&
-                distTravelledSinceLastSensorHit >=
-                    DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN) {  // can we free any zones?
+                (distTravelledSinceLastSensorHit >=
+                 DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN)) {  // can we free any zones?
                 Sensor reservationSensor = zoneExits.front()->sensorMarkingExit;
 
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};

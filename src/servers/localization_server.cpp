@@ -138,6 +138,7 @@ void LocalizationServer() {
                 case Command::SET_TURNOUT: {
                     char turnoutDirection = receiveBuffer[1];
                     char turnoutNumber = receiveBuffer[2];
+
                     Turnout* turnouts = trainManager.getTurnouts();
                     TrackNode* track = trainManager.getTrack();
 
@@ -151,6 +152,10 @@ void LocalizationServer() {
                     ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
                     // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
                     setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                    // if you were to follow the track backwards, you should get a sensor. That sensor should have this
+                    // new next sensor updated
+                    ASSERT(newNextSensor == newNextSensor->reverse->nextSensor->reverse->nextSensor,
+                           "An impacted sensor was not updated");
                     break;
                 }
                 case Command::SOLENOID_OFF: {
