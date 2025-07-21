@@ -36,9 +36,9 @@ struct Train {
 void initializeTrains(Train *trains, int marklinServerTid);
 int trainNumToIndex(int trainNum);
 int trainIndexToNum(int trainIndex);
-int getFastVelocitySeed(int trainIdx);
-int getStoppingVelocitySeed(int trainIdx);
-int getStoppingDistSeed(int trainIdx);
+uint64_t getFastVelocitySeed(int trainIdx);
+uint64_t getStoppingVelocitySeed(int trainIdx);
+uint64_t getStoppingDistSeed(int trainIdx);
 
 void TrainTask();
 

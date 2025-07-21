@@ -12,19 +12,24 @@
 static const int trainAddresses[MAX_TRAINS] = {13, 14, 15, 17, 18, 55};
 // train 55 is 10H
 
-static const int trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833, 596914, 266566, 627366, 525104};
-static const int trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
-static const int trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
+// velocities are mm/s * 1000 for decimals
+static const uint64_t trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833, 596914, 266566, 627366, 525104};
+
+// acceleration are mm/s^2 * 1000 for decimals
+static const uint64_t trainAccelSeedTrackB[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
+static const uint64_t trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
+static const uint64_t trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
 
 // speed 6, loosely for tr 14
-static const int trainSlowVelocitySeedTrackB[MAX_TRAINS] = {132200, 132200, 132200, 132200, 132200, 132200};
-static const int trainSlowStoppingDistSeedTrackB[MAX_TRAINS] = {165, 165, 165, 165, 165, 165};
-static const int trainSlowVelocitySeedTrackA[MAX_TRAINS] = {132200, 132200, 132200, 132200, 132200, 132200};
-static const int trainSlowStoppingDistSeedTrackA[MAX_TRAINS] = {165, 165, 165, 165, 165, 165};
+static const uint64_t trainSlowVelocitySeedTrackB[MAX_TRAINS] = {132200, 132200, 132200, 132200, 132200, 132200};
+static const uint64_t trainSlowStoppingDistSeedTrackB[MAX_TRAINS] = {165, 165, 165, 165, 165, 165};
+static const uint64_t trainSlowVelocitySeedTrackA[MAX_TRAINS] = {132200, 132200, 132200, 132200, 132200, 132200};
+static const uint64_t trainSlowStoppingDistSeedTrackA[MAX_TRAINS] = {165, 165, 165, 165, 165, 165};
 
-static const int trainFastVelocitySeedTrackA[MAX_TRAINS] = {601640, 605833, 596914, 266566, 625911, 525104};
-static const int trainStopVelocitySeedTrackA[MAX_TRAINS] = {254904, 257347, 253548, 266566, 265294, 311583};
-static const int trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
+static const uint64_t trainFastVelocitySeedTrackA[MAX_TRAINS] = {601640, 605833, 596914, 266566, 625911, 525104};
+static const uint64_t trainAccelSeedTrackA[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
+static const uint64_t trainStopVelocitySeedTrackA[MAX_TRAINS] = {254904, 257347, 253548, 266566, 265294, 311583};
+static const uint64_t trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
 
 int trainNumToIndex(int trainNum) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
@@ -38,7 +43,7 @@ int trainIndexToNum(int trainIndex) {
     return trainAddresses[trainIndex];
 }
 
-int getFastVelocitySeed(int trainIdx) {
+uint64_t getFastVelocitySeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
 
 #if defined(TRACKA)
@@ -48,7 +53,7 @@ int getFastVelocitySeed(int trainIdx) {
 #endif
 }
 
-int getStoppingVelocitySeed(int trainIdx) {
+uint64_t getStoppingVelocitySeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
 
 #if defined(TRACKA)
@@ -58,7 +63,17 @@ int getStoppingVelocitySeed(int trainIdx) {
 #endif
 }
 
-int getSlowVelocitySeed(int trainIdx) {
+uint64_t getAccelerationSeed(int trainIdx) {
+    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
+
+#if defined(TRACKA)
+    return trainAccelSeedTrackB[trainIdx];
+#else
+    return trainAccelSeedTrackB[trainIdx];
+#endif
+}
+
+uint64_t getSlowVelocitySeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
 
 #if defined(TRACKA)
@@ -68,7 +83,7 @@ int getSlowVelocitySeed(int trainIdx) {
 #endif
 }
 
-int getSlowStoppingDistSeed(int trainIdx) {
+uint64_t getSlowStoppingDistSeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
 
 #if defined(TRACKA)
@@ -78,7 +93,7 @@ int getSlowStoppingDistSeed(int trainIdx) {
 #endif
 }
 
-int getStoppingDistSeed(int trainIdx) {
+uint64_t getStoppingDistSeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
 
 #if defined(TRACKA)
@@ -123,7 +138,7 @@ int stopDistFromSpeed(int trainIndex, int speed) {
 }
 
 // insert acceleration model here...
-int velocityFromSpeed(int trainIndex, int speed) {
+uint64_t velocityFromSpeed(int trainIndex, int speed) {
     switch (speed) {
         case TRAIN_SPEED_14:
             return getFastVelocitySeed(trainIndex);
@@ -259,6 +274,10 @@ void TrainTask() {
     uint64_t distanceToSensorAhead = 0;       // mm, static
     uint64_t distRemainingToSensorAhead = 0;  // mm, dynamic
 
+    bool isAccelerating = false;
+    uint64_t accelerationStartTime = 0;  // micros
+    uint64_t totalAccelerationTime = 0;  // micros
+
     // ********** SENSOR MANAGEMENT ****************
 
     uint64_t prevSensorHitMicros = 0;
@@ -306,7 +325,14 @@ void TrainTask() {
                     }
 
                     speed = trainSpeed;
-                    velocityEstimate = velocityFromSpeed(trainIndex, trainSpeed);
+
+                    isAccelerating = true;
+                    accelerationStartTime = timerGet();
+
+                    totalAccelerationTime =
+                        (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
+
+                    // velocityEstimate = velocityFromSpeed(trainIndex, trainSpeed);
                     stoppingDistance = stopDistFromSpeed(trainIndex, trainSpeed);
 
                     if (trainSpeed == TRAIN_STOP) {
@@ -355,8 +381,6 @@ void TrainTask() {
                         // ***************************  FIRST SENSOR HIT  ***************************
                         prevSensorHitMicros = curMicros;
 
-                        ASSERT(velocityEstimate != 0, "We should have a seed initialized by now");
-
                         printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);  // train active
                         stopped = false;
 
@@ -404,7 +428,7 @@ void TrainTask() {
                     uint64_t mmDeltaD = prevDistance;
                     prevDistance = distance;
 
-                    if (newSensorsPassed >= 5) {
+                    if (!isAccelerating) {
                         uint64_t nextSample =
                             (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
                         uint64_t lastEstimate = velocityEstimate;
@@ -497,6 +521,17 @@ void TrainTask() {
             }
         } else if (clientTid == notifierTid) {  // so we have some velocity estimate to start with
             int64_t curMicros = timerGet();
+
+            if (isAccelerating) {
+                uint64_t timeSinceAccelerationStart = curMicros - accelerationStartTime;
+                if (timeSinceAccelerationStart >= totalAccelerationTime) {
+                    velocityEstimate = velocityFromSpeed(trainIndex, speed);
+                    isAccelerating = false;
+                } else {
+                    velocityEstimate = (getAccelerationSeed(trainIndex) * timeSinceAccelerationStart) / 1000000;
+                }
+                printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
+            }
 
             uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
             uint64_t timeSinceLastNoti = 0;                                     // micros
