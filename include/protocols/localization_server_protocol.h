@@ -19,6 +19,7 @@ enum class Command : char {
     SOLENOID_OFF,
     SET_STOP,
     RESET_TRACK,
+    INITIAL_RESERVATION,
     MAKE_RESERVATION,
     FREE_RESERVATION,
     UPDATE_RESERVATION,
@@ -45,6 +46,7 @@ void resetTrack(int tid);
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 
 void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+void initReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
                        ReservationType reservation);

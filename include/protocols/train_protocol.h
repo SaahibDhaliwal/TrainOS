@@ -46,7 +46,8 @@ void finishReverse(int tid);
 
 unsigned int getReverseDelayTicks(int tid);
 
-void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, uint64_t offset);
+void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char targetBox, unsigned int targetSensorNum,
+                  uint64_t offset);
 
 }  // namespace train_server
 

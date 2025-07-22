@@ -75,11 +75,12 @@ void finishReverse(int tid) {
     handleSendResponse(res, tid);
 }
 
-void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, uint64_t offset) {
+void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char targetBox, unsigned int targetSensorNum,
+                  uint64_t offset) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::STOP_SENSOR);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u", currentBox,
-                                       currentSensorNum, offset);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%u", currentBox,
+                                       currentSensorNum, targetBox, targetSensorNum, offset);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

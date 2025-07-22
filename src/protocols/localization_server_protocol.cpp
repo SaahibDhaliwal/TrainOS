@@ -101,6 +101,16 @@ void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     handleSendResponse(res, tid);
 }
 
+void initReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::INITIAL_RESERVATION);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
+                                       sensor.box, sensor.num);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
+    handleSendResponse(res, tid);
+}
+
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
 

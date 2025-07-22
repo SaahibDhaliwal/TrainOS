@@ -290,6 +290,7 @@ void TrainTask() {
     Sensor sensorAhead;                       // sensor ahead of train
     Sensor sensorBehind;                      // sensor behind train
     Sensor stopSensor;                        // sensor we are waiting to hit
+    Sensor targetSensor;                      // sensor we are waiting to hit
     uint64_t stopSensorOffset = 0;            // mm, static
     uint64_t distanceToSensorAhead = 0;       // mm, static
     uint64_t distRemainingToSensorAhead = 0;  // mm, dynamic
@@ -396,10 +397,9 @@ void TrainTask() {
                     // check if it's a stop sensor we're expecting so we can spin up notifier
                     if (curSensor.box == stopSensor.box && curSensor.num == stopSensor.num) {
                         uint64_t arrivalTime = (stopSensorOffset * 1000 * 1000000 / velocityEstimate);
-                        uint16_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
+                        uint64_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
                         ASSERT(stopNotifierTid < 100);
                         uIntReply(stopNotifierTid, numOfTicks);
-                        marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
                         slowingDown = curMicros;
                     }
 
@@ -418,7 +418,7 @@ void TrainTask() {
 
                         // reserve current zone on initial sensor hit
                         char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-                        localization_server::makeReservation(parentTid, trainIndex, curSensor, replyBuff);
+                        localization_server::initReservation(parentTid, trainIndex, curSensor, replyBuff);
 
                         switch (replyFromByte(replyBuff[0])) {
                             case Reply::RESERVATION_SUCCESS: {
@@ -565,6 +565,9 @@ void TrainTask() {
                     stopSensor.box = receiveBuff[1];
                     stopSensor.num = static_cast<uint8_t>(receiveBuff[2]);
                     unsigned int distance = 0;
+                    targetSensor.box = receiveBuff[3];
+                    targetSensor.num = static_cast<uint8_t>(receiveBuff[4]);
+
                     a2ui(&receiveBuff[5], 10, &distance);
                     stopSensorOffset = distance;
                     break;
@@ -623,7 +626,7 @@ void TrainTask() {
             }
 
             if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !stopped &&
-                !(sensorAhead == stopSensor)) {
+                !(zoneEntraceSensorAhead == targetSensor)) {
                 ASSERT(stoppingDistance > 0);
                 // TODO: should this spin up a high priority courier? Or reply to one we already have?
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -719,7 +722,7 @@ void TrainTask() {
                 // reservation
                 // emptyReply(clientTid);
                 // continue;
-            } else if (stopped && !(stopSensor == sensorAhead)) {
+            } else if (stopped && !(zoneEntraceSensorAhead == targetSensor)) {  // this is wrong, should be zone
                 // try and make a reservation request again. If it works, go back to your speed?
                 ASSERT(!slowingDown, "we have stopped but 'stopping' has a timestamp");
 
