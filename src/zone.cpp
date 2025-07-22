@@ -85,6 +85,21 @@ bool TrainReservation::freeReservation(TrackNode* sensor, unsigned int trainNumb
     return false;
 }
 
+void TrainReservation::updateReservation(TrackNode* sensor, unsigned int trainNumber, ReservationType reservation) {
+    ZoneSegment* result = mapchecker(sensor);
+    ASSERT(result->trainNumber == trainNumber, "Somebody tried updating a reservation they didn't own");
+    result->reservationType = reservation;
+}
+
+ReservationType reservationFromByte(char c) {
+    return (c < static_cast<char>(ReservationType::COUNT)) ? static_cast<ReservationType>(c)
+                                                           : ReservationType::UNKNOWN_TYPE;
+}
+
+char toByte(ReservationType r) {
+    return static_cast<char>(r);
+}
+
 void TrainReservation::initZoneA(TrackNode* trackArray) {
     // -------------------- A
     zoneMap.insert(&trackArray[0], &zoneArray[32]);

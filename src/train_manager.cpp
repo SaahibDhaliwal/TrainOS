@@ -288,7 +288,18 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
 
             TrackNode* curSensor = &track[targetTrackNodeIdx];
 
-            if (trainReservation.reservationAttempt(&track[targetTrackNodeIdx], trainIndexToNum(trainIndex))) {
+            if (!curTrain->path.empty() && *curTrain->path.front() == curTrain->targetNode) {
+                // fail the reservation, which should be fine
+                // but we need to pop the last thing in the path
+                TrackNode* popped = *(curTrain->path.pop());
+
+                replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
+                replyBuff[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
+                sys::Reply(clientTid, replyBuff, strlen(replyBuff));
+
+                return;
+
+            } else if (trainReservation.reservationAttempt(&track[targetTrackNodeIdx], trainIndexToNum(trainIndex))) {
                 // create a sensor so we can compare them
                 // we don't want to enter this when reserving our destination sensor
                 // note: if the stopping flag is working as intended, we should never be reserving this in the first
@@ -384,7 +395,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     // pop until the front of our path is a sensor
                     while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
                         TrackNode* popped = *(curTrain->path.pop());
-                        printer_proprietor::debugPrintF(printerProprietorTid, "just popped node: %s", popped->name);
+                        // printer_proprietor::debugPrintF(printerProprietorTid, "just popped node: %s", popped->name);
                     }
                     ASSERT(!curTrain->path.empty(), "we popped too many items in our path");
                     ASSERT((*curTrain->path.front())->type == NodeType::SENSOR,
@@ -433,6 +444,24 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             }
             replyBuff[0] = toByte(train_server::Reply::FREE_FAILURE);
             sys::Reply(clientTid, replyBuff, strlen(replyBuff));
+            return;
+            break;  // just to surpress compilation warning
+        }
+        case Command::UPDATE_RESERVATION: {
+            int trainIndex = receiveBuffer[1] - 1;
+            int buffLen = strlen(receiveBuffer);
+            ReservationType rType = reservationFromByte(receiveBuffer[2]);
+            // ASSERT(0, "bufflen: %u, ReceiveBuff[bufflen - 1]: ", buffLen, receiveBuffer[buffLen - 1]);
+            for (int i = 3; i + 1 <= buffLen; i += 2) {
+                // ASSERT(i + 1 < buffLen - 1, "bufflen: %u, ReceiveBuff[bufflen - 1]: %d ", buffLen,
+                //        receiveBuffer[buffLen - 1]);
+                Sensor reservedZoneSensor{.box = receiveBuffer[i], .num = receiveBuffer[i + 1]};
+                int targetTrackNodeIdx = trackNodeIdxFromSensor(reservedZoneSensor);
+                TrackNode* sensorNode = &track[targetTrackNodeIdx];
+                trainReservation.updateReservation(sensorNode, trainIndexToNum(trainIndex), rType);
+            }
+
+            emptyReply(clientTid);
             return;
             break;  // just to surpress compilation warning
         }

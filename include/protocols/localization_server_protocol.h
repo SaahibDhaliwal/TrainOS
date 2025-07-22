@@ -3,9 +3,10 @@
 
 #include <cstdint>
 
+#include "ring_buffer.h"
 #include "sensor.h"
+#include "zone.h"
 
-// #include "command.h"
 // #include "command_server_protocol.h"
 constexpr const char* LOCALIZATION_SERVER_NAME = "localization_server";
 
@@ -20,6 +21,7 @@ enum class Command : char {
     RESET_TRACK,
     MAKE_RESERVATION,
     FREE_RESERVATION,
+    UPDATE_RESERVATION,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -44,6 +46,8 @@ void setStopLocation(int localizationTid, int trainNumber, char box, int sensorN
 
 void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
+                       ReservationType reservation);
 
 }  // namespace localization_server
 

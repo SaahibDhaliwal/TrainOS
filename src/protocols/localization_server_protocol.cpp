@@ -111,4 +111,23 @@ void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     handleSendResponse(res, tid);
 }
 
+void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
+                       ReservationType reservation) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_RESERVATION);
+    sendBuf[1] = static_cast<char>(trainIndex + 1);
+    sendBuf[2] = toByte(reservation);
+
+    int strSize = 3;
+
+    for (auto it = reservedZones.begin(); it != reservedZones.end(); ++it) {
+        printer_proprietor::formatToString(sendBuf + strSize, Config::MAX_MESSAGE_LENGTH - strSize - 1, "%c%c",
+                                           it->sensorMarkingEntrance.box, it->sensorMarkingEntrance.num);
+        strSize += strlen(sendBuf + strSize);
+    }
+
+    int res = sys::Send(tid, sendBuf, strSize + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace localization_server

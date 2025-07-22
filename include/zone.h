@@ -1,6 +1,7 @@
 #ifndef __ZONE__
 #define __ZONE__
 
+// #include "localization_server_protocol.h"
 #include "sensor.h"
 #include "train.h"
 #include "turnout.h"
@@ -8,6 +9,9 @@
 
 #define ZONE_COUNT 34
 
+enum class ReservationType : char { ONGOING = 3, STOPPED, PANIC, COUNT, UNKNOWN_TYPE };
+char toByte(ReservationType r);
+ReservationType reservationFromByte(char c);
 struct ZoneSegment {
     uint32_t zoneNum;
     // if it's reserved, which train is in there?
@@ -16,6 +20,7 @@ struct ZoneSegment {
 
     // to determine whether a train is in the zone but ahead, so safe to enter slowly
     ZoneSegment* previousZone = nullptr;
+    ReservationType reservationType = ReservationType::ONGOING;
     // TrackNode* branch;
 };
 
@@ -48,6 +53,7 @@ class TrainReservation {
     int isSectionReserved(TrackNode* start);
     bool reservationAttempt(TrackNode* entrySensor, unsigned int trainNumber);
     bool freeReservation(TrackNode* sensor, unsigned int trainNumber);
+    void updateReservation(TrackNode* sensor, unsigned int trainNumber, ReservationType reservation);
     // void reserveSection(TrackNode* whereverThisNodeIs, unsigned int trainNumber);
 };
 

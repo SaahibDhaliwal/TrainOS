@@ -345,7 +345,13 @@ void TrainTask() {
 
                     unsigned int trainSpeed = 10 * a2d(receiveBuff[1]) + a2d(receiveBuff[2]);
                     if (!isReversing && !slowingDown) {
+                        printer_proprietor::debugPrintF(printerProprietorTid, "%s Setting speed to %u ", trainColour,
+                                                        trainSpeed);
                         marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, myTrainNumber);
+                    } else {
+                        printer_proprietor::debugPrintF(printerProprietorTid,
+                                                        "%s FAILED to set speed to %u. reversing: %u slowingDown: %u ",
+                                                        trainColour, trainSpeed, isReversing, slowingDown);
                     }
 
                     speed = trainSpeed;
@@ -403,7 +409,7 @@ void TrainTask() {
 
                     int curSensorIdx = trackNodeIdxFromSensor(curSensor);
 
-                    if (!prevSensorHitMicros || stopped) {
+                    if (!prevSensorHitMicros) {
                         // ***************************  FIRST SENSOR HIT  ***************************
                         prevSensorHitMicros = curMicros;
 
@@ -448,6 +454,14 @@ void TrainTask() {
                             }
                         }
 
+                        sensorBehind = curSensor;
+                        emptyReply(notifierTid);  // ready for real-time train updates now
+                        continue;
+                    } else if (stopped) {
+                        // && !(stopSensor == sensorAhead)
+                        prevSensorHitMicros = curMicros;
+                        // if we were stopped, but now we hit a sensor. We clearly are no longer stopped
+                        stopped = false;
                         sensorBehind = curSensor;
                         emptyReply(notifierTid);  // ready for real-time train updates now
                         continue;
@@ -500,7 +514,7 @@ void TrainTask() {
                     //     (curMicros - prevSensorHitMicros) / 1000);
                     prevSensorHitMicros = curMicros;
 
-                    // if you had a zone
+                    // if you had an old zone that should have been freed
                     if (!zoneExits.empty() && !(zoneExits.front()->sensorMarkingExit == curSensor)) {
                         // check
                         while (!zoneExits.empty() && !(zoneExits.front()->sensorMarkingExit == curSensor)) {
@@ -603,10 +617,13 @@ void TrainTask() {
 
             // if our stop will end up in the next zone, reserve it
             // fix this wack ass logic with flags
-            printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
-                                                        distRemainingToZoneEntranceSensorAhead - stoppingDistance);
-            if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !slowingDown &&
-                !stopped) {
+            if (!stopped) {
+                printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
+                                                            distRemainingToZoneEntranceSensorAhead - stoppingDistance);
+            }
+
+            if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !stopped &&
+                !(sensorAhead == stopSensor)) {
                 ASSERT(stoppingDistance > 0);
                 // TODO: should this spin up a high priority courier? Or reply to one we already have?
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -660,6 +677,11 @@ void TrainTask() {
                         recentZoneAddedFlag = true;
                         printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
 
+                        if (slowingDown) {
+                            slowingDown = 0;
+                            marklin_server::setTrainSpeed(marklinServerTid, speed, myTrainNumber);
+                        }
+
                         break;
                     }
                     case Reply::RESERVATION_FAILURE: {
@@ -685,49 +707,86 @@ void TrainTask() {
 
             if (distanceToSensorAhead > 0 && !slowingDown && !stopped) {
                 printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
-            } else if (((curMicros - slowingDown) / 1000) > 1000 * 6 && !slowingDown) {  // 6 seconds for slowing down?
+            } else if (((curMicros - slowingDown) / (1000 * 1000)) > 5 && slowingDown) {  // 6 seconds for slowing down?
                 // insert decceleration model here
                 slowingDown = 0;
                 stopped = true;
+                prevSensorHitMicros = 0;
                 prevNotificationMicros = curMicros;
+                localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+                printer_proprietor::debugPrintF(printerProprietorTid, "Assume we have updated our reservation types");
                 // I want to uncomment this but I think it breaks the console w some infinite loop of failing a
                 // reservation
                 // emptyReply(clientTid);
-                continue;
-            } else if (stopped) {
+                // continue;
+            } else if (stopped && !(stopSensor == sensorAhead)) {
                 // try and make a reservation request again. If it works, go back to your speed?
+                ASSERT(!slowingDown, "we have stopped but 'stopping' has a timestamp");
+
+                char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+                localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
+
+                switch (replyFromByte(replyBuff[0])) {
+                    case Reply::RESERVATION_SUCCESS: {
+                        uint64_t distToExitSensor =
+                            distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
+
+                        ReservedZone reservation{.sensorMarkingEntrance = zoneEntraceSensorAhead,
+                                                 .zoneNum = static_cast<uint8_t>(replyBuff[1])};
+                        reservedZones.push(reservation);
+
+                        // let's create an exit entry for a previous zone
+                        ZoneExit zoneExit{.sensorMarkingExit = zoneEntraceSensorAhead,
+                                          .distanceToExitSensor = distToExitSensor};
+                        zoneExits.push(zoneExit);
+
+                        // we have a new zone entrance sensor we care about
+                        zoneEntraceSensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
+                        printer_proprietor::updateTrainZoneSensor(printerProprietorTid, trainIndex,
+                                                                  zoneEntraceSensorAhead);
+
+                        unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
+                        a2ui(&replyBuff[4], 10, &distance);
+
+                        printer_proprietor::debugPrintF(
+                            printerProprietorTid,
+                            "%s \033[48;5;22m (Wakeup) Made Reservation for Zone: %d using Zone Entrance "
+                            "Sensor: %c%d ",
+                            trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box, zoneExit.sensorMarkingExit.num,
+                            distRemainingToZoneEntranceSensorAhead, zoneEntraceSensorAhead.box);
+
+                        int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
+                        int sensorAheadIdx = trackNodeIdxFromSensor(sensorAhead);
+                        distanceToZoneEntraceSensorAhead =
+                            distanceMatrix[sensorAheadIdx][zoneEntraceSensorAheadIdx] + distanceToSensorAhead;
+
+                        recentZoneAddedFlag = true;
+                        printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
+                        marklin_server::setTrainSpeed(marklinServerTid, speed,
+                                                      myTrainNumber);  // go back up to our speed
+                        break;
+                    }
+                    case Reply::RESERVATION_FAILURE: {
+                        // We are already stopped
+                        clock_server::Delay(clockServerTid, 10);  // delay 10 ticks before replying to notifier
+                        break;
+                    }
+                    default: {
+                        printer_proprietor::debugPrintF(printerProprietorTid, "INVALID REPLY FROM makeReservation %d",
+                                                        replyFromByte(replyBuff[0]));
+                        break;
+                    }
+                }
+
+            } else if (stopped) {
+                // we are stopped, generate a new stop location
                 prevNotificationMicros = curMicros;
-                continue;
-            } else {
-                prevNotificationMicros = curMicros;
-                continue;
+                ASSERT(!slowingDown, "we have stopped but 'stopping' has a timestamp");
+
+                continue;  // DO NOT REPLY TO NOTIFIER
             }
+            // otherwise, we are slowing down
 
-            // for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit
-            // sensors
-            //     Sensor zoneExitSensor = (*it).sensorMarkingExit;
-
-            //     if (zoneExitSensor == zoneExits.back()->sensorMarkingExit && recentZoneAddedFlag) {
-            //         // this should only potentially happen on the last one, if we just added a zone and don't
-            //         want to
-            //         //  subtract our travelled distance to it on the same iteration we added it (wait until next
-            //         notif) recentZoneAddedFlag = false; continue;
-            //     }
-
-            //     uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000; //
-            //     mm
-
-            //     uint64_t distanceToZoneExitSensor = (*it).distanceToExitSensor;
-
-            //     (*it).distanceToExitSensor = (distanceToZoneExitSensor > distanceTravelledSinceLastNoti)
-            //                                      ? (distanceToZoneExitSensor - distanceTravelledSinceLastNoti)
-            //                                      : 0;
-            // }
-
-            // printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
-            //                                             distTravelledSinceLastSensorHit);
-            // zoneExits.front()->distanceToExitSensor <=
-            //  DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN + 10)
             if (!zoneExits.empty() && zoneExits.front()->sensorMarkingExit == sensorBehind &&
                 (distTravelledSinceLastSensorHit >=
                  DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN)) {  // can we free any zones?
