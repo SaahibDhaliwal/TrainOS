@@ -88,6 +88,7 @@ void update_train_zone_sensor(uint32_t consoleTid, int trainIndex, const char* m
 void update_train_zone(uint32_t consoleTid, int trainIndex, const char* msg);
 void update_train_zone_distance(uint32_t consoleTid, int trainIndex, const char* msg);
 void update_train_orientation(uint32_t consoleTid, int trainIndex, bool isForward);
+void update_train_destination(uint32_t consoleTid, int trainIndex, const char* msg);
 
 /*********** DEBUG ********************************/
 

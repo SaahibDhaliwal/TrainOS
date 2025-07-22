@@ -365,7 +365,7 @@ void print_train_table(uint32_t consoleTid) {
         "  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │",
         "  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │",
         "  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │",
-        "  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneExitDist    :                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │",
+        "  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │",
         "  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘"
     };
     // clang-format on
@@ -445,6 +445,12 @@ void update_train_orientation(uint32_t consoleTid, int trainIndex, bool isForwar
     } else {
         console_server::Puts(consoleTid, 0, "Backward");
     }
+}
+
+void update_train_destination(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 9,
+                           (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
 }
 
 /*********** DEBUG  ********************************/

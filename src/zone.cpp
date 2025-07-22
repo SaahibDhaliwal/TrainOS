@@ -31,7 +31,7 @@ int TrainReservation::isSectionReserved(TrackNode* start) {
 
 ZoneSegment* TrainReservation::mapchecker(TrackNode* entrySensor) {
     ZoneSegment** search = zoneMap.get(entrySensor);
-    ASSERT(search != nullptr, "That node doesn't exist in the map. [temp]: Are you sure it wasn't an ex/en?");
+    ASSERT(search != nullptr, "That node doesn't exist in the map. node: %s", entrySensor->name);
     ZoneSegment* result = *search;
     ASSERT(result != nullptr, "We allocated a nullptr in the map, oops");
     return result;
@@ -283,6 +283,7 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     // ------  10 ---------
     zoneMap.insert(&trackArray[142], &zoneArray[3]);
     zoneMap.insert(&trackArray[143], &zoneArray[3]);
+
     zoneMap.insert(&trackArray[144], &zoneArray[8]);
     zoneMap.insert(&trackArray[145], &zoneArray[6]);
     zoneMap.insert(&trackArray[146], &zoneArray[6]);

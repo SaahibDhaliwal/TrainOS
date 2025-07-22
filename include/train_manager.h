@@ -11,6 +11,7 @@
 #include "turnout.h"
 #include "zone.h"
 
+#define NODE_MAX 7
 class TrainManager {
    private:
     Train trains[MAX_TRAINS];
@@ -38,6 +39,8 @@ class TrainManager {
     RingBuffer<std::pair<char, char>, 100> turnoutQueue;
     bool stopTurnoutNotifier = false;
     RingBuffer<int, MAX_TRAINS> reversingTrains;
+    TrackNode* train13[NODE_MAX];
+    TrackNode* train14[NODE_MAX];
 
    public:
     TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);
@@ -55,6 +58,7 @@ class TrainManager {
     uint32_t getLargestTrainTid();
     TrackNode* getTrack();
     Turnout* getTurnouts();
+    TrackNode* trainIndexToTrackNode(int trainIndex, int count);
 };
 
 #endif

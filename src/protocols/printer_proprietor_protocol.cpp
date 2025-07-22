@@ -373,4 +373,13 @@ void debugPrintF(int tid, const char* fmt, ...) {
     handleSendResponse(res, tid);
 }
 
+void updateTrainDestination(int tid, int trainIndex, Sensor sensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_DESTINATION);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u ", trainIndex + 1, sensor.box, sensor.num);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
 }  // namespace printer_proprietor

@@ -60,9 +60,40 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
         sys::Send(trainTasks[i], sendBuff, 4, nullptr, 0);
     }
 
+    // // complex
+    // train13[0] = track[76];  // e13
+    // train13[1] = track[2];   // a3
+    // train13[2] = track[19];  // b4
+    // train13[3] = track[79];  // e16
+    // train13[4] = track[72];  // e9
+    // train13[5] = track[19];  // b4
+    // train13[6] = track[70];  // e7
+
+    // easy
+    train13[0] = &track[73];  // e10
+    train13[1] = &track[17];  // b2
+    train13[2] = &track[50];  // d3
+    train13[3] = &track[47];  // c16
+    train13[4] = &track[2];   // a3
+    train13[5] = &track[39];  // c8
+    train13[6] = &track[44];  // c13
+
+    train14[1] = &track[17];  // b2
+    train14[0] = &track[73];  // e10
+    train14[2] = &track[50];  // d3
+    train14[3] = &track[47];  // c16
+    train14[4] = &track[2];   // a3
+    train14[5] = &track[39];  // c8
+    train14[6] = &track[44];  // c13
+
     // uncomment this for testing offtrack
     //  trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
     //  trains[trainNumToIndex(16)].active = true;
+}
+TrackNode* TrainManager::trainIndexToTrackNode(int trainIndex, int count) {
+    if (trainIndex == 0) return train13[count];
+    if (trainIndex == 1) return train14[count];
+    return train14[count];
 }
 
 void TrainManager::processInputCommand(char* receiveBuffer) {
@@ -181,19 +212,21 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
 
         int signedOffset = 0;
 
-        TrackNode* targetNode = nullptr;
+        TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
+        curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
 
-        while (!targetNode || curSensor->nextSensor == targetNode || curSensor->nextSensor->nextSensor == targetNode ||
-               curSensor->nextSensor->nextSensor->nextSensor == targetNode ||
-               curSensor->reverse->nextSensor == targetNode ||
-               curSensor->reverse->nextSensor->nextSensor == targetNode ||
-               curSensor->reverse->nextSensor->nextSensor->nextSensor == targetNode) {
-            unsigned int seed = timerGet();
-            char box = 'A' + (seed % 5);    // Random letter A-E
-            int nodeNum = 1 + (seed % 16);  // Random number 1-16
-            int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
-            targetNode = &track[targetTrackNodeIdx];
-        }
+        // while (!targetNode || curSensor->nextSensor == targetNode || curSensor->nextSensor->nextSensor == targetNode
+        // ||
+        //        curSensor->nextSensor->nextSensor->nextSensor == targetNode ||
+        //        curSensor->reverse->nextSensor == targetNode ||
+        //        curSensor->reverse->nextSensor->nextSensor == targetNode ||
+        //        curSensor->reverse->nextSensor->nextSensor->nextSensor == targetNode) {
+        //     unsigned int seed = timerGet();
+        //     char box = 'A' + (seed % 5);    // Random letter A-E
+        //     int nodeNum = 1 + (seed % 16);  // Random number 1-16
+        //     int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
+        //     targetNode = &track[targetTrackNodeIdx];
+        // }
 
         // if signed offset is a big negative number, then we're fine
         // but if larger than our stopping distance, we need to choose a new target
@@ -234,7 +267,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             source = source->nextSensor;
         }
         // printer_proprietor::debugPrintF(printerProprietorTid, "pathing starts at sensor: %s", source->name);
-
         PATH_FINDING_RESULT result =
             computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation);
 
@@ -640,24 +672,12 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
 
             int signedOffset = 0;
 
-            TrackNode* targetNode = nullptr;
-
             Train* curTrain = &trains[trainIndex];
 
             TrackNode* prevTarget = curTrain->targetNode;
 
-            while (!targetNode || prevTarget->nextSensor == targetNode ||
-                   prevTarget->nextSensor->nextSensor == targetNode ||
-                   prevTarget->nextSensor->nextSensor->nextSensor == targetNode ||
-                   prevTarget->reverse->nextSensor == targetNode ||
-                   prevTarget->reverse->nextSensor->nextSensor == targetNode ||
-                   prevTarget->reverse->nextSensor->nextSensor->nextSensor == targetNode) {
-                unsigned int seed = timerGet();
-                char box = 'A' + (seed % 5);    // Random letter A-E
-                int nodeNum = 1 + (seed % 16);  // Random number 1-16
-                int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
-                targetNode = &track[targetTrackNodeIdx];
-            }
+            TrackNode* targetNode = trainIndexToTrackNode(trainIndex, curTrain->trackCount);
+            curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
 
             // if signed offset is a big negative number, then we're fine
             // but if larger than our stopping distance, we need to choose a new target
@@ -713,6 +733,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             // const char* debugPath[100] = {0};
             // int counter = 0;
             //
+            printer_proprietor::debugPrintF(printerProprietorTid, "path size: %u", backwardsPath.size());
             for (auto it = backwardsPath.begin(); it != backwardsPath.end(); ++it) {
                 TrackNode* node = *it;
                 uint64_t edgeDistance = 0;
@@ -769,6 +790,9 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             // printer_proprietor::debugPrintF(printerProprietorTid, "Localization TID is: %u", sys::MyTid());
             char tarBox = curTrain->targetNode->name[0];
             unsigned int tarNum = ((curTrain->targetNode->num + 1) - (tarBox - 'A') * 16);
+            ASSERT(clientTid == trainTasks[trainNumToIndex(curTrain->id)], "clienttid: %u, other: %u", clientTid,
+                   trainTasks[trainNumToIndex(curTrain->id)]);
+            emptyReply(clientTid);
             train_server::sendStopInfo(trainTasks[trainNumToIndex(curTrain->id)], stopBox, stopSensorNum, tarBox,
                                        tarNum, curTrain->whereToIssueStop);
 
@@ -800,7 +824,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
 
             printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", strBuff);
 
-            emptyReply(clientTid);
+            // emptyReply(clientTid);
             return;
             break;  // just to surpress compilation warning
         }
@@ -913,6 +937,10 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
         source = source->nextSensor;
     }
     // printer_proprietor::debugPrintF(printerProprietorTid, "pathing starts at sensor: %s", source->name);
+
+    // for (auto it = backwardsPath->begin(); it != backwardsPath->end(); ++it) {
+    //     backwardsPath->pop();
+    // }
 
     computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation);
 

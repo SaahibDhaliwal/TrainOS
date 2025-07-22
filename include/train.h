@@ -22,6 +22,7 @@ struct Train {
     TrackNode *sensorAhead;
     int64_t sensorAheadMicros;
     TrackNode *sensorBehind;
+    int trackCount = 0;
 
     // stopping
     bool stopping;
@@ -31,6 +32,7 @@ struct Train {
     uint64_t whereToIssueStop;
     TrackNode *sensorWhereSpeedChangeStarted;
     RingBuffer<TrackNode *, 1000> path;
+    RingBuffer<TrackNode *, 1000> backwardsPath;
 };
 
 void initializeTrains(Train *trains, int marklinServerTid);

@@ -32,7 +32,7 @@ static const uint64_t trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833,
 static const uint64_t trainAccelSeedTrackB[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
 static const uint64_t trainDecelSeedTrackB[MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
 static const uint64_t trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
-static const uint64_t trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
+static const uint64_t trainStoppingDistSeedTrackB[MAX_TRAINS] = {370, 370, 370, 370, 370, 370};
 
 // speed 6, loosely for tr 14
 static const uint64_t trainSlowVelocitySeedTrackB[MAX_TRAINS] = {132200, 132200, 132200, 132200, 132200, 132200};
@@ -44,7 +44,7 @@ static const uint64_t trainFastVelocitySeedTrackA[MAX_TRAINS] = {601640, 605833,
 static const uint64_t trainAccelSeedTrackA[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
 static const uint64_t trainDecelSeedTrackA[MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
 static const uint64_t trainStopVelocitySeedTrackA[MAX_TRAINS] = {254904, 257347, 253548, 266566, 265294, 311583};
-static const uint64_t trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
+static const uint64_t trainStoppingDistSeedTrackA[MAX_TRAINS] = {370, 370, 370, 370, 370, 370};
 
 int trainNumToIndex(int trainNum) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
@@ -280,6 +280,7 @@ void TrainTask() {
     uint64_t slowingDown = 0;
     bool stopped = true;
     bool isForward = true;
+    // uint64_t stopVelocity = 0;
 
     // ********** REAL-TIME TRAIN STATE ************
     uint64_t velocityEstimate = 0;  // in micrometers per microsecond (µm/µs) with a *1000 for decimals
@@ -302,6 +303,9 @@ void TrainTask() {
     bool isReversing = false;
     uint64_t reversingStartTime = 0;  // micros
     uint64_t totalReversingTime = 0;  // micros
+
+    // uint64_t slowingDown = 0;
+    uint64_t totalStoppingTime = 0;  // micros
 
     // ********** SENSOR MANAGEMENT ****************
 
@@ -369,6 +373,7 @@ void TrainTask() {
                     if (trainSpeed == TRAIN_STOP) {
                         slowingDown = timerGet();
                         // plug in acceleration model here lmao
+                        totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
                     }
 
                     while (!velocitySamples.empty()) {
@@ -567,7 +572,7 @@ void TrainTask() {
                     unsigned int distance = 0;
                     targetSensor.box = receiveBuff[3];
                     targetSensor.num = static_cast<uint8_t>(receiveBuff[4]);
-
+                    printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
                     a2ui(&receiveBuff[5], 10, &distance);
                     stopSensorOffset = distance;
                     break;
@@ -689,13 +694,16 @@ void TrainTask() {
                     }
                     case Reply::RESERVATION_FAILURE: {
                         // need to break NOW
-                        marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
-                        slowingDown = curMicros;
+                        if (!slowingDown) {
+                            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
+                            slowingDown = curMicros;
+                            totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
 
-                        printer_proprietor::debugPrintF(
-                            printerProprietorTid,
-                            "%s \033[5m \033[38;5;160m FAILED Reservation for zone %d with sensor: %c%d \033[m",
-                            trainColour, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
+                            printer_proprietor::debugPrintF(
+                                printerProprietorTid,
+                                "%s \033[5m \033[38;5;160m FAILED Reservation for zone %d with sensor: %c%d \033[m",
+                                trainColour, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
+                        }
 
                         // try again in a bit? after we stopped?
                         break;
@@ -710,9 +718,10 @@ void TrainTask() {
 
             if (distanceToSensorAhead > 0 && !slowingDown && !stopped) {
                 printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
-            } else if (((curMicros - slowingDown) / (1000 * 1000)) > 5 && slowingDown) {  // 6 seconds for slowing down?
+            } else if ((curMicros - slowingDown) / (1000 * 1000) > 5 && slowingDown) {
                 // insert decceleration model here
                 slowingDown = 0;
+                totalStoppingTime = 0;
                 stopped = true;
                 prevSensorHitMicros = 0;
                 prevNotificationMicros = curMicros;
@@ -785,6 +794,7 @@ void TrainTask() {
                 // we are stopped, generate a new stop location
                 prevNotificationMicros = curMicros;
                 ASSERT(!slowingDown, "we have stopped but 'stopping' has a timestamp");
+                // localization server call
 
                 localization_server::newDestination(parentTid, trainIndex);
                 marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
@@ -866,8 +876,16 @@ void TrainTask() {
                 }
             }
         } else if (clientTid == stopNotifierTid) {
+            printer_proprietor::debugPrintF(printerProprietorTid, "STOP NOTIFIER GOT TO US");
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
+            clock_server::Delay(clockServerTid, 10);
+
+            totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
             slowingDown = timerGet();
+            stopSensor.box = 0;
+            stopSensor.num = 0;
+            targetSensor.box = 0;
+            targetSensor.num = 0;
         } else {
             ASSERT(0, "someone else sent to train task?");
         }
