@@ -179,6 +179,159 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         }
         curTrain->sensorWhereSpeedChangeStarted = curSensor;
 
+        char box = receiveBuffer[2];
+        int nodeNum = static_cast<int>(receiveBuffer[3]);
+
+        int signedOffset = 0;
+
+        TrackNode* targetNode = nullptr;
+
+        while (!targetNode || curSensor->nextSensor == targetNode || curSensor->nextSensor->nextSensor == targetNode ||
+               curSensor->nextSensor->nextSensor->nextSensor == targetNode ||
+               curSensor->reverse->nextSensor == targetNode ||
+               curSensor->reverse->nextSensor->nextSensor == targetNode ||
+               curSensor->reverse->nextSensor->nextSensor->nextSensor == targetNode) {
+            unsigned int seed = timerGet();
+            char box = 'A' + (seed % 5);    // Random letter A-E
+            int nodeNum = 1 + (seed % 16);  // Random number 1-16
+            int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
+            TrackNode* targetNode = &track[targetTrackNodeIdx];
+        }
+
+        // if signed offset is a big negative number, then we're fine
+        // but if larger than our stopping distance, we need to choose a new target
+        int stoppingDistance = curTrain->stoppingDistance - signedOffset;
+        // iterate over nodes until the difference is larger than zero
+        // "fakes" a target that is within our stopping distance
+        while (stoppingDistance < 0) {
+            ASSERT(0, "im gonna assume we don't hit this in testing");
+            if (targetNode->type == NodeType::BRANCH) {
+                if (turnouts[turnoutIdx(targetNode->num)].state == SwitchState::CURVED) {
+                    stoppingDistance += targetNode->edge[DIR_CURVED].dist;
+                    targetNode = targetNode->edge[DIR_CURVED].dest;
+                } else {
+                    stoppingDistance += targetNode->edge[DIR_STRAIGHT].dist;
+                    targetNode = targetNode->edge[DIR_STRAIGHT].dest;
+                }
+            } else if (targetNode->type == NodeType::EXIT) {
+                // ex: sensor A2, A14, A15 don't have a next sensor
+                ASSERT(0, "Offset was too large and you hit a dead end");
+                break;
+            } else {
+                stoppingDistance += targetNode->edge[DIR_AHEAD].dist;
+                targetNode = targetNode->edge[DIR_AHEAD].dest;
+            }
+        }
+
+        curTrain->targetNode = targetNode;
+        curTrain->stoppingDistance = stoppingDistance;
+        curTrain->sensorWhereSpeedChangeStarted = curTrain->sensorBehind;
+        RingBuffer<TrackNode*, 1000> backwardsPath;
+        // since we start our search with a sensor ahead, our path will always start with a sensor
+        // if THIS TRAIN has already reserved the sensor ahead, use the sensor AFTER that
+        // because we expect the train's next reservation to be the first sensor in this path
+        TrackNode* source = curTrain->sensorAhead;
+        while (trainReservation.isSectionReserved(source) == curTrain->id) {
+            printer_proprietor::debugPrintF(printerProprietorTid, "We already reserved ahead of sensor %s",
+                                            source->name);
+            source = source->nextSensor;
+        }
+        // printer_proprietor::debugPrintF(printerProprietorTid, "pathing starts at sensor: %s", source->name);
+
+        computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation);
+
+        TrackNode* lastSensor = nullptr;
+        uint64_t travelledDistance = 0;
+        TrackNode* prev = nullptr;
+        // for debug
+        // const char* debugPath[100] = {0};
+        // int counter = 0;
+        //
+        for (auto it = backwardsPath.begin(); it != backwardsPath.end(); ++it) {
+            TrackNode* node = *it;
+            uint64_t edgeDistance = 0;
+            if (!prev) {
+                prev = node;
+                // debugPath[counter] = node->name;
+                // counter++;
+                continue;
+            }
+            if (node->type == NodeType::BRANCH) {
+                if (node->edge[DIR_CURVED].dest == prev) {
+                    edgeDistance += node->edge[DIR_CURVED].dist;
+                }
+                if (node->edge[DIR_STRAIGHT].dest == prev) {
+                    edgeDistance += node->edge[DIR_STRAIGHT].dist;
+                }
+            } else {
+                edgeDistance += node->edge[DIR_AHEAD].dist;
+            }
+            if (!lastSensor) {
+                travelledDistance += edgeDistance;
+                if (node->type == NodeType::SENSOR && travelledDistance >= curTrain->stoppingDistance) {
+                    lastSensor = node;
+                }
+            }
+            prev = node;
+            // debugPath[counter] = node->name;
+            // counter++;
+            // we also construct another ring buffer that goes from recent->end?
+        }
+
+        // this assumes that we are at constant velocity, but the train will use it's stopping distance when calculating
+        //   how many ticks to wait
+        curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
+        curTrain->stoppingSensor = lastSensor;
+
+        char stopBox = curTrain->stoppingSensor->name[0];
+        unsigned int stopSensorNum = ((curTrain->stoppingSensor->num + 1) - (stopBox - 'A') * 16);
+        if (stopBox == 'F') {
+            ASSERT(0, "this should never be reached: trying to stop on a fake sensor");
+            stopSensorNum = curTrain->stoppingSensor->num;
+        }
+        printer_proprietor::debugPrintF(
+            printerProprietorTid,
+            "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping "
+            "distance: %d ",
+            lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
+            curTrain->stoppingDistance);
+
+        // for (int i = 0; i < MAX_TRAINS; i++) {
+        //     printer_proprietor::debugPrintF(printerProprietorTid, "TrainTask TID at index %u is: %d", i,
+        //     trainTasks[i]);
+        // }
+        // printer_proprietor::debugPrintF(printerProprietorTid, "Localization TID is: %u", sys::MyTid());
+        train_server::sendStopInfo(trainTasks[trainNumToIndex(curTrain->id)], stopBox, stopSensorNum,
+                                   curTrain->whereToIssueStop);
+
+        // traverse shortest path backwards to get our forwards path
+        auto it = backwardsPath.end();
+        do {
+            it--;
+            curTrain->path.push((*it));
+        } while (it != backwardsPath.begin());
+
+        // // for debug
+        const char* debugPath[100] = {0};
+        int counter = 0;
+        for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+            TrackNode* node = *it;
+            debugPath[counter] = node->name;
+            counter++;
+        }
+        char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+        int strSize = 0;
+        for (int i = 0; i < counter; i++) {
+            strcpy(strBuff + strSize, debugPath[i]);
+            strSize += strlen(debugPath[i]);
+            if (i != counter - 1) {
+                strcpy(strBuff + strSize, "->");
+                strSize += 2;
+            }
+        }
+
+        printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", strBuff);
+
     } else {
         // if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
         //     RingBuffer<TrackNode*, 1000> path;

@@ -834,7 +834,7 @@ void TrainTask() {
                     ASSERT(isReversing);
                     marklin_server::setTrainReverseAndSpeed(marklinServerTid, speed, myTrainNumber);
                     isReversing = false;
-                    isForward != isForward;
+                    isForward = !isForward;
                     // change our stopping distance and orientation
                     printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
                     // should update our stopping distance
