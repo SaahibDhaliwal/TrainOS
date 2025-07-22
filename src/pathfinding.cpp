@@ -51,7 +51,7 @@ uint64_t computeForwardShortestPath(TrackNode* source, TrackNode* target, RingBu
             TrackNode* destNode = edge->dest;
             uint64_t newDistToDest = curDist + edge->dist;
 
-            if (trainReservation->isSectionReserved(destNode) == 0) continue;
+            if (trainReservation->isSectionReserved(destNode) != 0) continue;
 
             ASSERT(destNode != nullptr);
 

@@ -179,9 +179,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         }
         curTrain->sensorWhereSpeedChangeStarted = curSensor;
 
-        char box = receiveBuffer[2];
-        int nodeNum = static_cast<int>(receiveBuffer[3]);
-
         int signedOffset = 0;
 
         TrackNode* targetNode = nullptr;
@@ -195,7 +192,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             char box = 'A' + (seed % 5);    // Random letter A-E
             int nodeNum = 1 + (seed % 16);  // Random number 1-16
             int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
-            TrackNode* targetNode = &track[targetTrackNodeIdx];
+            targetNode = &track[targetTrackNodeIdx];
         }
 
         // if signed offset is a big negative number, then we're fine
@@ -278,8 +275,8 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             // we also construct another ring buffer that goes from recent->end?
         }
 
-        // this assumes that we are at constant velocity, but the train will use it's stopping distance when calculating
-        //   how many ticks to wait
+        // this assumes that we are at constant velocity, but the train will use it's stopping distance when
+        // calculating how many ticks to wait
         curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
         curTrain->stoppingSensor = lastSensor;
 
