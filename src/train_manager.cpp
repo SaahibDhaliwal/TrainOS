@@ -546,7 +546,7 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
     }
     // printer_proprietor::debugPrintF(printerProprietorTid, "pathing starts at sensor: %s", source->name);
 
-    computeShortestPath(source, curTrain->targetNode, backwardsPath);
+    computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation);
 
     TrackNode* lastSensor = nullptr;
     uint64_t travelledDistance = 0;

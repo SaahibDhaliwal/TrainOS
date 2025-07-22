@@ -6,7 +6,8 @@
 #include "ring_buffer.h"
 #include "unordered_map.h"
 
-void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path) {
+uint64_t computeForwardShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path,
+                                    TrainReservation* trainReservation) {
     uint64_t distances[TRACK_MAX];
     TrackNode* parents[TRACK_MAX];
     PriorityQueue<std::pair<uint64_t, TrackNode*>, TRACK_MAX> pq;
@@ -14,6 +15,10 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
     for (int i = 0; i < TRACK_MAX; i++) {
         distances[i] = UINT64_MAX;
         parents[i] = nullptr;
+    }
+
+    if (source == target) {
+        source = source->nextSensor;
     }
 
     uint64_t sourceNum = source->id;
@@ -46,6 +51,8 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
             TrackNode* destNode = edge->dest;
             uint64_t newDistToDest = curDist + edge->dist;
 
+            if (trainReservation->isSectionReserved(destNode) == 0) continue;
+
             ASSERT(destNode != nullptr);
 
             if (newDistToDest < distances[destNode->id]) {
@@ -65,6 +72,34 @@ void computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackN
         cur = parents[cur->id];
     }
     path.push(cur);
+
+    return distances[target->id];
+}
+
+PATH_FINDING_RESULT computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path,
+                                        TrainReservation* trainReservation) {
+    RingBuffer<TrackNode*, 1000> forwardPath;
+    RingBuffer<TrackNode*, 1000> reversePath;
+    uint64_t forwardPathLen = computeForwardShortestPath(source, target, forwardPath, trainReservation);
+    uint64_t reversePathLen = computeForwardShortestPath(source->reverse, target, reversePath, trainReservation);
+
+    if (forwardPathLen == UINT64_MAX && reversePathLen == UINT64_MAX) {
+        return PATH_FINDING_RESULT::NO_PATH;
+    } else if (reversePathLen == UINT64_MAX) {
+        path = forwardPath;
+        return PATH_FINDING_RESULT::FORWARD;
+    } else if (forwardPathLen == UINT64_MAX) {
+        path = reversePath;
+        return PATH_FINDING_RESULT::REVERSE;
+    } else {
+        if (forwardPathLen < reversePathLen) {
+            path = forwardPath;
+            return PATH_FINDING_RESULT::FORWARD;
+        } else {
+            path = reversePath;
+            return PATH_FINDING_RESULT::REVERSE;
+        }
+    }
 }
 
 void computeShortestDistancesFromSource(TrackNode* source, uint64_t distRow[TRACK_MAX]) {

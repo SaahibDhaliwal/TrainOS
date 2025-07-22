@@ -30,6 +30,7 @@ static const uint64_t trainFastVelocitySeedTrackB[MAX_TRAINS] = {596041, 605833,
 
 // acceleration are mm/s^2 * 1000 for decimals
 static const uint64_t trainAccelSeedTrackB[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
+static const uint64_t trainDecelSeedTrackB[MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
 static const uint64_t trainStopVelocitySeedTrackB[MAX_TRAINS] = {253549, 257347, 253548, 266566, 266566, 311583};
 static const uint64_t trainStoppingDistSeedTrackB[MAX_TRAINS] = {400, 400, 400, 400, 400, 400};
 
@@ -41,6 +42,7 @@ static const uint64_t trainSlowStoppingDistSeedTrackA[MAX_TRAINS] = {165, 165, 1
 
 static const uint64_t trainFastVelocitySeedTrackA[MAX_TRAINS] = {601640, 605833, 596914, 266566, 625911, 525104};
 static const uint64_t trainAccelSeedTrackA[MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
+static const uint64_t trainDecelSeedTrackA[MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
 static const uint64_t trainStopVelocitySeedTrackA[MAX_TRAINS] = {254904, 257347, 253548, 266566, 265294, 311583};
 static const uint64_t trainStoppingDistSeedTrackA[MAX_TRAINS] = {400, 400, 400, 400, 410, 400};
 
@@ -83,6 +85,16 @@ uint64_t getAccelerationSeed(int trainIdx) {
     return trainAccelSeedTrackB[trainIdx];
 #else
     return trainAccelSeedTrackB[trainIdx];
+#endif
+}
+
+uint64_t getDecelerationSeed(int trainIdx) {
+    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
+
+#if defined(TRACKA)
+    return trainDecelSeedTrackA[trainIdx];
+#else
+    return trainDecelSeedTrackB[trainIdx];
 #endif
 }
 
