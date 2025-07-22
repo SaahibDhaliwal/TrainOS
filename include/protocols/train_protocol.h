@@ -10,6 +10,8 @@ enum class Command : char {
     // SKIPPED_SENSOR,
     SET_SPEED,
     REVERSE,
+    GET_REVERSE_TIME,
+    FINISH_REVERSE,
     STOP_SENSOR,
     // LOCATION_QUERY,
     COUNT,
@@ -39,6 +41,10 @@ void sendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, cha
 void setTrainSpeed(int tid, unsigned int trainSpeed);
 
 void reverseTrain(int tid);
+
+void finishReverse(int tid);
+
+unsigned int getReverseDelayTicks(int tid);
 
 void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, uint64_t offset);
 

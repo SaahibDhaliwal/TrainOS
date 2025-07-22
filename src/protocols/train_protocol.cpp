@@ -46,9 +46,31 @@ void setTrainSpeed(int tid, unsigned int trainSpeed) {
     int res = sys::Send(tid, sendBuf, 5, nullptr, 0);
     handleSendResponse(res, tid);
 }
+
 void reverseTrain(int tid) {
     char sendBuf[2] = {0};
     sendBuf[0] = toByte(Command::REVERSE);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+unsigned int getReverseDelayTicks(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::GET_REVERSE_TIME);
+
+    char receiveBuffer[21] = {0};  // max digits is 20
+
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf), receiveBuffer, 21);
+    handleSendResponse(res, tid);
+
+    unsigned int result = 0;
+    a2ui(receiveBuffer, 10, &result);
+    return result;
+}
+
+void finishReverse(int tid) {
+    char sendBuf[2] = {0};
+    sendBuf[0] = toByte(Command::FINISH_REVERSE);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
     handleSendResponse(res, tid);
 }

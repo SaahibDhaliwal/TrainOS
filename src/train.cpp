@@ -132,7 +132,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
-        trains[i].reversing = false;
+        trains[i].isReversing = false;
         trains[i].active = false;
         trains[i].velocity = 0;
         trains[i].nodeAhead = nullptr;
@@ -279,7 +279,6 @@ void TrainTask() {
 
     uint64_t slowingDown = 0;
     bool stopped = true;
-    bool reversing = false;
     bool isForward = true;
 
     // ********** REAL-TIME TRAIN STATE ************
@@ -298,6 +297,10 @@ void TrainTask() {
     bool isAccelerating = false;
     uint64_t accelerationStartTime = 0;  // micros
     uint64_t totalAccelerationTime = 0;  // micros
+
+    bool isReversing = false;
+    uint64_t reversingStartTime = 0;  // micros
+    uint64_t totalReversingTime = 0;  // micros
 
     // ********** SENSOR MANAGEMENT ****************
 
@@ -341,7 +344,7 @@ void TrainTask() {
                     emptyReply(clientTid);  // reply right away to reduce latency
 
                     unsigned int trainSpeed = 10 * a2d(receiveBuff[1]) + a2d(receiveBuff[2]);
-                    if (!reversing && !slowingDown) {
+                    if (!isReversing && !slowingDown) {
                         marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, myTrainNumber);
                     }
 
@@ -535,7 +538,10 @@ void TrainTask() {
                     emptyReply(clientTid);  // reply right away to reduce latency
                     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
                     reverseTid = sys::Create(40, &marklin_server::reverseTrainTask);
-                    reversing = true;
+                    isReversing = true;
+                    reversingStartTime = timerGet();
+                    totalReversingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
+                    printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL REVERSE TIME %u", totalReversingTime);
                     break;
                 }
 
@@ -753,22 +759,47 @@ void TrainTask() {
             prevNotificationMicros = curMicros;
             emptyReply(clientTid);  // reply to our notifier HERE
         } else if (clientTid == reverseTid) {
-            ASSERT(reverseTid != 0);
-            ASSERT(reversing);
-            marklin_server::setTrainReverseAndSpeed(marklinServerTid, speed, myTrainNumber);
-            reversing = false;
-            isForward != isForward;
-            // change our stopping distance and orientation
-            printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
-            // should update our stopping distance
-            if (!isForward) {
-                // stopping distance is the distance from sensor bar to front of train + front of train to stop
-                // reversing would mean we need to subtract this distance ^
-                // from the distance of the back of the train to the sensor bar
-                // back of train to sensor bar: 14.5 cm
-                stoppingDistance += 115;
-            } else {
-                stoppingDistance -= 115;
+            Command command = commandFromByte(receiveBuff[0]);
+            switch (command) {
+                case Command::GET_REVERSE_TIME: {
+                    uint64_t curTime = timerGet();
+                    uint64_t timeToStop = (totalReversingTime - (curTime - reversingStartTime)) / 1000;  // millis
+                    uint64_t ticksToStop = (timeToStop + 9) / 10;                                        // round up
+                    printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL TICKS TO STOP %u", ticksToStop);
+
+                    uIntReply(clientTid, ticksToStop);
+                    break;
+                }
+                case Command::FINISH_REVERSE: {
+                    ASSERT(reverseTid != 0);
+                    ASSERT(isReversing);
+                    marklin_server::setTrainReverseAndSpeed(marklinServerTid, speed, myTrainNumber);
+                    isReversing = false;
+                    isForward != isForward;
+                    // change our stopping distance and orientation
+                    printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
+                    // should update our stopping distance
+                    if (!isForward) {
+                        // stopping distance is the distance from sensor bar to front of train + front of train to stop
+                        // isReversing would mean we need to subtract this distance ^
+                        // from the distance of the back of the train to the sensor bar
+                        // back of train to sensor bar: 14.5 cm
+                        stoppingDistance += 115;
+                    } else {
+                        stoppingDistance -= 115;
+                    }
+
+                    isAccelerating = true;
+                    accelerationStartTime = timerGet();
+                    totalAccelerationTime =
+                        (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
+
+                    break;
+                }
+                default: {
+                    printer_proprietor::debugPrintF(printerProprietorTid, "UNKOWN COMMAND");
+                    break;
+                }
             }
         } else if (clientTid == stopNotifierTid) {
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);

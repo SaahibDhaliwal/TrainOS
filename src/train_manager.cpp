@@ -244,7 +244,7 @@ void TrainManager::processReverse() {
     int trainSpeed = trains[reversingTrainIdx].speed;
     int trainNumber = trains[reversingTrainIdx].id;
     marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed, trainNumber);
-    trains[reversingTrainIdx].reversing = false;
+    trains[reversingTrainIdx].isReversing = false;
 }
 
 #define DONE_TURNOUTS 1

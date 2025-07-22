@@ -9,6 +9,7 @@
 #include "name_server_protocol.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "train_protocol.h"
 #include "util.h"
 
 namespace marklin_server {
@@ -182,8 +183,11 @@ void reverseTrainTask() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
     int parentTid = sys::MyParentTid();
-    clock_server::Delay(clockServerTid, 550);
-    emptySend(parentTid);
+
+    int delayTicks = train_server::getReverseDelayTicks(parentTid);
+    clock_server::Delay(clockServerTid, delayTicks);
+
+    train_server::finishReverse(parentTid);
     sys::Exit();
 }
 }  // namespace marklin_server

@@ -12,7 +12,7 @@
 
 struct Train {
     bool active;
-    bool reversing;
+    bool isReversing;
     uint8_t speed;
     uint8_t id;
     uint64_t velocity;
