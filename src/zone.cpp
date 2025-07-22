@@ -254,35 +254,35 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[123], &zoneArray[20]);
     // ------  EN / EX---------
     // // ------  1 ---------
-    // zoneMap.insert(&trackArray[124], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[125], &zoneArray[        ]);
-    // // ------  2 ---------
-    // zoneMap.insert(&trackArray[126], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[127], &zoneArray[        ]);
-    // // ------  3 ---------
-    // zoneMap.insert(&trackArray[128], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[129], &zoneArray[        ]);
-    // // ------  4 ---------
-    // zoneMap.insert(&trackArray[130], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[131], &zoneArray[        ]);
-    // // ------  5 ---------
-    // zoneMap.insert(&trackArray[132], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[133], &zoneArray[        ]);
-    // // ------  6 ---------
-    // zoneMap.insert(&trackArray[134], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[135], &zoneArray[        ]);
-    // // ------  7 ---------
-    // zoneMap.insert(&trackArray[136], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[137], &zoneArray[        ]);
-    // // ------  8 ---------
-    // zoneMap.insert(&trackArray[138], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[139], &zoneArray[        ]);
-    // // ------  9 ---------
-    // zoneMap.insert(&trackArray[140], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[141], &zoneArray[        ]);
-    // // ------  10 ---------
-    // zoneMap.insert(&trackArray[142], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[143], &zoneArray[        ]);
+    zoneMap.insert(&trackArray[124], &zoneArray[20]);
+    zoneMap.insert(&trackArray[125], &zoneArray[20]);
+    // ------  2 ---------
+    zoneMap.insert(&trackArray[126], &zoneArray[20]);
+    zoneMap.insert(&trackArray[127], &zoneArray[20]);
+    // ------  3 ---------
+    zoneMap.insert(&trackArray[128], &zoneArray[7]);
+    zoneMap.insert(&trackArray[129], &zoneArray[7]);
+    // ------  4 ---------
+    zoneMap.insert(&trackArray[130], &zoneArray[30]);
+    zoneMap.insert(&trackArray[131], &zoneArray[30]);
+    // ------  5 ---------
+    zoneMap.insert(&trackArray[132], &zoneArray[31]);
+    zoneMap.insert(&trackArray[133], &zoneArray[31]);
+    // ------  6 ---------
+    zoneMap.insert(&trackArray[134], &zoneArray[29]);
+    zoneMap.insert(&trackArray[135], &zoneArray[29]);
+    // ------  7 ---------
+    zoneMap.insert(&trackArray[136], &zoneArray[2]);
+    zoneMap.insert(&trackArray[137], &zoneArray[2]);
+    // ------  8 ---------
+    zoneMap.insert(&trackArray[138], &zoneArray[1]);
+    zoneMap.insert(&trackArray[139], &zoneArray[1]);
+    // ------  9 ---------
+    zoneMap.insert(&trackArray[140], &zoneArray[4]);
+    zoneMap.insert(&trackArray[141], &zoneArray[4]);
+    // ------  10 ---------
+    zoneMap.insert(&trackArray[142], &zoneArray[3]);
+    zoneMap.insert(&trackArray[143], &zoneArray[3]);
     zoneMap.insert(&trackArray[144], &zoneArray[8]);
     zoneMap.insert(&trackArray[145], &zoneArray[6]);
     zoneMap.insert(&trackArray[146], &zoneArray[6]);
