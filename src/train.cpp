@@ -786,6 +786,8 @@ void TrainTask() {
                 prevNotificationMicros = curMicros;
                 ASSERT(!slowingDown, "we have stopped but 'stopping' has a timestamp");
 
+                localization_server::newDestination(parentTid, trainIndex);
+                marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
                 continue;  // DO NOT REPLY TO NOTIFIER
             }
             // otherwise, we are slowing down

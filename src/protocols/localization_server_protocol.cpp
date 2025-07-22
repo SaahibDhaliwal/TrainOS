@@ -140,4 +140,13 @@ void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> res
     handleSendResponse(res, tid);
 }
 
+void newDestination(int tid, int trainIndex) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+
+    sendBuf[0] = toByte(Command::NEW_DESTINATION);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace localization_server
