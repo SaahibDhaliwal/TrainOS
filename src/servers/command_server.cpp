@@ -190,21 +190,24 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         if (box < 'A' || ((box > 'E') && (box < 'M'))) return false;
         cur++;
 
+        // branch
         if (box == 'B' && (*cur == 'R' || *cur == 'r')) {
             box = 'F';  // bad practice but oh well
             cur++;
         }
 
+        // merge
         if (box == 'M' && (*cur == 'R' || *cur == 'r')) {
             box = 'G';
             cur++;
         }
 
+        // entry/exit
         if (box == 'E') {
             if (*cur == 'N' || *cur == 'n') {
                 box = 'H';
                 cur++;
-                return false;
+                return false;  // break on entry
             } else if (*cur == 'X' || *cur == 'x') {
                 box = 'I';
                 cur++;
@@ -223,6 +226,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
         // ASSERT(0, "sensornum: %d", sensorNum);
         if (sensorNum == 0) return false;
+        // 153 for middle switch, 18 for branches
         if ((box == 'F' || box == 'G') && (sensorNum < 153 && sensorNum > 18)) return false;
 
         if ((box == 'B' && sensorNum == 7) || (box == 'B' && sensorNum == 11) || (box == 'B' && sensorNum == 9) ||

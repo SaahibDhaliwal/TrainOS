@@ -21,9 +21,12 @@ uint32_t TrainReservation::trackNodeToZoneNum(TrackNode* track) {
 }
 
 // for routing I assume this is needed
-bool TrainReservation::isSectionReserved(TrackNode* start) {
+int TrainReservation::isSectionReserved(TrackNode* start) {
     ZoneSegment* result = mapchecker(start);
-    return result->reserved;
+    if (result->reserved) {
+        return result->trainNumber;
+    }
+    return false;
 }
 
 ZoneSegment* TrainReservation::mapchecker(TrackNode* entrySensor) {

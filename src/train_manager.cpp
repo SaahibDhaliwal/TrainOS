@@ -180,28 +180,28 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         curTrain->sensorWhereSpeedChangeStarted = curSensor;
 
     } else {
-        if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
-            RingBuffer<TrackNode*, 1000> path;
-            computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, path);
+        // if (curTrain->stopping && curTrain->stoppingSensor == nullptr && laps >= 1) {
+        //     RingBuffer<TrackNode*, 1000> path;
+        //     computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, path);
 
-            // if we need to update our turnouts, reply to the task right away
-            if (!turnoutQueue.empty()) {
-                char sendBuff[3];
-                std::pair<char, char> c = *(turnoutQueue.pop());
-                printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
-                sys::Reply(turnoutNotifierTid, sendBuff, 3);
-                stopTurnoutNotifier = true;
-            }
-        }
+        //     // if we need to update our turnouts, reply to the task right away
+        //     if (!turnoutQueue.empty()) {
+        //         char sendBuff[3];
+        //         std::pair<char, char> c = *(turnoutQueue.pop());
+        //         printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
+        //         sys::Reply(turnoutNotifierTid, sendBuff, 3);
+        //         stopTurnoutNotifier = true;
+        //     }
+        // }
         // check if this sensor is the one a train is waiting for
-        if (curTrain->stopping && curTrain->stoppingSensor == curSensor) {
-            // reply to our stopping task with a calculated amount of ticks to delay
-            char sendBuff[20] = {0};
-            uint64_t arrivalTime = (curTrain->whereToIssueStop * 1000 * 1000000 / curTrain->velocity);
-            uint16_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;  // must be changed
-            uIntReply(stoppingTid, numOfTicks);
-            stopTrainIndex = trainNumToIndex(curTrain->id);  // assuming only one train is given the stop command
-        }
+        // if (curTrain->stopping && curTrain->stoppingSensor == curSensor) {
+        //     // reply to our stopping task with a calculated amount of ticks to delay
+        //     char sendBuff[20] = {0};
+        //     uint64_t arrivalTime = (curTrain->whereToIssueStop * 1000 * 1000000 / curTrain->velocity);
+        //     uint16_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;  // must be changed
+        //     uIntReply(stoppingTid, numOfTicks);
+        //     stopTrainIndex = trainNumToIndex(curTrain->id);  // assuming only one train is given the stop command
+        // }
 
         // update next sensor
         curTrain->sensorAhead = curSensor->nextSensor;
@@ -273,22 +273,124 @@ void TrainManager::processStopping() {
 }
 
 // TODO: FIX THIS, FILLING IN INDEXES OF REPLY BUFFER WITHOUT EVEN KNOWING HOW LONG IT IS, strlen cannot fix this
-void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
+void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) {
+    char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
     Command command = commandFromByte(receiveBuffer[0]);
     switch (command) {
         case Command::MAKE_RESERVATION: {
             int trainIndex = (receiveBuffer[1]) - 1;
+            Sensor reservationSensor = {.box = receiveBuffer[2], .num = static_cast<uint8_t>(receiveBuffer[3])};
+            Train* curTrain = &trains[trainIndex];
 
-            Sensor zoneEntranceSensor{.box = receiveBuffer[2], .num = receiveBuffer[3]};
-
-            int targetTrackNodeIdx = trackNodeIdxFromSensor(zoneEntranceSensor);
+            int targetTrackNodeIdx = trackNodeIdxFromSensor(reservationSensor);
 
             ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
 
             TrackNode* curSensor = &track[targetTrackNodeIdx];
 
             if (trainReservation.reservationAttempt(&track[targetTrackNodeIdx], trainIndexToNum(trainIndex))) {
-                replyBuffer[0] = toByte(train_server::Reply::RESERVATION_SUCCESS);
+                // create a sensor so we can compare them
+                // we don't want to enter this when reserving our destination sensor
+                // note: if the stopping flag is working as intended, we should never be reserving this in the first
+                // place
+
+                // && curTrain.path.size() != 1
+                if (!curTrain->path.empty()) {
+                    TrackNode* expectedNode = *(curTrain->path.pop());
+                    Sensor expectedSensor = {.box = expectedNode->name[0],
+                                             .num = (expectedNode->num + 1) - (expectedNode->name[0] - 'A') * 16};
+                    if (expectedSensor.box == 'F') {
+                        expectedSensor.num = expectedNode->num;
+                    }
+                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                    "Popped path node: %s from reservation sensor %c%u",
+                                                    expectedNode->name, reservationSensor.box, reservationSensor.num);
+
+                    // THIS WILL BREAK IF WE DON'T HIT OUR EXPECTED SENSOR (TURNOUT FAILS)
+                    ASSERT(reservationSensor == expectedSensor, "reservation sensor: %c%d expected sensor: %c%d",
+                           reservationSensor.box, reservationSensor.num, expectedSensor.box, expectedSensor.num);
+                    // so look at what comes after this sensor. If it's a branch, change it
+                    TrackNode* nextNode = expectedNode->edge[DIR_AHEAD].dest;
+
+                    while (nextNode->type != NodeType::BRANCH) {
+                        nextNode = nextNode->edge[DIR_AHEAD].dest;
+                        if (nextNode->type == NodeType::SENSOR) break;
+                    }
+
+                    if (nextNode->type == NodeType::BRANCH) {
+                        // get the next sensor in our path after the branch
+                        TrackNode* nextExpectedSensorNode = nullptr;
+                        for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+                            if ((*it)->type == NodeType::SENSOR) {
+                                nextExpectedSensorNode = (*it);
+                                break;
+                            }
+                        }
+                        ASSERT(nextExpectedSensorNode != nullptr);
+                        // figure out if the next sensor in our path differs from the current next sensor
+                        TrackNode* currentNextSensorNode = getNextSensor(curSensor, turnouts);
+                        ASSERT(currentNextSensorNode != nullptr, "there is no sensor after this branch");
+
+                        if (currentNextSensorNode != nextExpectedSensorNode) {
+                            // change the turnout if theres a discrepancy
+                            if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::STRAIGHT) {
+                                // if it's straight, make it curved
+                                turnouts[turnoutIdx(nextNode->num)].state = SwitchState::CURVED;
+                                // add to turnout queue
+                                turnoutQueue.push(
+                                    std::pair<char, char>(34, (nextNode->num)));  // dont want to static_cast it
+                                if (nextNode->num == 153 || nextNode->num == 155) {
+                                    turnouts[turnoutIdx(nextNode->num + 1)].state = SwitchState::STRAIGHT;
+                                    turnoutQueue.push(
+                                        std::pair<char, char>(33, (nextNode->num + 1)));  // dont want to static_cast it
+                                } else if (nextNode->num == 154 || nextNode->num == 156) {
+                                    turnouts[turnoutIdx(nextNode->num - 1)].state = SwitchState::STRAIGHT;
+                                    turnoutQueue.push(
+                                        std::pair<char, char>(33, (nextNode->num - 1)));  // dont want to static_cast it
+                                }
+                                // then update the impacted sensors before our branch node
+                                setAllImpactedSensors(nextExpectedSensorNode->reverse, turnouts, nextExpectedSensorNode,
+                                                      0);
+                            } else {
+                                // update turnouts
+                                turnouts[turnoutIdx(nextNode->num)].state = SwitchState::STRAIGHT;
+                                // add to turnout queue
+                                turnoutQueue.push(
+                                    std::pair<char, char>(33, (nextNode->num)));  // dont want to static_cast it
+                                if (nextNode->num == 153 || nextNode->num == 155) {
+                                    turnouts[turnoutIdx(nextNode->num + 1)].state = SwitchState::CURVED;
+                                    turnoutQueue.push(std::pair<char, char>(34, (nextNode->num + 1)));
+                                } else if (nextNode->num == 154 || nextNode->num == 156) {
+                                    turnouts[turnoutIdx(nextNode->num - 1)].state = SwitchState::CURVED;
+                                    turnoutQueue.push(std::pair<char, char>(34, (nextNode->num - 1)));
+                                }
+                                setAllImpactedSensors(nextExpectedSensorNode->reverse, turnouts, nextExpectedSensorNode,
+                                                      0);
+                            }
+                            char sendBuff[3];
+                            std::pair<char, char> c = *(turnoutQueue.pop());
+                            printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
+                            sys::Reply(turnoutNotifierTid, sendBuff, 3);
+                            stopTurnoutNotifier = true;
+                            // instead of adding to queue, we could just make the marklin call right here, since it'll
+                            // only ever be one... right?
+                            printer_proprietor::debugPrintF(
+                                printerProprietorTid, "Had a branch state conflict, sent turnout notifier to switch %s",
+                                nextNode->name);
+                        }
+                        printer_proprietor::debugPrintF(printerProprietorTid,
+                                                        "No branch conflict with the upcoming branch", nextNode->name);
+                    }
+                    // pop until the front of our path is a sensor
+                    while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
+                        TrackNode* popped = *(curTrain->path.pop());
+                        printer_proprietor::debugPrintF(printerProprietorTid, "just popped node: %s", popped->name);
+                    }
+                    ASSERT(!curTrain->path.empty(), "we popped too many items in our path");
+                    ASSERT((*curTrain->path.front())->type == NodeType::SENSOR,
+                           "the first thing in our path is not a sensor");
+                }
+                replyBuff[0] = toByte(train_server::Reply::RESERVATION_SUCCESS);
 
                 uint32_t zoneNum = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
                 char nextBox = curSensor->nextSensor->name[0];
@@ -298,14 +400,17 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
                     nextSensorNum = curSensor->nextSensor->num;
                 }
 
-                printer_proprietor::formatToString(replyBuffer + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d", zoneNum,
+                printer_proprietor::formatToString(replyBuff + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d", zoneNum,
                                                    nextBox, static_cast<char>(nextSensorNum),
                                                    curSensor->distToNextSensor);
 
+                sys::Reply(clientTid, replyBuff, strlen(replyBuff));
                 return;
             }
-            replyBuffer[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
-            replyBuffer[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
+            replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
+            replyBuff[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
+            sys::Reply(clientTid, replyBuff, strlen(replyBuff));
+
             return;
             break;
         }
@@ -321,15 +426,18 @@ void TrainManager::processTrainRequest(char* receiveBuffer, char* replyBuffer) {
             bool result =
                 trainReservation.freeReservation(track[targetTrackNodeIdx].reverse, trainIndexToNum(trainIndex));
             if (result) {
-                replyBuffer[0] = toByte(train_server::Reply::FREE_SUCCESS);
-                replyBuffer[1] = trainReservation.trackNodeToZoneNum(track[targetTrackNodeIdx].reverse);
+                replyBuff[0] = toByte(train_server::Reply::FREE_SUCCESS);
+                replyBuff[1] = trainReservation.trackNodeToZoneNum(track[targetTrackNodeIdx].reverse);
+                sys::Reply(clientTid, replyBuff, strlen(replyBuff));
                 return;
             }
-            replyBuffer[0] = toByte(train_server::Reply::FREE_FAILURE);
+            replyBuff[0] = toByte(train_server::Reply::FREE_FAILURE);
+            sys::Reply(clientTid, replyBuff, strlen(replyBuff));
             return;
             break;  // just to surpress compilation warning
         }
         default:
+            ASSERT(0, "bad command sent to train manager");
             return;
     }
 }
@@ -405,6 +513,7 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
     // iterate over nodes until the difference is larger than zero
     // "fakes" a target that is within our stopping distance
     while (stoppingDistance < 0) {
+        ASSERT(0, "im gonna assume we don't hit this in testing");
         if (targetNode->type == NodeType::BRANCH) {
             if (turnouts[turnoutIdx(targetNode->num)].state == SwitchState::CURVED) {
                 stoppingDistance += targetNode->edge[DIR_CURVED].dist;
@@ -427,21 +536,32 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
     curTrain->stoppingDistance = stoppingDistance;
     curTrain->sensorWhereSpeedChangeStarted = trains[trainIndex].sensorBehind;
     RingBuffer<TrackNode*, 1000> backwardsPath;
-    computeShortestPath(curTrain->sensorAhead, curTrain->targetNode, backwardsPath);
+    // since we start our search with a sensor ahead, our path will always start with a sensor
+    // if THIS TRAIN has already reserved the sensor ahead, use the sensor AFTER that
+    // because we expect the train's next reservation to be the first sensor in this path
+    TrackNode* source = curTrain->sensorAhead;
+    while (trainReservation.isSectionReserved(source) == trainNumber) {
+        printer_proprietor::debugPrintF(printerProprietorTid, "We already reserved ahead of sensor %s", source->name);
+        source = source->nextSensor;
+    }
+    // printer_proprietor::debugPrintF(printerProprietorTid, "pathing starts at sensor: %s", source->name);
+
+    computeShortestPath(source, curTrain->targetNode, backwardsPath);
+
     TrackNode* lastSensor = nullptr;
     uint64_t travelledDistance = 0;
     TrackNode* prev = nullptr;
     // for debug
-    const char* debugPath[100] = {0};
-    int counter = 0;
+    // const char* debugPath[100] = {0};
+    // int counter = 0;
     //
     for (auto it = backwardsPath.begin(); it != backwardsPath.end(); ++it) {
         TrackNode* node = *it;
         uint64_t edgeDistance = 0;
         if (!prev) {
             prev = node;
-            debugPath[counter] = node->name;
-            counter++;
+            // debugPath[counter] = node->name;
+            // counter++;
             continue;
         }
         if (node->type == NodeType::BRANCH) {
@@ -461,33 +581,15 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
             }
         }
         prev = node;
-        debugPath[counter] = node->name;
-        counter++;
+        // debugPath[counter] = node->name;
+        // counter++;
         // we also construct another ring buffer that goes from recent->end?
     }
-
-    char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-    int strSize = 1;
-    for (int i = counter - 1; i >= 0; i--) {
-        strcpy(strBuff + strSize, debugPath[i]);
-        strSize += strlen(debugPath[i]);
-        if (i != 0) {
-            strcpy(strBuff + strSize, "->");
-            strSize += 2;
-        }
-    }
-    printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", debugPath);
 
     // this assumes that we are at constant velocity, but the train will use it's stopping distance when calculating
     //   how many ticks to wait
     curTrain->whereToIssueStop = travelledDistance - curTrain->stoppingDistance;
     curTrain->stoppingSensor = lastSensor;
-
-    printer_proprietor::debugPrintF(
-        printerProprietorTid,
-        "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping distance: %d ",
-        lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
-        curTrain->stoppingDistance);
 
     char stopBox = curTrain->stoppingSensor->name[0];
     unsigned int stopSensorNum = ((curTrain->stoppingSensor->num + 1) - (stopBox - 'A') * 16);
@@ -495,14 +597,46 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
         ASSERT(0, "this should never be reached: trying to stop on a fake sensor");
         stopSensorNum = curTrain->stoppingSensor->num;
     }
+    printer_proprietor::debugPrintF(printerProprietorTid,
+                                    "stoppingSensor: %s, distance after sensor: %d, travelled distance: %u, stopping "
+                                    "distance: %d ",
+                                    lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
+                                    curTrain->stoppingDistance);
 
+    // for (int i = 0; i < MAX_TRAINS; i++) {
+    //     printer_proprietor::debugPrintF(printerProprietorTid, "TrainTask TID at index %u is: %d", i, trainTasks[i]);
+    // }
+    // printer_proprietor::debugPrintF(printerProprietorTid, "Localization TID is: %u", sys::MyTid());
     train_server::sendStopInfo(trainTasks[trainIndex], stopBox, stopSensorNum, curTrain->whereToIssueStop);
 
+    // traverse shortest path backwards to get our forwards path
     auto it = backwardsPath.end();
     do {
         it--;
         curTrain->path.push((*it));
     } while (it != backwardsPath.begin());
+
+    // // for debug
+    const char* debugPath[100] = {0};
+    int counter = 0;
+    for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+        TrackNode* node = *it;
+        debugPath[counter] = node->name;
+        counter++;
+    }
+    char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+    int strSize = 0;
+    for (int i = 0; i < counter; i++) {
+        strcpy(strBuff + strSize, debugPath[i]);
+        strSize += strlen(debugPath[i]);
+        if (i != counter - 1) {
+            strcpy(strBuff + strSize, "->");
+            strSize += 2;
+        }
+    }
+
+    printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", strBuff);
+    // end debug
 
     // whne a stop command is made,
 

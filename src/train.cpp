@@ -376,6 +376,7 @@ void TrainTask() {
                     if (curSensor.box == stopSensor.box && curSensor.num == stopSensor.num) {
                         uint64_t arrivalTime = (stopSensorOffset * 1000 * 1000000 / velocityEstimate);
                         uint16_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
+                        ASSERT(stopNotifierTid < 100);
                         uIntReply(stopNotifierTid, numOfTicks);
                         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
                         slowingDown = curMicros;
@@ -494,10 +495,11 @@ void TrainTask() {
 
                             switch (replyFromByte(replyBuff[0])) {
                                 case Reply::FREE_SUCCESS: {
-                                    printer_proprietor::debugPrintF(
-                                        printerProprietorTid,
-                                        "%s \033[48;5;17m (Backup) Freed Reservation with zone: %d with sensor: %c%d",
-                                        trainColour, replyBuff[1], reservationSensor.box, reservationSensor.num);
+                                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                                    "%s \033[48;5;17m (Backup) Freed Reservation "
+                                                                    "with zone: %d with sensor: %c%d",
+                                                                    trainColour, replyBuff[1], reservationSensor.box,
+                                                                    reservationSensor.num);
 
                                     zoneExits.pop();
                                     reservedZones.pop();
@@ -518,6 +520,7 @@ void TrainTask() {
                     break;
                 }
                 case Command::REVERSE: {
+                    emptyReply(clientTid);  // reply right away to reduce latency
                     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
                     reverseTid = sys::Create(40, &marklin_server::reverseTrainTask);
                     reversing = true;
@@ -590,8 +593,8 @@ void TrainTask() {
                 // TODO: should this spin up a high priority courier? Or reply to one we already have?
                 char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
                 // printer_proprietor::debugPrintF(printerProprietorTid,
-                //                                 "[Train %u] Attempting reservation with Zone Entrance Sensor: %c%d",
-                //                                 myTrainNumber, zoneEntraceSensorAhead.box,
+                //                                 "[Train %u] Attempting reservation with Zone Entrance Sensor:
+                //                                 %c%d", myTrainNumber, zoneEntraceSensorAhead.box,
                 //                                 zoneEntraceSensorAhead.num);
                 localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
 
@@ -600,8 +603,8 @@ void TrainTask() {
                         uint64_t distToExitSensor =
                             distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
                         // ASSERT(distToExitSensor > DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN,
-                        //        "distRemainingToZoneEntranceSensorAhead was somehow zero when we should be reserving "
-                        //        "much sooner");
+                        //        "distRemainingToZoneEntranceSensorAhead was somehow zero when we should be
+                        //        reserving " "much sooner");
                         ReservedZone reservation{.sensorMarkingEntrance = zoneEntraceSensorAhead,
                                                  .zoneNum = static_cast<uint8_t>(replyBuff[1])};
                         reservedZones.push(reservation);
@@ -682,16 +685,19 @@ void TrainTask() {
                 continue;
             }
 
-            // for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit sensors
+            // for (auto it = zoneExits.begin(); it != zoneExits.end(); ++it) {  // update distance to zone exit
+            // sensors
             //     Sensor zoneExitSensor = (*it).sensorMarkingExit;
 
             //     if (zoneExitSensor == zoneExits.back()->sensorMarkingExit && recentZoneAddedFlag) {
-            //         // this should only potentially happen on the last one, if we just added a zone and don't want to
+            //         // this should only potentially happen on the last one, if we just added a zone and don't
+            //         want to
             //         //  subtract our travelled distance to it on the same iteration we added it (wait until next
             //         notif) recentZoneAddedFlag = false; continue;
             //     }
 
-            //     uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000;  // mm
+            //     uint64_t distanceTravelledSinceLastNoti = (velocityEstimate * timeSinceLastNoti) / 1000000000; //
+            //     mm
 
             //     uint64_t distanceToZoneExitSensor = (*it).distanceToExitSensor;
 
@@ -733,7 +739,7 @@ void TrainTask() {
             }
 
             prevNotificationMicros = curMicros;
-            emptyReply(clientTid);
+            emptyReply(clientTid);  // reply to our notifier HERE
         } else if (clientTid == reverseTid) {
             ASSERT(reverseTid != 0);
             ASSERT(reversing);
@@ -752,7 +758,6 @@ void TrainTask() {
             } else {
                 stoppingDistance -= 115;
             }
-
         } else if (clientTid == stopNotifierTid) {
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
             slowingDown = timerGet();

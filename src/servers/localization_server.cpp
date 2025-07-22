@@ -185,20 +185,16 @@ void LocalizationServer() {
                     ASSERT(1 == 2, "bad localization server command");
                 }
             }
+            ASSERT(clientTid < 100, "client broke here");
             emptyReply(clientTid);
         } else if (clientTid == sensorTid) {
             trainManager.processSensorReading(receiveBuffer);
             emptyReply(clientTid);
-        } else if (clientTid == trainManager.getReverseTid()) {
-            trainManager.processReverse();
-            // no need to reply, reverse task is dead
         } else if (clientTid == turnoutNotifierTid) {
             trainManager.processTurnoutNotifier();
         } else if (clientTid >= trainManager.getSmallestTrainTid() && clientTid <= trainManager.getLargestTrainTid()) {
-            char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-            trainManager.processTrainRequest(receiveBuffer, replyBuff);
-            // ASSERT(0, "replyBuff[1]: %u strlen(replyBuff): %u", replyBuff[1], strlen(replyBuff) - 1);
-            sys::Reply(clientTid, replyBuff, strlen(replyBuff));
+            trainManager.processTrainRequest(receiveBuffer, clientTid);
+
         } else {
             ASSERT(0, "Localization server received from someone unexpected. TID: %u", clientTid);
         }

@@ -8,7 +8,7 @@ void handleSendResponse(int res, int clientTid) {
     if (res < 0) {
         switch (res) {
             case -1:
-                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id\r\n", clientTid);
+                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id, sent by %u\r\n", clientTid, sys::MyTid());
                 break;
             case -2:
                 uart_printf(CONSOLE, "[ERROR]: tid %u was not waiting for a reply\r\n", clientTid);

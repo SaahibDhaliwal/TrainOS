@@ -43,7 +43,9 @@ class TrainReservation {
    public:
     uint32_t trackNodeToZoneNum(TrackNode* track);
     void initialize(TrackNode* track, uint32_t printerProprietorTid);
-    bool isSectionReserved(TrackNode* start);
+
+    // returns the trainNumber of the reservation if section is reserved, zero if not
+    int isSectionReserved(TrackNode* start);
     bool reservationAttempt(TrackNode* entrySensor, unsigned int trainNumber);
     bool freeReservation(TrackNode* sensor, unsigned int trainNumber);
     // void reserveSection(TrackNode* whereverThisNodeIs, unsigned int trainNumber);

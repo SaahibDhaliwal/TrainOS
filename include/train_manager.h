@@ -46,7 +46,7 @@ class TrainManager {
     void processReverse();
     void processTurnoutNotifier();
     void processStopping();
-    void processTrainRequest(char* receiveBuffer, char* replyBuffer);
+    void processTrainRequest(char* receiveBuffer, uint32_t clientTid);
     void reverseTrain(int trainIndex);
     void setTrainStop(char* receiveBuffer);
     // getters
