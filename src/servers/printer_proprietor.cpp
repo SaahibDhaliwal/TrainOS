@@ -13,7 +13,7 @@
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 
 using namespace printer_proprietor;

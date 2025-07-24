@@ -1,4 +1,4 @@
-#include "train.h"
+#include "train_task.h"
 
 #include <algorithm>
 #include <utility>
@@ -132,19 +132,19 @@ void initializeTrains(Train* trains, int marklinServerTid) {
     for (int i = 0; i < MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
-        trains[i].isReversing = false;
+        // trains[i].isReversing = false;
         trains[i].active = false;
-        trains[i].velocity = 0;
-        trains[i].nodeAhead = nullptr;
-        trains[i].nodeBehind = nullptr;
+        // trains[i].velocity = 0;
+        // trains[i].nodeAhead = nullptr;
+        // trains[i].nodeBehind = nullptr;
         trains[i].sensorAhead = nullptr;
         trains[i].sensorBehind = nullptr;
         trains[i].stoppingSensor = nullptr;
         trains[i].whereToIssueStop = 0;
         trains[i].stoppingDistance = getStoppingDistSeed(i);
-        trains[i].stopping = false;
+        // trains[i].stopping = false;
         trains[i].targetNode = nullptr;
-        trains[i].sensorWhereSpeedChangeStarted = nullptr;
+        // trains[i].sensorWhereSpeedChangeStarted = nullptr;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
 }

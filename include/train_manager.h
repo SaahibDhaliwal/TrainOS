@@ -7,7 +7,7 @@
 #include "config.h"
 #include "ring_buffer.h"
 #include "track_data.h"
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 #include "zone.h"
 

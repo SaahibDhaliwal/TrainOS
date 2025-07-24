@@ -24,9 +24,9 @@
 #include "test_utils.h"
 #include "timer.h"
 #include "track_data.h"
-#include "train.h"
 #include "train_manager.h"
 #include "train_protocol.h"
+#include "train_task.h"
 #include "turnout.h"
 
 using namespace localization_server;
