@@ -1,7 +1,7 @@
 #ifndef __LOCALIZATION_HELPER__
 #define __LOCALIZATION_HELPER__
 
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 
 void setAllImpactedSensors(TrackNode* start, Turnout* turnouts, TrackNode* newNextSensor, int distance);

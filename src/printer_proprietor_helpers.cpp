@@ -6,7 +6,7 @@
 #include "rpi.h"
 #include "string.h"
 #include "timer.h"
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 
 /*********** CURSOR ********************************/

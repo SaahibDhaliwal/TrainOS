@@ -139,8 +139,8 @@ void LocalizationServer() {
                     char turnoutDirection = receiveBuffer[1];
                     char turnoutNumber = receiveBuffer[2];
 
-                    Turnout* turnouts = trainManager.getTurnouts();
-                    TrackNode* track = trainManager.getTrack();
+                    Turnout *turnouts = trainManager.getTurnouts();
+                    TrackNode *track = trainManager.getTrack();
 
                     int index = turnoutIdx(turnoutNumber);
                     turnouts[index].state = static_cast<SwitchState>(turnoutDirection);
@@ -148,7 +148,7 @@ void LocalizationServer() {
                     marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
                     // go down our branch to find which sensor is next
                     // we pass the tracknode of our branch
-                    TrackNode* newNextSensor = getNextSensor(&track[(2 * index) + 80], turnouts);
+                    TrackNode *newNextSensor = getNextSensor(&track[(2 * index) + 80], turnouts);
                     ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
                     // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
                     setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);

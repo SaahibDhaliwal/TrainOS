@@ -24,10 +24,32 @@
 #include "test_utils.h"
 #include "timer.h"
 #include "track_data.h"
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 
 using namespace localization_server;
+
+void initializeTrains(Train* trains, int marklinServerTid) {
+    // void initializeTrains(Train* trains, int marklinServerTid) {
+    for (int i = 0; i < MAX_TRAINS; i += 1) {
+        trains[i].speed = 0;
+        trains[i].id = trainAddresses[i];
+        // trains[i].isReversing = false;
+        trains[i].active = false;
+        // trains[i].velocity = 0;
+        // trains[i].nodeAhead = nullptr;
+        // trains[i].nodeBehind = nullptr;
+        trains[i].sensorAhead = nullptr;
+        trains[i].sensorBehind = nullptr;
+        trains[i].stoppingSensor = nullptr;
+        trains[i].whereToIssueStop = 0;
+        trains[i].stoppingDistance = getStoppingDistSeed(i);
+        // trains[i].stopping = false;
+        trains[i].targetNode = nullptr;
+        // trains[i].sensorWhereSpeedChangeStarted = nullptr;
+        marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
+    }
+}
 
 #define TRAIN_TASK_PRIORITY 20
 TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid,
@@ -35,7 +57,6 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
     : marklinServerTid(marklinServerTid),
       printerProprietorTid(printerProprietorTid),
       clockServerTid(clockServerTid),
-
       turnoutNotifierTid(turnoutNotifierTid) {
     // starts here
     initializeTrains(trains, marklinServerTid);
@@ -212,6 +233,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
 
         int signedOffset = 0;
 
+        // FIX MEEEEEEE
         TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
         curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
 
@@ -1035,26 +1057,4 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
     }
 
     printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", strBuff);
-    // end debug
-
-    // whne a stop command is made,
-
-    // are we assuming that a train will be at constant velocity before stopping?
-
-    // Ideally, on a sensor hit of an active train, we can see if it has a path
-    //  if it does, we can see if this sensor hit is the first element in our ring buffer
-    //   if it is, then we can pop it from our path
-
-    // when a train makes a reservation, we can check if the sensor it's using to reserve is one on it's path
-    //  if it is, and the next thing in the path is a branch, we can check if it accurately reflects the turnout state
-    //  if it doesn't we can send to the turnout notifier to switch that turnout
-
-    // will there be enough time for the turnout to switch before the train goes over it?
-    //  may need to increase resevervation threshold
-
-    // should also try measuring how long it takes from getting sensor reads in train manager vs receiving them in the
-    // train task
-
-    // if train path requires reversing, then the train manager can issue a reverse command before it's stop command
-    //  our routing should account for stopping at a location from both sides (unless it's an enter/exit node)
 }

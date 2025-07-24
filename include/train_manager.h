@@ -12,9 +12,37 @@
 #include "zone.h"
 
 #define NODE_MAX 7
+
+namespace localization_server {
+
+struct Train {
+    bool active;
+    bool isReversing;
+    uint8_t speed;
+    uint8_t id;
+    uint64_t velocity;
+    // these are all ints associated with the array
+    TrackNode* nodeAhead;
+    TrackNode* nodeBehind;
+    TrackNode* sensorAhead;
+    int64_t sensorAheadMicros;
+    TrackNode* sensorBehind;
+    int trackCount = 0;
+
+    // stopping
+    bool stopping;
+    uint64_t stoppingDistance;
+    TrackNode* targetNode;
+    TrackNode* stoppingSensor;
+    uint64_t whereToIssueStop;
+    TrackNode* sensorWhereSpeedChangeStarted;
+    RingBuffer<TrackNode*, 1000> path;
+    RingBuffer<TrackNode*, 1000> backwardsPath;
+};
+}  // namespace localization_server
 class TrainManager {
    private:
-    Train trains[MAX_TRAINS];
+    localization_server::Train trains[MAX_TRAINS];
     uint32_t trainTasks[MAX_TRAINS];
     TrackNode track[TRACK_MAX];
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
