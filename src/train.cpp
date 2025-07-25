@@ -213,8 +213,7 @@ uint64_t Train::getStopDelayTicks(int64_t curMicros) {
     // uint64_t curMicros = timerGet();
     uint64_t arrivalTime = (stopSensorOffset * 1000 * 1000000 / velocityEstimate);
     uint64_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
-    isSlowingDown = true;
-    stopStartTime = curMicros;
+
     return numOfTicks;
 }
 
@@ -405,6 +404,7 @@ void Train::updateState() {
         targetSensor.box = 0;
         targetSensor.num = 0;
         // get new destination, which will bring us back
+        printer_proprietor::debugPrintF(printerProprietorTid, "YO I THINK IM STOPPED");
         localization_server::newDestination(parentTid, trainIndex);
         isStopped = false;
         isAccelerating = true;
