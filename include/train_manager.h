@@ -37,7 +37,7 @@ struct Train {
     uint64_t whereToIssueStop;
     TrackNode* sensorWhereSpeedChangeStarted;
     RingBuffer<TrackNode*, 1000> path;
-    RingBuffer<TrackNode*, 1000> backwardsPath;
+    // RingBuffer<TrackNode*, 1000> backwardsPath;
 };
 }  // namespace localization_server
 class TrainManager {
@@ -69,6 +69,8 @@ class TrainManager {
     RingBuffer<int, Config::MAX_TRAINS> reversingTrains;
     TrackNode* train13[NODE_MAX];
     TrackNode* train14[NODE_MAX];
+
+    void generatePath(localization_server::Train* curTrain, int targetTrackNodeIdx, int signedOffset);
 
    public:
     TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);

@@ -55,6 +55,7 @@ using namespace train_server;
 
 void TrainTask() {
     int parentTid = sys::MyParentTid();
+    ASSERT(parentTid != -1, "TRAIN %d UNABLE TO GET PARENT \r\n", sys::MyTid());
 
     uint32_t clientTid = 0;
     unsigned int myTrainNumber = uIntReceive(&clientTid);
@@ -82,7 +83,8 @@ void TrainTask() {
     emptyReceive(&clientTid);
     ASSERT(clientTid == stopNotifierTid, "TRAIN TASK DID NOT RECEIVE FROM STOPPER");
 
-    Train train(myTrainNumber, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid, stopNotifierTid);
+    Train train(myTrainNumber, parentTid, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid,
+                stopNotifierTid);
 
     for (;;) {
         char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -98,9 +100,6 @@ void TrainTask() {
                     break;
                 }
                 case Command::NEW_SENSOR: {
-                    emptyReply(clientTid);  // immediate reply
-
-                    printer_proprietor::debugPrintF(printerProprietorTid, "in here");
                     Sensor curSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
                     Sensor upcomingSensor = {.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
 
@@ -111,9 +110,8 @@ void TrainTask() {
 
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
-
+                    emptyReply(clientTid);  // is this reply actually replying?
                     train.processSensorHit(curSensor, upcomingSensor, distance);
-
                     break;
                 }
                 case Command::REVERSE_COMMAND: {
@@ -134,6 +132,7 @@ void TrainTask() {
                 }
 
                 default:
+                    ASSERT(0, "BAD COMMAND FROM LOCALIZATION SERVER");
                     return;
             }
 

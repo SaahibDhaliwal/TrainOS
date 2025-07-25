@@ -27,8 +27,8 @@ class Train {
     uint8_t speed = 0;              // Marklin Box Unit
     uint64_t stoppingDistance = 0;  // mm
 
-    uint64_t slowingDown = 0;
-    bool stopped = true;
+    //     uint64_t slowingDown = 0;
+    //     bool stopped = true;
     bool isForward = true;
 
     unsigned int myTrainNumber;
@@ -41,13 +41,13 @@ class Train {
     uint64_t velocitySamplesNumeratorSum = 0;
     uint64_t velocitySamplesDenominatorSum = 0;
 
-    Sensor sensorAhead;                       // sensor ahead of train
-    Sensor sensorBehind;                      // sensor behind train
-    Sensor stopSensor;                        // sensor we are waiting to hit
-    Sensor targetSensor;                      // sensor we are waiting to hit
-    uint64_t stopSensorOffset = 0;            // mm, static
-    uint64_t distanceToSensorAhead = 0;       // mm, static
-    uint64_t distRemainingToSensorAhead = 0;  // mm, dynamic
+    Sensor sensorAhead;                      // sensor ahead of train
+    Sensor sensorBehind;                     // sensor behind train
+    Sensor stopSensor;                       // sensor we are waiting to hit
+    Sensor targetSensor;                     // sensor we are waiting to hit
+    uint64_t stopSensorOffset = 0;           // mm, static
+    uint64_t distanceToSensorAhead = 0;      // mm, static
+    int64_t distRemainingToSensorAhead = 0;  // mm, dynamic
 
     bool isAccelerating = false;
     uint64_t accelerationStartTime = 0;  // micros
@@ -81,9 +81,9 @@ class Train {
 
     bool recentZoneAddedFlag = false;
 
-    Sensor zoneEntraceSensorAhead;                        // sensor ahead of train marking a zone entrace
-    uint64_t distanceToZoneEntraceSensorAhead = 0;        // mm, static
-    uint64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
+    Sensor zoneEntraceSensorAhead;                       // sensor ahead of train marking a zone entrace
+    uint64_t distanceToZoneEntraceSensorAhead = 0;       // mm, static
+    int64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
 
@@ -97,8 +97,8 @@ class Train {
     void makeInitialReservation();
 
    public:
-    Train(unsigned int myTrainNumber, uint32_t printerProprietorTid, uint32_t marklinServerTid, uint32_t clockServerTid,
-          uint32_t updaterTid, uint32_t stopNotifierTid);
+    Train(unsigned int myTrainNumber, int parentTid, uint32_t printerProprietorTid, uint32_t marklinServerTid,
+          uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid);
 
     // getters
     uint32_t getReverseTid();
@@ -123,7 +123,7 @@ class Train {
     void finishReverse();
 
     uint64_t getReverseDelayTicks();
-    uint64_t getStopDelayTicks();
+    uint64_t getStopDelayTicks(int64_t curMicros);
 
     void stop();
 };

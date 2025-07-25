@@ -92,9 +92,9 @@ void LocalizationServer() {
 
     for (;;) {
         uint32_t clientTid;
-        char receiveBuffer[21] = {0};
-        int msgLen = sys::Receive(&clientTid, receiveBuffer, 20);
-        receiveBuffer[msgLen] = '\0';
+        char receiveBuffer[Config::MAX_MESSAGE_LENGTH] = {0};
+        int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        receiveBuffer[msgLen] = '\0';  // is this breaking things?
 
         if (clientTid == commandServerTid) {
             Command command = commandFromByte(receiveBuffer[0]);
@@ -164,7 +164,7 @@ void LocalizationServer() {
             trainManager.processSensorReading(receiveBuffer);
             emptyReply(clientTid);
         } else if (clientTid == turnoutNotifierTid) {
-            trainManager.processTurnoutNotifier();
+            trainManager.processTurnoutNotifier();  // will reply depending on the state of the turnout queue
         } else if (clientTid >= trainManager.getSmallestTrainTid() && clientTid <= trainManager.getLargestTrainTid()) {
             trainManager.processTrainRequest(receiveBuffer, clientTid);
 
