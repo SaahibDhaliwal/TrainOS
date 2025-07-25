@@ -24,6 +24,7 @@
 #include "test_utils.h"
 #include "timer.h"
 #include "track_data.h"
+#include "train_data.h"
 #include "train_task.h"
 #include "turnout.h"
 
@@ -31,7 +32,7 @@ using namespace localization_server;
 
 void initializeTrains(Train* trains, int marklinServerTid) {
     // void initializeTrains(Train* trains, int marklinServerTid) {
-    for (int i = 0; i < MAX_TRAINS; i += 1) {
+    for (int i = 0; i < Config::MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
         // trains[i].isReversing = false;
@@ -74,7 +75,7 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
 
     trainReservation.initialize(track, printerProprietorTid);
 
-    for (int i = 0; i < MAX_TRAINS; i++) {
+    for (int i = 0; i < Config::MAX_TRAINS; i++) {
         char sendBuff[5] = {0};
         trainTasks[i] = sys::Create(TRAIN_TASK_PRIORITY, TrainTask);  // stores TID
         printer_proprietor::formatToString(sendBuff, 4, "%d", trainIndexToNum(i));
@@ -156,7 +157,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     int trackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);
     TrackNode* curSensor = &track[trackNodeIdx];
     Train* curTrain = nullptr;
-    for (int i = 0; i < MAX_TRAINS; i++) {
+    for (int i = 0; i < Config::MAX_TRAINS; i++) {
         if (trains[i].active) {
             // if you're active, is this your first sensor?
             // if it is, was this the same sensor hit as last time?
@@ -174,7 +175,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         }
     }
     // Slightly better looking version, but not as expandable in the future
-    // for (int i = 0; i < MAX_TRAINS; i++) {
+    // for (int i = 0; i < Config::MAX_TRAINS; i++) {
     //     if (trains[i].active) {
     //         curTrain = &trains[i];
     //         if (trains[i].sensorAhead == curSensor) break;
@@ -186,7 +187,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     // char debugBuff[200] = {0};
     if (curTrain != nullptr && !curTrain->sensorBehind) {
         // go through all the trains to see if it's one of theirs right now
-        for (int i = 0; i < MAX_TRAINS; i++) {
+        for (int i = 0; i < Config::MAX_TRAINS; i++) {
             if (trains[i].sensorBehind && trains[i].sensorBehind == curSensor) {
                 // printer_proprietor::formatToString(debugBuff, 200, "[Localization] sensor spam");
                 // printer_proprietor::debug(printerProprietorTid, debugBuff);
@@ -352,7 +353,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
             curTrain->stoppingDistance);
 
-        // for (int i = 0; i < MAX_TRAINS; i++) {
+        // for (int i = 0; i < Config::MAX_TRAINS; i++) {
         //     printer_proprietor::debugPrintF(printerProprietorTid, "TrainTask TID at index %u is: %d", i,
         //     trainTasks[i]);
         // }
@@ -805,7 +806,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                 lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
                 curTrain->stoppingDistance);
 
-            // for (int i = 0; i < MAX_TRAINS; i++) {
+            // for (int i = 0; i < Config::MAX_TRAINS; i++) {
             //     printer_proprietor::debugPrintF(printerProprietorTid, "TrainTask TID at index %u is: %d", i,
             //     trainTasks[i]);
             // }
@@ -860,7 +861,7 @@ uint32_t TrainManager::getSmallestTrainTid() {
     return trainTasks[0];
 }
 uint32_t TrainManager::getLargestTrainTid() {
-    return trainTasks[MAX_TRAINS];
+    return trainTasks[Config::MAX_TRAINS - 1];
 }
 
 TrackNode* TrainManager::getTrack() {
@@ -1021,7 +1022,7 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
                                     lastSensor->name, travelledDistance - curTrain->stoppingDistance, travelledDistance,
                                     curTrain->stoppingDistance);
 
-    // for (int i = 0; i < MAX_TRAINS; i++) {
+    // for (int i = 0; i < Config::MAX_TRAINS; i++) {
     //     printer_proprietor::debugPrintF(printerProprietorTid, "TrainTask TID at index %u is: %d", i, trainTasks[i]);
     // }
     // printer_proprietor::debugPrintF(printerProprietorTid, "Localization TID is: %u", sys::MyTid());

@@ -244,7 +244,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         if (*cur != ' ') return false;
         cur++;
 
-        int offset = 0;
+        int64_t offset = 0;
         bool negativeFlag = false;
         if (*cur == '-') {
             negativeFlag = true;

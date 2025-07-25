@@ -39,8 +39,6 @@ void PrinterProprietor() {
     unsigned int measurementMessages = 0;
     unsigned int debugMessages = 0;
 
-    RingBuffer<char[Config::MAX_MESSAGE_LENGTH], 10> trainZones[MAX_TRAINS];
-
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];

@@ -9,7 +9,7 @@ enum class Command : char {
     NEW_SENSOR = 3,
     // SKIPPED_SENSOR,
     SET_SPEED,
-    REVERSE,
+    REVERSE_COMMAND,
     GET_REVERSE_TIME,
     FINISH_REVERSE,
     STOP_SENSOR,

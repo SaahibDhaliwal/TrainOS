@@ -104,7 +104,7 @@ int formatToBuffer(char* out, int outSize, const char* fmt, va_list va) {
 
         int len = strlen(str);
         for (int i = len; i < width && outPos < outSize - 1; i++) {
-            out[outPos++] = ' ';
+            out[outPos++] = '0';
         }
 
         while (*str && outPos < outSize - 1) {
@@ -223,27 +223,7 @@ void updateTrainDistance(int tid, int trainIndex, uint64_t distance) {
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_DISTANCE);
     trainIndex++;
 
-    // some silly checking. I'm not proud of this
-    if (distance < 0) {
-        if (distance < -1000 && distance > -10000) {  // three digits plus negative
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
-        } else if (distance < -100) {  // three total
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
-        } else if (distance < -10) {
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
-        } else {  // does this ever happen?
-            return;
-        }
-
-    } else if (distance < 10) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
-    } else if (distance < 100) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
-    } else if (distance < 1000) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
-    } else {  // does this ever happen?
-        return;
-    }
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%4u mm", trainIndex, distance);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
@@ -253,27 +233,7 @@ void updateTrainZoneDistance(int tid, int trainIndex, uint64_t distance) {
     sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE_DISTANCE);
     trainIndex++;
 
-    // some silly checking. I'm not proud of this
-    if (distance < 0) {
-        if (distance < -1000 && distance > -10000) {  // three digits plus negative
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
-        } else if (distance < -100) {  // three total
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
-        } else if (distance < -10) {
-            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
-        } else {  // does this ever happen?
-            return;
-        }
-
-    } else if (distance < 10) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
-    } else if (distance < 100) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
-    } else if (distance < 1000) {
-        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
-    } else {  // does this ever happen?
-        return;
-    }
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%4u mm", trainIndex, distance);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }

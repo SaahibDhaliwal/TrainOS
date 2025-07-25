@@ -144,8 +144,9 @@ void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
     setNextSensor(&track[144], turnouts);
     setNextSensor(&track[145], turnouts);  // these do not
 
-    ASSERT(track[38].nextSensor->name == "F4", "sensors were mapped wrong. C7 next sensor name: %s num: %d",
-           track[38].nextSensor->name, track[38].nextSensor->num);  // c7
+    ASSERT(track[38].nextSensor->name[0] == 'F' && track[38].nextSensor->name[1] == '4',
+           "sensors were mapped wrong. C7 next sensor name: %s num: %d", track[38].nextSensor->name,
+           track[38].nextSensor->num);  // c7
     ASSERT(track[38].nextSensor->num == 4, "sensors were mapped wrong. C7 next sensor num: %s num: %d",
            track[38].nextSensor->num);  // c7
     // ASSERT(track[35].nextSensor->name == "F1", "sensors were mapped wrong. C4 next sensor name: %s num: %d",

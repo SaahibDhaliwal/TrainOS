@@ -1,6 +1,7 @@
 #include "printer_proprietor_helpers.h"
 
 #include "command_server_protocol.h"
+#include "config.h"
 #include "console_server_protocol.h"
 #include "pos.h"
 #include "rpi.h"
@@ -393,7 +394,7 @@ void change_train_status(uint32_t consoleTid, int trainIndex, bool isActive) {
 }
 
 void init_train_status(uint32_t consoleTid) {
-    for (int i = 0; i < MAX_TRAINS; i += 1) {
+    for (int i = 0; i < Config::MAX_TRAINS; i += 1) {
         change_train_status(consoleTid, i, false);
     }
 }

@@ -31,27 +31,14 @@
 
 using namespace localization_server;
 
-// void StopTrain() {
-//     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-//     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
-//     int parentTid = sys::MyParentTid();
-//     char replyBuff[8];  // assuming our ticks wont be more than 99999 ticks
-//     unsigned int delayAmount = 0;
-//     for (;;) {
-//         int res = sys::Send(parentTid, nullptr, 0, replyBuff, 7);
-//         handleSendResponse(res, parentTid);
-//         a2ui(replyBuff, 10, &delayAmount);
-//         clock_server::Delay(clockServerTid, delayAmount);
-//     }
-//     sys::Exit();
-// }
-
 #define DONE_TURNOUTS 1
 void TurnoutNotifier() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+
     int marklinServerTid = name_server::WhoIs(MARKLIN_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET MARKLIN_SERVER_NAME\r\n");
+
     int printerProprietorTid = name_server::WhoIs(PRINTER_PROPRIETOR_NAME);
     ASSERT(printerProprietorTid >= 0, "UNABLE TO GET PRINTER PROPRIETOR\r\n");
 
@@ -63,23 +50,15 @@ void TurnoutNotifier() {
 
         if (replyBuff[0] != DONE_TURNOUTS) {
             marklin_server::setTurnout(marklinServerTid, replyBuff[0], replyBuff[1]);
+            printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(replyBuff[0]),
+                                              turnoutIdx(replyBuff[1]));
         } else {
             marklin_server::solenoidOff(marklinServerTid);
-            clock_server::Delay(clockServerTid, 20);
-            continue;
         }
-        // could this delay stop us and have a higher priority task run and have the solenoid burn?
-        clock_server::Delay(clockServerTid, 20);  // give the turnout time to turn on
-        printer_proprietor::updateTurnout(printerProprietorTid, static_cast<Command_Byte>(replyBuff[0]),
-                                          turnoutIdx(replyBuff[1]));
 
-        char sendBuff[100] = {0};
-        // oh this is why
-        if (replyBuff[0] == 33) {
-            printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to straight", replyBuff[1]);
-        } else {
-            printer_proprietor::formatToString(sendBuff, 100, "set turnout: %d to curved", replyBuff[1]);
-        }
+        // could this delay stop us and have a higher priority task run and have the solenoid burn?
+        // answer: yes, let's give it higher prio - saahib
+        clock_server::Delay(clockServerTid, 20);
     }
     sys::Exit();
 }
@@ -101,14 +80,11 @@ void LocalizationServer() {
     int commandServerTid = name_server::WhoIs(COMMAND_SERVER_NAME);
     ASSERT(commandServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    // uint32_t stoppingTid = sys::Create(42, &StopTrain);
-    uint32_t client = 0;
-    // int res = sys::Receive(&client, nullptr, 0);
-    // ASSERT(client == stoppingTid, "localization startup received from someone besides the stoptrain task");
-
     uint32_t turnoutNotifierTid = sys::Create(30, &TurnoutNotifier);
-    sys::Receive(&client, nullptr, 0);
-    ASSERT(client == turnoutNotifierTid, "localization startup received from someone besides the turnoutNotifier task");
+
+    uint32_t clientTid = 0;
+    sys::Receive(&clientTid, nullptr, 0);
+    ASSERT(clientTid == turnoutNotifierTid, "LOCALIZATION SERVER DID NOT RECEIVE FROM NOTIFIER\r\n");
 
     TrainManager trainManager(marklinServerTid, printerProprietorTid, clockServerTid, turnoutNotifierTid);
 
@@ -121,7 +97,6 @@ void LocalizationServer() {
         receiveBuffer[msgLen] = '\0';
 
         if (clientTid == commandServerTid) {
-            // trainManager.processInputCommand(receiveBuffer);
             Command command = commandFromByte(receiveBuffer[0]);
             switch (command) {
                 case Command::SET_SPEED: {
@@ -131,7 +106,6 @@ void LocalizationServer() {
                 case Command::REVERSE_TRAIN: {
                     int trainNumber = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
                     int trainIdx = trainNumToIndex(trainNumber);
-                    // tell the train manager to tell the train to start reversing
                     trainManager.reverseTrain(trainIdx);
                     break;
                 }
@@ -146,12 +120,11 @@ void LocalizationServer() {
                     turnouts[index].state = static_cast<SwitchState>(turnoutDirection);
 
                     marklin_server::setTurnout(marklinServerTid, turnoutDirection, turnoutNumber);
-                    // go down our branch to find which sensor is next
-                    // we pass the tracknode of our branch
+
                     TrackNode *newNextSensor = getNextSensor(&track[(2 * index) + 80], turnouts);
                     ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
                     // start at the reverse of the new upcoming sensor, so we can work backwards to update sensors
-                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);  // work backwards
                     // if you were to follow the track backwards, you should get a sensor. That sensor should have this
                     // new next sensor updated
                     ASSERT(newNextSensor == newNextSensor->reverse->nextSensor->reverse->nextSensor,

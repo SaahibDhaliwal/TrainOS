@@ -49,7 +49,7 @@ void setTrainSpeed(int tid, unsigned int trainSpeed) {
 
 void reverseTrain(int tid) {
     char sendBuf[2] = {0};
-    sendBuf[0] = toByte(Command::REVERSE);
+    sendBuf[0] = toByte(Command::REVERSE_COMMAND);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
     handleSendResponse(res, tid);
 }

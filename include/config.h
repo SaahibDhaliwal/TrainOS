@@ -15,6 +15,9 @@ constexpr int EXPERIMENT_COUNT = 2;
 constexpr uint32_t TICK_SIZE = 10000;
 constexpr int MARKLIN_QUEUE_SIZE = 8192;
 constexpr int CONSOLE_QUEUE_SIZE = 32768;
+constexpr int MAX_TRAINS = 6;
+constexpr int NOTIFIER_PRIORITY = 15;
+
 }  // namespace Config
 
 #endif /* config.h */

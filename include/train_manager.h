@@ -42,8 +42,8 @@ struct Train {
 }  // namespace localization_server
 class TrainManager {
    private:
-    localization_server::Train trains[MAX_TRAINS];
-    uint32_t trainTasks[MAX_TRAINS];
+    localization_server::Train trains[Config::MAX_TRAINS];
+    uint32_t trainTasks[Config::MAX_TRAINS];
     TrackNode track[TRACK_MAX];
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
     TrainReservation trainReservation;
@@ -66,7 +66,7 @@ class TrainManager {
     uint64_t velocitySamplesDenominatorSum = 0;
     RingBuffer<std::pair<char, char>, 100> turnoutQueue;
     bool stopTurnoutNotifier = false;
-    RingBuffer<int, MAX_TRAINS> reversingTrains;
+    RingBuffer<int, Config::MAX_TRAINS> reversingTrains;
     TrackNode* train13[NODE_MAX];
     TrackNode* train14[NODE_MAX];
 

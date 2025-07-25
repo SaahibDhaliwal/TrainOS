@@ -23,9 +23,7 @@
 #include "train_protocol.h"
 #include "util.h"
 
-#define NOTIFIER_PRIORITY 15
-
-void TrainNotifier() {
+void TrainUpdater() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "TRAIN NOTIFIER: UNABLE TO GET CLOCK_SERVER_NAME\r\n");
     int parentTid = sys::MyParentTid();
@@ -57,8 +55,8 @@ using namespace train_server;
 
 void TrainTask() {
     int parentTid = sys::MyParentTid();
-    uint32_t clientTid = 0;
 
+    uint32_t clientTid = 0;
     unsigned int myTrainNumber = uIntReceive(&clientTid);
     emptyReply(clientTid);
 
@@ -76,15 +74,15 @@ void TrainTask() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "TRAIN NOTIFIER: UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    uint32_t notifierTid = sys::Create(NOTIFIER_PRIORITY, TrainNotifier);  // train updater
+    int updaterTid = sys::Create(Config::NOTIFIER_PRIORITY, TrainUpdater);  // train updater
     emptyReceive(&clientTid);
-    ASSERT(clientTid == notifierTid, "train startup received from someone other than the train notifier");
+    ASSERT(clientTid == updaterTid, "TRAIN TASK DID NOT RECEIVE FROM NOTIFIER");
 
-    uint32_t stopNotifierTid = sys::Create(42, StopTrain);  // train updater
+    int stopNotifierTid = sys::Create(Config::NOTIFIER_PRIORITY, StopTrain);  // train stopper
     emptyReceive(&clientTid);
-    ASSERT(clientTid == stopNotifierTid, "train startup received from someone other than the stop train notifier");
+    ASSERT(clientTid == stopNotifierTid, "TRAIN TASK DID NOT RECEIVE FROM STOPPER");
 
-    Train train(myTrainNumber, printerProprietorTid, marklinServerTid, clockServerTid);
+    Train train(myTrainNumber, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid, stopNotifierTid);
 
     for (;;) {
         char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -94,16 +92,18 @@ void TrainTask() {
             Command command = commandFromByte(receiveBuff[0]);
             switch (command) {
                 case Command::SET_SPEED: {
-                    emptyReply(clientTid);  // reply right away to reduce latency
+                    emptyReply(clientTid);  // immediate reply
                     unsigned int trainSpeed = 10 * a2d(receiveBuff[1]) + a2d(receiveBuff[2]);
                     train.setTrainSpeed(trainSpeed);
                     break;
                 }
                 case Command::NEW_SENSOR: {
-                    emptyReply(clientTid);  // reply right away to reduce latency
+                    emptyReply(clientTid);  // immediate reply
 
+                    printer_proprietor::debugPrintF(printerProprietorTid, "in here");
                     Sensor curSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
                     Sensor upcomingSensor = {.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+
                     ASSERT(upcomingSensor.num <= 16 && upcomingSensor.num >= 1, "got some bad sensor num: %u",
                            static_cast<uint8_t>(receiveBuff[4]));
                     ASSERT(curSensor.num <= 16 && curSensor.num >= 1, "got some bad sensor num: %u",
@@ -112,23 +112,23 @@ void TrainTask() {
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
 
-                    // pass it here
                     train.processSensorHit(curSensor, upcomingSensor, distance);
 
                     break;
                 }
-                case Command::REVERSE: {
-                    emptyReply(clientTid);  // reply right away to reduce latency
+                case Command::REVERSE_COMMAND: {
+                    emptyReply(clientTid);  // immediate reply
                     train.reverseCommand();
                     break;
                 }
-
                 case Command::STOP_SENSOR: {
-                    emptyReply(clientTid);  // reply right away to reduce latency
+                    emptyReply(clientTid);  // immediate reply
                     Sensor stopSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
                     Sensor targetSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+
                     unsigned int distance = 0;
                     a2ui(&receiveBuff[5], 10, &distance);
+
                     train.newStopLocation(stopSensor, targetSensor, distance);
                     break;
                 }
@@ -136,13 +136,31 @@ void TrainTask() {
                 default:
                     return;
             }
-        } else if (clientTid == notifierTid) {  // so we have some velocity estimate to start with
-            train.processQuickNotifier(notifierTid);
-        } else if (clientTid == train.reverseTid) {
+
+        } else if (clientTid == updaterTid) {
+            train.updateState();
+            emptyReply(updaterTid);  // not immediate
+
+        } else if (clientTid == train.getReverseTid()) {
             Command command = commandFromByte(receiveBuff[0]);
-            train.reverseNotifier(command, clientTid);
+            switch (command) {
+                case Command::GET_REVERSE_TIME: {
+                    uIntReply(clientTid, train.getReverseDelayTicks());
+                    break;
+                }
+                case Command::FINISH_REVERSE: {
+                    train.finishReverse();
+                    break;
+                }
+                default: {
+                    printer_proprietor::debugPrintF(printerProprietorTid, "UNKOWN COMMAND");
+                    break;
+                }
+            }
+
         } else if (clientTid == stopNotifierTid) {
-            train.stopNotifier();
+            train.stop();  // no reply
+
         } else {
             ASSERT(0, "someone else sent to train task?");
         }

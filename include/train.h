@@ -13,13 +13,12 @@
 class Train {
    private:
     uint32_t parentTid;
-
-    uint32_t notifierTid;
+    uint32_t marklinServerTid;
+    uint32_t printerProprietorTid;
+    uint32_t clockServerTid;
+    uint32_t updaterTid;
     uint32_t stopNotifierTid;
-
-    int marklinServerTid;
-    int printerProprietorTid;
-    int clockServerTid;
+    uint32_t reverseTid;
 
     TrackNode track[TRACK_MAX];
     uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
@@ -34,7 +33,7 @@ class Train {
 
     unsigned int myTrainNumber;
     int trainIndex;
-    char* trainColour;
+    const char* trainColour;
 
     // ********** REAL-TIME TRAIN STATE ************
     uint64_t velocityEstimate = 0;  // in micrometers per microsecond (µm/µs) with a *1000 for decimals
@@ -88,20 +87,28 @@ class Train {
 
     /////////////////////////////////////////////////////////////////////
 
-    void initialSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx);
     void newSensorHitFromStopped(Sensor sensor);
-    void newSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx);
+
     bool attemptReservation(int64_t curMicros);
 
+    void initialSensorHit(Sensor curSensor);
+    void regularSensorHit(uint64_t curMicros, Sensor curSensor);
+    void makeReservation();
+    void makeInitialReservation();
+
    public:
-    Train(unsigned int myTrainNumber, int printerProprietorTid, int marklinServerTid, int clockServerTid);
-    uint32_t reverseTid;
+    Train(unsigned int myTrainNumber, uint32_t printerProprietorTid, uint32_t marklinServerTid, uint32_t clockServerTid,
+          uint32_t updaterTid, uint32_t stopNotifierTid);
+
+    // getters
+    uint32_t getReverseTid();
+    Sensor getStopSensor();
+
     void setTrainSpeed(unsigned int trainSpeed);
     // on sensor hit
     void processSensorHit(Sensor currentSensor, Sensor sensorAhead, uint64_t distanceToSensorAhead);
 
     // reservation stuff
-
     bool shouldTrainReserveNextZone();
 
     void tryToFreeZones(uint64_t distTravelledSinceLastSensorHit = 0);
@@ -109,15 +116,16 @@ class Train {
     void reverseCommand();
     //
     void newStopLocation(Sensor stopSensor, Sensor targetSensor, uint64_t offset);
-    // notifier
-    void processQuickNotifier(uint64_t notifierTid);
+    void updateState();
     //
     void updateVelocitywithAcceleration(int64_t curMicros);
 
-    // here, we will be coasting to our target.
-    void reverseNotifier(train_server::Command command, uint64_t clientTid);
-    //
-    void stopNotifier();
+    void finishReverse();
+
+    uint64_t getReverseDelayTicks();
+    uint64_t getStopDelayTicks();
+
+    void stop();
 };
 
 #endif

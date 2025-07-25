@@ -34,7 +34,7 @@ endif
 
 WARNINGS:=-Wall -Wextra -Wpedantic -Werror=return-type -Wno-unused-const-variable -Wno-stringop-overflow
 # I had to get rid of freestanding for the map. Says its fine on piazza
-CFLAGS:= -Isrc -Isrc/containers -Iinclude/clients -Iinclude/servers -Iinclude/protocols -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(TRACKFLAG)  $(WARNINGS)
+CFLAGS:= -Isrc -std=c++20 -Isrc/containers -Iinclude/clients -Iinclude/servers -Iinclude/protocols -Iinclude -Itests -g -pipe -static -mcpu=$(ARCH) -march=armv8-a $(MMUFLAGS) $(OPTFLAGS) $(TESTFLAGS) $(TRACKFLAG)  $(WARNINGS)
 
 # -Wl,option tells gcc to pass 'option' to the linker with commas replaced by spaces
 # doing this rather than calling the linker directly simplifies the compilation procedure

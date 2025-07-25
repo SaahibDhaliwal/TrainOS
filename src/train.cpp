@@ -19,132 +19,26 @@
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
+#include "train_data.h"
 #include "train_protocol.h"
 #include "util.h"
 
-int trainNumToIndex(int trainNum) {
-    for (int i = 0; i < MAX_TRAINS; i += 1) {
-        if (trainAddresses[i] == trainNum) return i;
-    }
-
-    return -1;
-}
-
-int trainIndexToNum(int trainIndex) {
-    return trainAddresses[trainIndex];
-}
-
-uint64_t getFastVelocitySeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainFastVelocitySeedTrackA[trainIdx];
-#else
-    return trainFastVelocitySeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getStoppingVelocitySeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainStopVelocitySeedTrackA[trainIdx];
-#else
-    return trainStopVelocitySeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getAccelerationSeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainAccelSeedTrackB[trainIdx];
-#else
-    return trainAccelSeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getDecelerationSeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainDecelSeedTrackA[trainIdx];
-#else
-    return trainDecelSeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getSlowVelocitySeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainSlowVelocitySeedTrackA[trainIdx];
-#else
-    return trainSlowVelocitySeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getSlowStoppingDistSeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainSlowStoppingDistSeedTrackA[trainIdx];
-#else
-    return trainSlowStoppingDistSeedTrackB[trainIdx];
-#endif
-}
-
-uint64_t getStoppingDistSeed(int trainIdx) {
-    ASSERT(trainIdx >= 0 && trainIdx < MAX_TRAINS);
-
-#if defined(TRACKA)
-    return trainStoppingDistSeedTrackA[trainIdx];
-#else
-    return trainStoppingDistSeedTrackB[trainIdx];
-#endif
-}
-
-int stopDistFromSpeed(int trainIndex, int speed) {
-    switch (speed) {
-        case TRAIN_SPEED_14:
-            return getStoppingDistSeed(trainIndex);  // speed 14 does not have a stopping dist
-        case TRAIN_SPEED_8:
-            return getStoppingDistSeed(trainIndex);  // speed 14 does not have a stopping dist
-        case TRAIN_SPEED_6:
-            return getSlowStoppingDistSeed(trainIndex);  // speed 14 does not have a stopping dist
-        default:
-            return TRAIN_STOP;
-    }
-}
-
-// insert acceleration model here...
-uint64_t velocityFromSpeed(int trainIndex, int speed) {
-    switch (speed) {
-        case TRAIN_SPEED_14:
-            return getFastVelocitySeed(trainIndex);
-        case TRAIN_SPEED_8:
-            return getStoppingVelocitySeed(trainIndex);  // speed 14 does not have a stopping dist
-        case TRAIN_SPEED_6:
-            return getSlowVelocitySeed(trainIndex);  // speed 14 does not have a stopping dist
-        default:
-            return TRAIN_STOP;
-    }
-}
-
 using namespace train_server;
 #define TASK_MSG_SIZE 20
-#define NOTIFIER_PRIORITY 15
 #define STOPPING_THRESHOLD 10     // 1 cm
 #define TRAIN_SENSOR_TIMEOUT 300  // 5 sec?
-// sensor bar to back, in mm
+
 // this will need to be a variable and changed when we do reverses
 #define DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN 200
 
-Train::Train(unsigned int myTrainNumber, int printerProprietorTid, int marklinServerTid, int clockServerTid)
+Train::Train(unsigned int myTrainNumber, uint32_t printerProprietorTid, uint32_t marklinServerTid,
+             uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid)
     : myTrainNumber(myTrainNumber),
       printerProprietorTid(printerProprietorTid),
       marklinServerTid(marklinServerTid),
       clockServerTid(clockServerTid),
+      updaterTid(updaterTid),
+      stopNotifierTid(stopNotifierTid),
       trainIndex(trainNumToIndex(myTrainNumber)) {
     switch (myTrainNumber) {
         case 13:
@@ -176,8 +70,15 @@ Train::Train(unsigned int myTrainNumber, int printerProprietorTid, int marklinSe
     initializeDistanceMatrix(track, distanceMatrix);
 }
 
+uint32_t Train::getReverseTid() {
+    return reverseTid;
+}
+
+Sensor Train::getStopSensor() {
+    return stopSensor;
+}
+
 void Train::setTrainSpeed(unsigned int trainSpeed) {
-    // unsigned int trainSpeed = 10 * a2d(receiveBuff[1]) + a2d(receiveBuff[2]);
     if (!isReversing && !slowingDown) {
         printer_proprietor::debugPrintF(printerProprietorTid, "%s Setting speed to %u ", trainColour, trainSpeed);
         marklin_server::setTrainSpeed(marklinServerTid, trainSpeed, myTrainNumber);
@@ -195,26 +96,19 @@ void Train::setTrainSpeed(unsigned int trainSpeed) {
     totalAccelerationTime =
         (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
 
-    // velocityEstimate = velocityFromSpeed(trainIndex, trainSpeed);
     stoppingDistance = stopDistFromSpeed(trainIndex, trainSpeed);
 
     if (trainSpeed == TRAIN_STOP) {
         slowingDown = timerGet();
-        // plug in acceleration model here lmao
         totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
     }
-
-    while (!velocitySamples.empty()) {
-        velocitySamples.pop();
-    }
-    newSensorsPassed = 0;
 }
 
-void Train::initialSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx) {
-    // int64_t curMicros = timerGet();
-    prevSensorHitMicros = curMicros;
+void Train::initialSensorHit(Sensor curSensor) {
+    int curSensorIdx = trackNodeIdxFromSensor(curSensor);
 
     printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);  // train active
+
     stopped = false;
 
     // reserve current zone on initial sensor hit
@@ -242,11 +136,11 @@ void Train::initialSensorHit(int64_t curMicros, Sensor curSensor, int curSensorI
             break;
         }
     }
-
-    emptyReply(notifierTid);  // ready for real-time train updates now
 }
 
-void Train::newSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx) {
+void Train::regularSensorHit(uint64_t curMicros, Sensor curSensor) {
+    int curSensorIdx = trackNodeIdxFromSensor(curSensor);
+
     // if we came to a stop and chose to start moving again, we should attempt to reserve the next zone then
     if (stopped) {
         stopped = false;
@@ -267,7 +161,6 @@ void Train::newSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx) 
         uint64_t nextSample = (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
         uint64_t lastEstimate = velocityEstimate;
         velocityEstimate = ((lastEstimate * 15) + nextSample) >> 4;  // alpha = 1/8
-        newSensorsPassed = 5;
         printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
     }
 
@@ -283,38 +176,42 @@ void Train::newSensorHit(int64_t curMicros, Sensor curSensor, int curSensorIdx) 
     printer_proprietor::updateSensor(printerProprietorTid, curSensor, estimateTimeDiffms, estimateDistanceDiffmm);
     printer_proprietor::updateTrainNextSensor(printerProprietorTid, trainIndex, sensorAhead);
 
-    prevSensorHitMicros = curMicros;
     tryToFreeZones();
 }
 
-void Train::processSensorHit(Sensor currentSensor, Sensor upcomingSensor, uint64_t distanceToSensorAhead) {
+void Train::processSensorHit(Sensor curSensor, Sensor newSensorAhead, uint64_t distance) {
     int64_t curMicros = timerGet();
-    if (newSensorsPassed > 1 && sensorAhead.box != 'F') {
-        ASSERT(upcomingSensor.box == sensorAhead.box && upcomingSensor.num == sensorAhead.num,
+
+    if (prevSensorHitMicros != 0 && sensorAhead.box != 'F') {
+        ASSERT(curSensor.box == sensorAhead.box && curSensor.num == sensorAhead.num,
                "Train %u was not expecting this sensor to come next");
     }
 
-    // check if it's a stop sensor we're expecting so we can spin up notifier
-    if (currentSensor.box == stopSensor.box && currentSensor.num == stopSensor.num) {
-        uint64_t arrivalTime = (stopSensorOffset * 1000 * 1000000 / velocityEstimate);
-        uint64_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
-        ASSERT(stopNotifierTid < 100);
-        uIntReply(stopNotifierTid, numOfTicks);
-        isSlowingDown = true;
-        stopStartTime = curMicros;
+    distanceToSensorAhead = distance;
+    sensorAhead = newSensorAhead;
+
+    if (curSensor == stopSensor) {
+        uIntReply(stopNotifierTid, getStopDelayTicks());
     }
 
-    int curSensorIdx = trackNodeIdxFromSensor(currentSensor);
-    // check if it's an initial sensor hit:
     if (!prevSensorHitMicros) {
-        initialSensorHit(curMicros, currentSensor, curSensorIdx);
-        // return;
+        initialSensorHit(curSensor);
+        emptyReply(updaterTid);  // ready for real-time train updates now
     } else {
-        newSensorHit(curMicros, currentSensor, curSensorIdx);
+        regularSensorHit(curMicros, curSensor);
     }
-    sensorBehind = currentSensor;
 
-    // free things here
+    prevSensorHitMicros = curMicros;
+    sensorBehind = curSensor;
+}
+
+uint64_t Train::getStopDelayTicks() {
+    uint64_t curMicros = timerGet();
+    uint64_t arrivalTime = (stopSensorOffset * 1000 * 1000000 / velocityEstimate);
+    uint64_t numOfTicks = (arrivalTime) / Config::TICK_SIZE;
+    isSlowingDown = true;
+    stopStartTime = curMicros;
+    return numOfTicks;
 }
 
 void Train::reverseCommand() {
@@ -333,8 +230,9 @@ void Train::reverseCommand() {
 void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, uint64_t offset) {
     stopSensor = newStopSensor;
     targetSensor = newTargetSensor;
-    printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
     stopSensorOffset = offset;
+
+    printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
 }
 
 void Train::updateVelocitywithAcceleration(int64_t curMicros) {
@@ -424,16 +322,9 @@ bool Train::attemptReservation(int64_t curMicros) {
     }
 }
 
-void Train::processQuickNotifier(uint64_t notifierTid) {
-    int64_t curMicros = timerGet();
-
+void Train::updateState() {
+    int64_t curMicros = timerGet();                                     // micros
     uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
-    uint64_t timeSinceLastNoti = 0;                                     // micros
-    if (!prevNotificationMicros) {                                      // skip first notification so we have a delta T
-        timeSinceLastNoti = curMicros - prevSensorHitMicros;
-    } else {
-        timeSinceLastNoti = curMicros - prevNotificationMicros;
-    }
 
     // have some timeout here
     // if ((curMicros - prevSensorPredicitionMicros) / 1000 > TRAIN_SENSOR_TIMEOUT && newSensorsPassed >= 5) {
@@ -452,13 +343,12 @@ void Train::processQuickNotifier(uint64_t notifierTid) {
                                                   ? (distanceToZoneEntraceSensorAhead - distTravelledSinceLastSensorHit)
                                                   : 0);
 
-    // if our stop will end up in the next zone, reserve it
-    // fix this wack ass logic with flags
     if (!stopped) {
         printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
                                                     distRemainingToZoneEntranceSensorAhead - stoppingDistance);
     }
 
+    // if our stop will end up in the next zone, reserve it
     if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !stopped &&
         !(zoneEntraceSensorAhead == targetSensor)) {
         ASSERT(stoppingDistance > 0);
@@ -504,7 +394,6 @@ void Train::processQuickNotifier(uint64_t notifierTid) {
     tryToFreeZones(distTravelledSinceLastSensorHit);
 
     prevNotificationMicros = curMicros;
-    emptyReply(notifierTid);  // reply to our notifier HERE
 }
 
 void Train::tryToFreeZones(uint64_t distTravelledSinceLastSensorHit) {
@@ -564,51 +453,41 @@ void Train::tryToFreeZones(uint64_t distTravelledSinceLastSensorHit) {
     }
 }
 
-void Train::reverseNotifier(train_server::Command command, uint64_t clientTid) {
-    switch (command) {
-        case Command::GET_REVERSE_TIME: {
-            uint64_t curTime = timerGet();
-            uint64_t timeToStop = (totalReversingTime - (curTime - reversingStartTime)) / 1000;  // millis
-            uint64_t ticksToStop = (timeToStop + 9) / 10;                                        // round up
-            printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL TICKS TO STOP %u", ticksToStop);
-
-            uIntReply(clientTid, ticksToStop);
-            break;
-        }
-        case Command::FINISH_REVERSE: {
-            ASSERT(reverseTid != 0);
-            ASSERT(isReversing);
-            marklin_server::setTrainReverseAndSpeed(marklinServerTid, speed, myTrainNumber);
-            isReversing = false;
-            isForward = !isForward;
-            // change our stopping distance and orientation
-            printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
-            // should update our stopping distance
-            if (!isForward) {
-                // stopping distance is the distance from sensor bar to front of train + front of train to stop
-                // isReversing would mean we need to subtract this distance ^
-                // from the distance of the back of the train to the sensor bar
-                // back of train to sensor bar: 14.5 cm
-                stoppingDistance += 115;
-            } else {
-                stoppingDistance -= 115;
-            }
-
-            isAccelerating = true;
-            accelerationStartTime = timerGet();
-            totalAccelerationTime =
-                (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
-
-            break;
-        }
-        default: {
-            printer_proprietor::debugPrintF(printerProprietorTid, "UNKOWN COMMAND");
-            break;
-        }
-    }
+uint64_t Train::getReverseDelayTicks() {
+    uint64_t curTime = timerGet();
+    uint64_t timeToStop = (totalReversingTime - (curTime - reversingStartTime)) / 1000;  // millis
+    uint64_t ticksToStop = (timeToStop + 9) / 10;                                        // round up
+    printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL TICKS TO STOP %u", ticksToStop);
+    return ticksToStop;
 }
 
-void Train::stopNotifier() {
+void Train::finishReverse() {
+    ASSERT(reverseTid != 0);
+    ASSERT(isReversing);
+
+    marklin_server::setTrainReverseAndSpeed(marklinServerTid, speed, myTrainNumber);
+    isReversing = false;
+    isForward = !isForward;
+
+    printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
+
+    if (!isForward) {
+        // stopping distance is the distance from sensor bar to front of train + front of train to stop
+        // isReversing would mean we need to subtract this distance ^
+        // from the distance of the back of the train to the sensor bar
+        // back of train to sensor bar: 14.5 cm
+        stoppingDistance += 115;
+    } else {
+        stoppingDistance -= 115;  // TODO: Why subtract here?
+    }
+
+    isAccelerating = true;
+    accelerationStartTime = timerGet();
+    totalAccelerationTime =
+        (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
+}
+
+void Train::stop() {
     printer_proprietor::debugPrintF(printerProprietorTid, "STOP NOTIFIER GOT TO US");
     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
     totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
