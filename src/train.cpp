@@ -139,6 +139,7 @@ void Train::initialSensorHit(Sensor curSensor) {
         }
     }
     printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);  // train active
+    printer_proprietor::updateSensor(printerProprietorTid, curSensor, 999, 999);
 }
 
 void Train::regularSensorHit(uint64_t curMicros, Sensor curSensor) {
@@ -253,6 +254,9 @@ void Train::updateVelocitywithAcceleration(int64_t curMicros) {
 
 bool Train::attemptReservation(int64_t curMicros) {
     char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+    printer_proprietor::debugPrintF(
+        printerProprietorTid, "%s \033[48;5;22m Reservation w zoneEntraceSensorAhead: %c%d targetSensor: %c%d",
+        trainColour, zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num, targetSensor.box, targetSensor.num);
     localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
 
     switch (replyFromByte(replyBuff[0])) {
@@ -275,14 +279,14 @@ bool Train::attemptReservation(int64_t curMicros) {
             unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
             a2ui(&replyBuff[4], 10, &distance);
 
-            printer_proprietor::debugPrintF(printerProprietorTid,
-                                            "%s \033[48;5;22m Made Reservation for Zone: %d using Zone Entrance "
-                                            "Sensor: %c%d because I was %u mm away. Next zone "
-                                            "entrance sensor is %c%d which is %u mm away",
-                                            trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box,
-                                            zoneExit.sensorMarkingExit.num, distRemainingToZoneEntranceSensorAhead,
-                                            zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num,
-                                            distanceToZoneEntraceSensorAhead + distance);
+            // printer_proprietor::debugPrintF(printerProprietorTid,
+            //                                 "%s \033[48;5;22m Made Reservation for Zone: %d using Zone Entrance "
+            //                                 "Sensor: %c%d because I was %u mm away. Next zone "
+            //                                 "entrance sensor is %c%d which is %u mm away",
+            //                                 trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box,
+            //                                 zoneExit.sensorMarkingExit.num, distRemainingToZoneEntranceSensorAhead,
+            //                                 zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num,
+            //                                 distanceToZoneEntraceSensorAhead + distance);
 
             int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
             int sensorAheadIdx = trackNodeIdxFromSensor(sensorAhead);
@@ -383,16 +387,17 @@ void Train::updateState() {
         isStopped = true;
         totalStoppingTime = 0;
 
-        prevSensorHitMicros = 0;
+        // prevSensorHitMicros = 0;
         // prevNotificationMicros = curMicros;
         // tell all our reservations that we are stopped
         localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
-        printer_proprietor::debugPrintF(printerProprietorTid, "Assume we have updated our reservation types");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "Assume we have updated our reservation types");
 
     } else if (isStopped && !(zoneEntraceSensorAhead == targetSensor)) {
         // try and make a reservation request again. If it works, go back to your speed?
         ASSERT(!isSlowingDown, "we have stopped but 'stopping' has a timestamp");
 
+        // this would happen
         if (!attemptReservation(curMicros)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
         }
