@@ -59,8 +59,9 @@ class Train {
 
     bool isSlowingDown = false;
     bool isStopped = true;
-    uint64_t stopStartTime = 0;      // micros
-    uint64_t totalStoppingTime = 0;  // micros
+    uint64_t stopStartTime = 0;          // micros
+    uint64_t totalStoppingTime = 0;      // micros
+    uint64_t velocityBeforeSlowing = 0;  // micros
 
     bool reachedDestination = false;
 
@@ -80,6 +81,8 @@ class Train {
     RingBuffer<ZoneExit, 32> zoneExits;
 
     bool recentZoneAddedFlag = false;
+
+    bool firstReservationFailure = false;
 
     Sensor zoneEntraceSensorAhead;                       // sensor ahead of train marking a zone entrace
     uint64_t distanceToZoneEntraceSensorAhead = 0;       // mm, static
@@ -118,7 +121,8 @@ class Train {
     void newStopLocation(Sensor stopSensor, Sensor targetSensor, uint64_t offset);
     void updateState();
     //
-    void updateVelocitywithAcceleration(int64_t curMicros);
+    void updateVelocityWithAcceleration(int64_t curMicros);
+    void updateVelocityWithDeceleration(int64_t curMicros);
 
     void finishReverse();
 

@@ -744,7 +744,12 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
 
     printer_proprietor::debugPrintF(printerProprietorTid, "starting path with source: %s ", source->name);
 
-    PATH_FINDING_RESULT result = computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation);
+    printer_proprietor::debugPrintF(printerProprietorTid, "COMPUTING SHORTEST PATH");
+
+    PATH_FINDING_RESULT result =
+        computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation, printerProprietorTid);
+
+    printer_proprietor::debugPrintF(printerProprietorTid, "SHORTEST PATH RESULT WAS %d", result);
     ASSERT(curTrain != nullptr);
     ASSERT(source != nullptr);
     // THIS WAS IN THE INITIAL SENSOR HIT, BUT NOT IN THE ORIGINAL

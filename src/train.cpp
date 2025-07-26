@@ -228,7 +228,7 @@ void Train::reverseCommand() {
 
     reversingStartTime = timerGet();
     totalReversingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
-    printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL REVERSE TIME %u", totalReversingTime);
+    printer_proprietor::debugPrintF(printerProprietorTid, "%s TOTAL REVERSE TIME %u", trainColour, totalReversingTime);
 }
 
 void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, uint64_t offset) {
@@ -239,24 +239,36 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, uint64
     printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
 }
 
-void Train::updateVelocitywithAcceleration(int64_t curMicros) {
-    if (isAccelerating) {
-        uint64_t timeSinceAccelerationStart = curMicros - accelerationStartTime;
-        if (timeSinceAccelerationStart >= totalAccelerationTime) {
-            velocityEstimate = velocityFromSpeed(trainIndex, speed);
-            isAccelerating = false;
-        } else {
-            velocityEstimate = (getAccelerationSeed(trainIndex) * timeSinceAccelerationStart) / 1000000;
-        }
-        printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
+void Train::updateVelocityWithAcceleration(int64_t curMicros) {
+    uint64_t timeSinceAccelerationStart = curMicros - accelerationStartTime;
+    if (timeSinceAccelerationStart >= totalAccelerationTime) {
+        velocityEstimate = velocityFromSpeed(trainIndex, speed);
+        isAccelerating = false;
+    } else {
+        velocityEstimate = (getAccelerationSeed(trainIndex) * timeSinceAccelerationStart) / 1000000;
     }
+    printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
+}
+
+void Train::updateVelocityWithDeceleration(int64_t curMicros) {
+    uint64_t timeSinceDecelerationStart = curMicros - stopStartTime;
+    if (timeSinceDecelerationStart >= totalStoppingTime) {
+        localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+        velocityEstimate = 0;
+        isSlowingDown = false;
+        isStopped = true;
+    } else {
+        uint64_t deltaV = (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart) / 1000000;
+        velocityEstimate = (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart) / 1000000;
+    }
+    printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
 }
 
 bool Train::attemptReservation(int64_t curMicros) {
     char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-    printer_proprietor::debugPrintF(
-        printerProprietorTid, "%s \033[48;5;22m Reservation w zoneEntraceSensorAhead: %c%d targetSensor: %c%d",
-        trainColour, zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num, targetSensor.box, targetSensor.num);
+    // printer_proprietor::debugPrintF(
+    //     printerProprietorTid, "%s \033[48;5;22m Reservation w zoneEntraceSensorAhead: %c%d targetSensor: %c%d",
+    //     trainColour, zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num, targetSensor.box, targetSensor.num);
     localization_server::makeReservation(parentTid, trainIndex, zoneEntraceSensorAhead, replyBuff);
 
     switch (replyFromByte(replyBuff[0])) {
@@ -302,6 +314,8 @@ bool Train::attemptReservation(int64_t curMicros) {
                 // isAccelerating = true;
                 marklin_server::setTrainSpeed(marklinServerTid, speed, myTrainNumber);
             }
+
+            firstReservationFailure = false;
             return true;
             break;
         }
@@ -309,14 +323,18 @@ bool Train::attemptReservation(int64_t curMicros) {
             // need to break NOW
             if (!isSlowingDown) {
                 // this assumes we cannot already be stopped
-                marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
-                stopStartTime = curMicros;
-                totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
+                if (!firstReservationFailure) {
+                    marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
+                    stopStartTime = curMicros;
+                    totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
 
-                printer_proprietor::debugPrintF(
-                    printerProprietorTid,
-                    "%s \033[5m \033[38;5;160m FAILED Reservation for zone %d with sensor: %c%d \033[m", trainColour,
-                    replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
+                    printer_proprietor::debugPrintF(
+                        printerProprietorTid,
+                        "%s \033[5m \033[38;5;160m FAILED Reservation for zone %d with sensor: %c%d \033[m",
+                        trainColour, replyBuff[1], zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num);
+
+                    firstReservationFailure = true;
+                }
             }
 
             // try again in a bit? after we stopped?
@@ -324,8 +342,8 @@ bool Train::attemptReservation(int64_t curMicros) {
             break;
         }
         default: {
-            printer_proprietor::debugPrintF(printerProprietorTid, "INVALID REPLY FROM makeReservation %d",
-                                            replyFromByte(replyBuff[0]));
+            printer_proprietor::debugPrintF(printerProprietorTid, "%s INVALID REPLY FROM makeReservation %d",
+                                            trainColour, replyFromByte(replyBuff[0]));
             return false;
             break;
         }
@@ -344,10 +362,16 @@ void Train::updateState() {
     // }
 
     // this only updates for accelerating from a stop, not slowing down
-    Train::updateVelocitywithAcceleration(curMicros);
+    if (isAccelerating) {
+        Train::updateVelocityWithAcceleration(curMicros);
+    }
+
+    if (isSlowingDown) {
+        Train::updateVelocityWithDeceleration(curMicros);
+    }
 
     uint64_t distTravelledSinceLastSensorHit = 0;
-    if (!isSlowingDown && !isStopped) {
+    if (!isSlowingDown && !isStopped) {  // TODO: !isSlowingDown?
         distTravelledSinceLastSensorHit = ((int64_t)velocityEstimate * timeSinceLastSensorHit) / 1000000000;  // mm
     }
 
@@ -379,18 +403,17 @@ void Train::updateState() {
     if (distanceToSensorAhead > 0 && !isSlowingDown && !isStopped) {
         printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
     } else if (isSlowingDown && (curMicros - stopStartTime) >= totalStoppingTime) {  // dont think this is working
-
         // Note: at this point the train is completely stopped. But, we may not be stopped at our target, and may be
         // blocked by a train for a while instead
 
-        isSlowingDown = false;
-        isStopped = true;
-        totalStoppingTime = 0;
+        // isSlowingDown = false;
+        // isStopped = true;
+        // totalStoppingTime = 0;
 
         // prevSensorHitMicros = 0;
         // prevNotificationMicros = curMicros;
         // tell all our reservations that we are stopped
-        localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+        // localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
         // printer_proprietor::debugPrintF(printerProprietorTid, "Assume we have updated our reservation types");
 
     } else if (isStopped && !(zoneEntraceSensorAhead == targetSensor)) {
@@ -400,6 +423,8 @@ void Train::updateState() {
         // this would happen
         if (!attemptReservation(curMicros)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
+        } else {
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
         }
 
     } else if (isStopped) {
@@ -409,13 +434,15 @@ void Train::updateState() {
         targetSensor.box = 0;
         targetSensor.num = 0;
         // get new destination, which will bring us back
-        printer_proprietor::debugPrintF(printerProprietorTid, "YO I THINK IM STOPPED");
+        printer_proprietor::debugPrintF(printerProprietorTid, "%s YO I THINK IM STOPPED", trainColour);
         localization_server::newDestination(parentTid, trainIndex);
         isStopped = false;
         isAccelerating = true;
         accelerationStartTime = curMicros;
         totalAccelerationTime =
             (velocityFromSpeed(trainIndex, speed) * 1000000) / getAccelerationSeed(trainIndex);  // micros
+
+        velocityEstimate = 0;
         // then set the train speed
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
 
@@ -489,7 +516,7 @@ uint64_t Train::getReverseDelayTicks() {
     uint64_t curTime = timerGet();
     uint64_t timeToStop = (totalReversingTime - (curTime - reversingStartTime)) / 1000;  // millis
     uint64_t ticksToStop = (timeToStop + 9) / 10;                                        // round up
-    printer_proprietor::debugPrintF(printerProprietorTid, "TOTAL TICKS TO STOP %u", ticksToStop);
+    printer_proprietor::debugPrintF(printerProprietorTid, "%s TOTAL TICKS TO STOP %u", trainColour, ticksToStop);
     return ticksToStop;
 }
 
@@ -520,11 +547,12 @@ void Train::finishReverse() {
 }
 
 void Train::stop() {
-    printer_proprietor::debugPrintF(printerProprietorTid, "STOP NOTIFIER GOT TO US");
+    printer_proprietor::debugPrintF(printerProprietorTid, "%s STOP NOTIFIER GOT TO US", trainColour);
     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, myTrainNumber);
     totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
     stopStartTime = timerGet();
     isSlowingDown = true;
+
     // these should not be zero until we actually stop
     stopSensor.box = 0;
     stopSensor.num = 0;
