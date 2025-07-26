@@ -99,6 +99,9 @@ class Train {
     void makeReservation();
     void makeInitialReservation();
 
+    void accelerateTrain();
+    void decelerateTrain();
+
    public:
     Train(unsigned int myTrainNumber, int parentTid, uint32_t printerProprietorTid, uint32_t marklinServerTid,
           uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid);
