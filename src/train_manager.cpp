@@ -416,6 +416,7 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             if (!curTrain->path.empty() && *curTrain->path.front() == curTrain->targetNode) {
                 // fail the reservation, which should be fine
                 // but we need to pop the last thing in the path
+                // ASSERT(0)
                 TrackNode* popped = *(curTrain->path.pop());
 
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);

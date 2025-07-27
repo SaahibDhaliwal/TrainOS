@@ -396,13 +396,10 @@ bool Train::attemptReservation(int64_t curMicros) {
             recentZoneAddedFlag = true;
             printer_proprietor::updateTrainZone(printerProprietorTid, trainIndex, reservedZones);
 
-            if (isSlowingDown) {
-                isSlowingDown = false;
-                // do we accelerate from zero? or any speed?
-                accelerateTrain();
-                marklin_server::setTrainSpeed(marklinServerTid, speed, myTrainNumber);
-            }
-
+            // do we accelerate from zero? or any speed?
+            // if (isSlowingDown) {
+            //     accelerateTrain();
+            // }
             firstReservationFailure = false;
             return true;
             break;
@@ -448,12 +445,17 @@ void Train::accelerateTrain() {
     if (velocityEstimate >= targetVelocity) {
         totalAccelerationTime = 0;
         isAccelerating = false;
+        printer_proprietor::debugPrintF(printerProprietorTid,
+                                        "%s did not set train speed Velocity estimate %u target velocity: %u",
+                                        trainColour, velocityEstimate, targetVelocity);
+
         return;
     }
 
     uint64_t deltaV = targetVelocity - velocityEstimate;  // mm/s × 1000
     totalAccelerationTime = (deltaV * 1000000) / acceleration;
-
+    printer_proprietor::debugPrintF(printerProprietorTid,
+                                    "%s \033[5m \033[38;5;160m SENDING COMMAND TO SPEED BACK UP \033[m", trainColour);
     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
 }
 
@@ -527,7 +529,7 @@ void Train::updateState() {
     // only try to reserve if we are not stopped AND we haven't reached our target sensor yet?
     // what if we are stopped but our target is not next?
     if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isStopped &&
-        !(zoneEntraceSensorAhead == targetSensor)) {
+        !(zoneEntraceSensorAhead == targetSensor) && (curMicros - sensorAheadMicros) <= 3 * 1000) {
         ASSERT(stoppingDistance >= 0);
 
         bool res = attemptReservation(curMicros);
@@ -568,6 +570,8 @@ void Train::updateState() {
         // isStopped = false;
 
         accelerateTrain();
+        sensorAheadMicros = timerGet() + 500;  // hardcoded lol (ideally we always stop the same distance away
+                                               // from our target so we should know what this is)
     }
     // otherwise, we are slowing down
 
