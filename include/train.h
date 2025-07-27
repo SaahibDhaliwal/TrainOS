@@ -101,6 +101,7 @@ class Train {
 
     void accelerateTrain();
     void decelerateTrain();
+    uint64_t predictNextSensorHitTimeMicros();
 
    public:
     Train(unsigned int myTrainNumber, int parentTid, uint32_t printerProprietorTid, uint32_t marklinServerTid,

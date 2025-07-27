@@ -1,6 +1,7 @@
 #include "train.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "clock_server_protocol.h"
@@ -97,6 +98,65 @@ void Train::setTrainSpeed(unsigned int trainSpeed) {
     }
 }
 
+uint64_t uint64_sqrt(uint64_t x) {
+    if (x == 0 || x == 1) return x;
+
+    uint64_t low = 1, high = x / 2 + 1;
+    uint64_t ans = 0;
+
+    while (low <= high) {
+        uint64_t mid = low + (high - low) / 2;
+        uint64_t midSquared = x / mid;
+
+        if (mid <= midSquared) {
+            ans = mid;
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    return ans;
+}
+
+uint64_t Train::predictNextSensorHitTimeMicros() {
+    uint64_t curMicros = timerGet();
+    uint64_t timeSinceAccelerationStart = curMicros - accelerationStartTime;
+
+    uint64_t a = getAccelerationSeed(trainIndex);             // mm/s² × 1000
+    uint64_t v_target = getStoppingVelocitySeed(trainIndex);  // mm/s × 1000
+
+    uint64_t v0 = (a * timeSinceAccelerationStart) / 1000000;  // mm/s × 1000
+
+    if (timeSinceAccelerationStart >= totalAccelerationTime) {  // already finished accelerating
+        velocityEstimate = v_target;
+        return curMicros + ((distanceToSensorAhead * 1000 * 1000000) / velocityEstimate);
+    } else {
+        // Predict v1 = velocity at sensor if we keep accelerating the whole way
+        uint64_t v0_sq = v0 * v0;  // OVERFLOW CONCERNS
+        uint64_t accel_term = 2 * a * distanceToSensorAhead;
+        uint64_t v1 = uint64_sqrt(v0_sq + accel_term);  // mm/s × 1000
+
+        if (v1 <= v_target) {  // accelerating through this sensor to next
+            uint64_t v_avg = (v0 + v1) / 2;
+            return curMicros + ((distanceToSensorAhead * 1000 * 1000000) / v_avg);
+        } else {  // will finish accelerating between the sensors
+            // time to reach v_target
+            uint64_t t_accel = ((v_target - v0) * 1000000) / a;  // µs
+
+            // distance during acceleration
+            uint64_t v_avg_accel = (v0 + v_target) / 2;
+            uint64_t d_accel = (v_avg_accel * t_accel) / 1000000;  // mm
+
+            // remaining distance to cruise
+            uint64_t d_cruise = distanceToSensorAhead - d_accel;
+            uint64_t t_cruise = (d_cruise * 1000 * 1000000) / v_target;  // µs
+
+            return curMicros + t_accel + t_cruise;
+        }
+    }
+}
+
 void Train::initialSensorHit(Sensor curSensor) {
     int curSensorIdx = trackNodeIdxFromSensor(curSensor);
 
@@ -131,6 +191,9 @@ void Train::initialSensorHit(Sensor curSensor) {
         }
     }
     printer_proprietor::updateTrainStatus(printerProprietorTid, trainIndex, true);  // train active
+
+    sensorAheadMicros = predictNextSensorHitTimeMicros();
+
     printer_proprietor::updateSensor(printerProprietorTid, curSensor, 999, 999);
 }
 
@@ -151,8 +214,8 @@ void Train::regularSensorHit(uint64_t curMicros, Sensor curSensor) {
     uint64_t mmDeltaD = prevDistance;
     prevDistance = distanceToSensorAhead;  // this used to be "distance"
 
-    // only update velocity estimate if we aren't accelerating
-    if (!isAccelerating) {
+    // only use sensor hit to update velocity estimate if we aren't accelerating/decelerating
+    if (!isAccelerating && !isSlowingDown) {
         uint64_t nextSample = (mmDeltaD * 1000000) * 1000 / microsDeltaT;  // microm/micros with a *1000 for decimals
         uint64_t lastEstimate = velocityEstimate;
         velocityEstimate = ((lastEstimate * 15) + nextSample) >> 4;  // alpha = 1/8
@@ -161,8 +224,7 @@ void Train::regularSensorHit(uint64_t curMicros, Sensor curSensor) {
 
     // when did we plan on hitting this sensor vs when did we actually hit it
     prevSensorPredicitionMicros = sensorAheadMicros;
-    sensorAheadMicros =
-        curMicros + ((distanceToSensorAhead * 1000 * 1000000) / velocityEstimate);  // when will we hit sensorAhead
+    sensorAheadMicros = predictNextSensorHitTimeMicros();
 
     int64_t estimateTimeDiffmicros = (curMicros - prevSensorPredicitionMicros);
     int64_t estimateTimeDiffms = estimateTimeDiffmicros / 1000;
@@ -276,7 +338,8 @@ void Train::updateVelocityWithDeceleration(int64_t curMicros) {
 
         // uint64_t term1 = velocityBeforeSlowing * timeSinceDecelerationStart;
         // uint64_t term2 =
-        //     (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart * timeSinceDecelerationStart) / 2000000;
+        //     (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart * timeSinceDecelerationStart) /
+        //     2000000;
 
         // if (term2 > term1) {
         //     stoppingDistance = 0;
@@ -414,6 +477,10 @@ void Train::updateState() {
     uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
     uint64_t timeSinceLastStateUpdate = curMicros - prevUpdateMicros;
 
+    if (prevUpdateMicros == 0) {
+        timeSinceLastStateUpdate = curMicros - prevSensorHitMicros;
+    }
+
     // have some timeout here
     // if ((curMicros - prevSensorPredicitionMicros) / 1000 > TRAIN_SENSOR_TIMEOUT && newSensorsPassed >= 5) {
     //     // do some kind of reset thing
@@ -486,6 +553,8 @@ void Train::updateState() {
             printer_proprietor::debugPrintF(printerProprietorTid,
                                             "%s \033[5m \033[38;5;160m SPEEDING BACK UP FROM STOP \033[m", trainColour);
             accelerateTrain();
+            sensorAheadMicros = timerGet() + 500;  // hardcoded lol (ideally we always stop the same distance away from
+                                                   // our target so we should know what this is)
         }
     } else if (isStopped) {
         // we are stopped at our target, generate a new stop location
