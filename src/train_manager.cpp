@@ -105,9 +105,9 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
     // train14[1] = &track[17];  // b2
     // train14[2] = &track[50];  // d3
     // train14[3] = &track[47];  // c16
-    train14[1] = &track[40];  // a3
-    train14[2] = &track[50];  // c8
-    train14[3] = &track[47];  // c13
+    train14[1] = &track[40];  // c9
+    train14[2] = &track[50];  // d3
+    train14[3] = &track[47];  // c16
 
     // uncomment this for testing offtrack
     //  trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];

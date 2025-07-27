@@ -156,10 +156,6 @@ void TrainTask() {
                     break;
                 }
             }
-
-        } else if (clientTid == stopNotifierTid) {
-            train.stop();  // no reply
-
         } else {
             ASSERT(0, "someone else sent to train task?");
         }

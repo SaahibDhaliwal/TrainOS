@@ -210,10 +210,6 @@ void Train::processSensorHit(Sensor curSensor, Sensor newSensorAhead, uint64_t d
     distanceToSensorAhead = distance;
     sensorAhead = newSensorAhead;
 
-    if (curSensor == stopSensor) {
-        uIntReply(stopNotifierTid, getStopDelayTicks(curMicros));
-    }
-
     if (!prevSensorHitMicros) {
         initialSensorHit(curSensor);
         emptyReply(updaterTid);  // ready for real-time train updates now
@@ -267,15 +263,28 @@ void Train::updateVelocityWithAcceleration(int64_t curMicros) {
 
 void Train::updateVelocityWithDeceleration(int64_t curMicros) {
     uint64_t timeSinceDecelerationStart = curMicros - stopStartTime;
-    uint64_t deltaV = (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart) / 1000000;
+    uint64_t deltaV = (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart) / 1000000;  // mm/ms
 
     if (deltaV >= velocityBeforeSlowing) {
         localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
         velocityEstimate = 0;
+        // stoppingDistance = 0;
         isSlowingDown = false;
         isStopped = true;
     } else {
         velocityEstimate = velocityBeforeSlowing - deltaV;
+
+        // uint64_t term1 = velocityBeforeSlowing * timeSinceDecelerationStart;
+        // uint64_t term2 =
+        //     (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart * timeSinceDecelerationStart) / 2000000;
+
+        // if (term2 > term1) {
+        //     stoppingDistance = 0;
+        // } else {
+        //     stoppingDistance = (term1 - term2) / 1000000;
+        // }
+
+        // printer_proprietor::debugPrintF(printerProprietorTid, "STOPPING DISTANCE IS %u", stoppingDistance);
     }
     printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
 }
@@ -390,6 +399,7 @@ void Train::decelerateTrain() {
         totalStoppingTime = 0;
         isSlowingDown = false;
         isStopped = true;
+        return;
     }
 
     totalStoppingTime = (velocityEstimate * 1000000) / getDecelerationSeed(trainIndex);
@@ -441,12 +451,17 @@ void Train::updateState() {
                                                     distRemainingToZoneEntranceSensorAhead - stoppingDistance);
     }
 
+    if (zoneEntraceSensorAhead == targetSensor &&
+        distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
+        decelerateTrain();
+    }
+
     // if our stop will end up in the next zone, reserve it
     // only try to reserve if we are not stopped AND we haven't reached our target sensor yet?
     // what if we are stopped but our target is not next?
     if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isStopped &&
         !(zoneEntraceSensorAhead == targetSensor)) {
-        ASSERT(stoppingDistance > 0);
+        ASSERT(stoppingDistance >= 0);
 
         bool res = attemptReservation(curMicros);
         if (res && isSlowingDown) {
