@@ -146,7 +146,6 @@ void Train::regularSensorHit(uint64_t curMicros, Sensor curSensor) {
     int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
     distanceToZoneEntraceSensorAhead = distanceMatrix[curSensorIdx][zoneEntraceSensorAheadIdx];
 
-    newSensorsPassed++;
     uint64_t microsDeltaT = curMicros - prevSensorHitMicros;
     // the amount of distance travelled from the last sensor hit to now.
     uint64_t mmDeltaD = prevDistance;
@@ -308,14 +307,14 @@ bool Train::attemptReservation(int64_t curMicros) {
             unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
             a2ui(&replyBuff[4], 10, &distance);
 
-            // printer_proprietor::debugPrintF(printerProprietorTid,
-            //                                 "%s \033[48;5;22m Made Reservation for Zone: %d using Zone Entrance "
-            //                                 "Sensor: %c%d because I was %u mm away. Next zone "
-            //                                 "entrance sensor is %c%d which is %u mm away",
-            //                                 trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box,
-            //                                 zoneExit.sensorMarkingExit.num, distRemainingToZoneEntranceSensorAhead,
-            //                                 zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num,
-            //                                 distanceToZoneEntraceSensorAhead + distance);
+            printer_proprietor::debugPrintF(printerProprietorTid,
+                                            "%s \033[48;5;22m Made Reservation for Zone: %d using Zone Entrance "
+                                            "Sensor: %c%d because I was %u mm away. Next zone "
+                                            "entrance sensor is %c%d which is %u mm away",
+                                            trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box,
+                                            zoneExit.sensorMarkingExit.num, distRemainingToZoneEntranceSensorAhead,
+                                            zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num,
+                                            distanceToZoneEntraceSensorAhead + distance);
 
             int zoneEntraceSensorAheadIdx = trackNodeIdxFromSensor(zoneEntraceSensorAhead);
             int sensorAheadIdx = trackNodeIdxFromSensor(sensorAhead);
@@ -368,6 +367,8 @@ bool Train::attemptReservation(int64_t curMicros) {
 void Train::accelerateTrain() {
     isAccelerating = true;
     accelerationStartTime = timerGet();
+    isSlowingDown = false;
+    isStopped = false;
 
     uint64_t targetVelocity = velocityFromSpeed(trainIndex, speed);  // mm/s × 1000
     uint64_t acceleration = getAccelerationSeed(trainIndex);         // mm/s² × 1000
@@ -401,6 +402,7 @@ void Train::decelerateTrain() {
 void Train::updateState() {
     int64_t curMicros = timerGet();                                     // micros
     uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
+    uint64_t timeSinceLastStateUpdate = curMicros - prevUpdateMicros;
 
     // have some timeout here
     // if ((curMicros - prevSensorPredicitionMicros) / 1000 > TRAIN_SENSOR_TIMEOUT && newSensorsPassed >= 5) {
@@ -418,8 +420,9 @@ void Train::updateState() {
         Train::updateVelocityWithDeceleration(curMicros);
     }
 
-    uint64_t distTravelledSinceLastSensorHit = 0;
-    if (!isSlowingDown && !isStopped) {  // TODO: !isSlowingDown?
+    if (isSlowingDown || isAccelerating) {  // TODO: !isSlowingDown?
+        distTravelledSinceLastSensorHit += ((int64_t)velocityEstimate * timeSinceLastStateUpdate) / 1000000000;  // mm
+    } else {
         distTravelledSinceLastSensorHit = ((int64_t)velocityEstimate * timeSinceLastSensorHit) / 1000000000;  // mm
     }
 
@@ -445,7 +448,13 @@ void Train::updateState() {
         !(zoneEntraceSensorAhead == targetSensor)) {
         ASSERT(stoppingDistance > 0);
 
-        attemptReservation(curMicros);
+        bool res = attemptReservation(curMicros);
+        if (res && isSlowingDown) {
+            printer_proprietor::debugPrintF(printerProprietorTid,
+                                            "%s \033[5m \033[38;5;160m SPEEDING BACK UP WHEN SLOWING DOWN \033[m",
+                                            trainColour);
+            accelerateTrain();
+        }
     }
 
     if (distanceToSensorAhead > 0 && !isSlowingDown && !isStopped) {
@@ -458,7 +467,10 @@ void Train::updateState() {
         if (!attemptReservation(curMicros)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
         } else {
-            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
+            // we are hitting this twice, Why?
+            printer_proprietor::debugPrintF(printerProprietorTid,
+                                            "%s \033[5m \033[38;5;160m SPEEDING BACK UP FROM STOP \033[m", trainColour);
+            accelerateTrain();
         }
     } else if (isStopped) {
         // we are stopped at our target, generate a new stop location
@@ -469,15 +481,14 @@ void Train::updateState() {
         // get new destination, which will bring us back
         printer_proprietor::debugPrintF(printerProprietorTid, "%s YO I THINK IM STOPPED", trainColour);
         localization_server::newDestination(parentTid, trainIndex);
-        isStopped = false;
+        // isStopped = false;
 
         accelerateTrain();
-
-        return;  // DO NOT REPLY TO NOTIFIER
     }
     // otherwise, we are slowing down
 
     tryToFreeZones(distTravelledSinceLastSensorHit);
+    prevUpdateMicros = curMicros;
 }
 
 void Train::tryToFreeZones(uint64_t distTravelledSinceLastSensorHit) {

@@ -12,7 +12,7 @@ static const uint64_t trainFastVelocitySeedTrackB[Config::MAX_TRAINS] = {596041,
 
 // acceleration are mm/s^2 * 1000 for decimals
 static const uint64_t trainAccelSeedTrackB[Config::MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
-static const uint64_t trainDecelSeedTrackB[Config::MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
+static const uint64_t trainDecelSeedTrackB[Config::MAX_TRAINS] = {87922, 87922, 87922, 87922, 87922, 87922};
 static const uint64_t trainStopVelocitySeedTrackB[Config::MAX_TRAINS] = {253549, 257347, 253548,
                                                                          266566, 266566, 311583};
 static const uint64_t trainStoppingDistSeedTrackB[Config::MAX_TRAINS] = {370, 370, 370, 370, 370, 370};
@@ -28,7 +28,7 @@ static const uint64_t trainSlowStoppingDistSeedTrackA[Config::MAX_TRAINS] = {165
 static const uint64_t trainFastVelocitySeedTrackA[Config::MAX_TRAINS] = {601640, 605833, 596914,
                                                                          266566, 625911, 525104};
 static const uint64_t trainAccelSeedTrackA[Config::MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
-static const uint64_t trainDecelSeedTrackA[Config::MAX_TRAINS] = {91922, 91922, 91922, 91922, 91922, 91922};
+static const uint64_t trainDecelSeedTrackA[Config::MAX_TRAINS] = {87922, 87922, 87922, 87922, 87922, 87922};
 static const uint64_t trainStopVelocitySeedTrackA[Config::MAX_TRAINS] = {254904, 257347, 253548,
                                                                          266566, 265294, 311583};
 static const uint64_t trainStoppingDistSeedTrackA[Config::MAX_TRAINS] = {370, 370, 370, 370, 370, 370};

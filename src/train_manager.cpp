@@ -93,7 +93,8 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
 
     // easy
     train13[0] = &track[73];  // e10
-    train13[1] = &track[17];  // b2
+    train13[1] = &track[40];  // c9
+    // train13[1] = &track[17];  // b2
     train13[2] = &track[50];  // d3
     train13[3] = &track[47];  // c16
     // train13[4] = &track[2];   // a3
@@ -104,9 +105,9 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
     // train14[1] = &track[17];  // b2
     // train14[2] = &track[50];  // d3
     // train14[3] = &track[47];  // c16
-    train14[1] = &track[2];   // a3
-    train14[2] = &track[39];  // c8
-    train14[3] = &track[44];  // c13
+    train14[1] = &track[40];  // a3
+    train14[2] = &track[50];  // c8
+    train14[3] = &track[47];  // c13
 
     // uncomment this for testing offtrack
     //  trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
@@ -133,7 +134,6 @@ void TrainManager::processInputCommand(char* receiveBuffer) {
             }
             trains[trainIdx].sensorWhereSpeedChangeStarted = trains[trainIdx].sensorBehind;
             laps = 0;
-            newSensorsPassed = 0;
             break;
         }
         default: {
@@ -527,8 +527,8 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     // pop until the front of our path is a sensor
                     while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
                         TrackNode* popped = *(curTrain->path.pop());
-                        printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
-                                                        popped->name);
+                        // printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
+                        //                                 popped->name);
                     }
                     ASSERT(!curTrain->path.empty(), "we popped too many items in our path");
                     ASSERT((*curTrain->path.front())->type == NodeType::SENSOR,
@@ -718,7 +718,7 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
     }
 
     curTrain->targetNode = targetNode;
-    printer_proprietor::debugPrintF(printerProprietorTid, "curtrain->targetNode: %s ", targetNode->name);
+    // printer_proprietor::debugPrintF(printerProprietorTid, "curtrain->targetNode: %s ", targetNode->name);
 
     curTrain->stoppingDistance = stoppingDistance;
     curTrain->sensorWhereSpeedChangeStarted = curTrain->sensorBehind;
@@ -742,14 +742,14 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
 
     ASSERT(curTrain->path.size() == 0, "train's path buff should be empty");
 
-    printer_proprietor::debugPrintF(printerProprietorTid, "starting path with source: %s ", source->name);
+    // printer_proprietor::debugPrintF(printerProprietorTid, "starting path with source: %s ", source->name);
 
-    printer_proprietor::debugPrintF(printerProprietorTid, "COMPUTING SHORTEST PATH");
+    // printer_proprietor::debugPrintF(printerProprietorTid, "COMPUTING SHORTEST PATH");
 
     PATH_FINDING_RESULT result =
         computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation, printerProprietorTid);
 
-    printer_proprietor::debugPrintF(printerProprietorTid, "SHORTEST PATH RESULT WAS %d", result);
+    // printer_proprietor::debugPrintF(printerProprietorTid, "SHORTEST PATH RESULT WAS %d", result);
     ASSERT(curTrain != nullptr);
     ASSERT(source != nullptr);
     // THIS WAS IN THE INITIAL SENSOR HIT, BUT NOT IN THE ORIGINAL

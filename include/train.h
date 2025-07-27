@@ -41,13 +41,14 @@ class Train {
     uint64_t velocitySamplesNumeratorSum = 0;
     uint64_t velocitySamplesDenominatorSum = 0;
 
-    Sensor sensorAhead;                      // sensor ahead of train
-    Sensor sensorBehind;                     // sensor behind train
-    Sensor stopSensor;                       // sensor we are waiting to hit
-    Sensor targetSensor;                     // sensor we are waiting to hit
-    uint64_t stopSensorOffset = 0;           // mm, static
-    uint64_t distanceToSensorAhead = 0;      // mm, static
-    int64_t distRemainingToSensorAhead = 0;  // mm, dynamic
+    Sensor sensorAhead;                            // sensor ahead of train
+    Sensor sensorBehind;                           // sensor behind train
+    Sensor stopSensor;                             // sensor we are waiting to hit
+    Sensor targetSensor;                           // sensor we are waiting to hit
+    uint64_t stopSensorOffset = 0;                 // mm, static
+    uint64_t distanceToSensorAhead = 0;            // mm, static
+    int64_t distRemainingToSensorAhead = 0;        // mm, dynamic
+    uint64_t distTravelledSinceLastSensorHit = 0;  // mm, dynamic
 
     bool isAccelerating = false;
     uint64_t accelerationStartTime = 0;  // micros
@@ -71,10 +72,9 @@ class Train {
     uint64_t prevDistance = 0;
     int64_t prevSensorPredicitionMicros = 0;
     int64_t sensorAheadMicros = 0;
-    uint64_t newSensorsPassed = 0;
 
     // *********** UPDATE MANAGEMENT ***************
-    uint64_t prevNotificationMicros = 0;
+    uint64_t prevUpdateMicros = 0;
 
     // ********* RESERVATION MANAGEMENT ************
     RingBuffer<ReservedZone, 32> reservedZones;

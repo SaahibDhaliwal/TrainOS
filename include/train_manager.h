@@ -56,7 +56,6 @@ class TrainManager {
 
     uint64_t prevMicros = 0;
     uint64_t laps = 0;
-    uint64_t newSensorsPassed = 0;
     uint32_t reverseTid = 0;
     int stopTrainIndex = 0;
     uint32_t delayTicks = 0;
