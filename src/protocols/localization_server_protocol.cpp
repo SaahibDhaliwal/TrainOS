@@ -101,12 +101,11 @@ void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     handleSendResponse(res, tid);
 }
 
-void initReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
+void initReservation(int tid, int trainIndex, char* replyBuff) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::INITIAL_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
-                                       sensor.box, sensor.num);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
     handleSendResponse(res, tid);
 }
@@ -155,6 +154,14 @@ void initTrain(int tid, int trainIndex, Sensor initSensor) {
     sendBuf[0] = toByte(Command::INIT_TRAIN);
     printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
                                        initSensor.box, initSensor.num);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void hitFakeSensor(int tid, int trainIndex) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::FAKE_SENSOR_HIT);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

@@ -65,11 +65,11 @@ void debugPrintF(int tid, const char* fmt, ...);
 // trains
 void updateTrainStatus(int tid, int trainIndex, bool isActive);
 void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity);
-void updateTrainDistance(int tid, int trainIndex, uint64_t distance);
+void updateTrainDistance(int tid, int trainIndex, int64_t distance);
 void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor);
 void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor);
 void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones);
-void updateTrainZoneDistance(int tid, int trainIndex, uint64_t distance);
+void updateTrainZoneDistance(int tid, int trainIndex, int64_t distance);
 void updateTrainOrientation(int tid, int trainIndex, bool isForward);
 void updateTrainDestination(int tid, int trainIndex, Sensor sensor);
 }  // namespace printer_proprietor

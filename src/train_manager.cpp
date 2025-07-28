@@ -10,6 +10,7 @@
 
 // some sanity
 
+#include "clock_server_protocol.h"
 #include "command_client.h"
 #include "command_server_protocol.h"
 #include "console_server_protocol.h"
@@ -78,8 +79,7 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
 
     train13[0] = &track[56];  // d9
     train13[1] = &track[39];  // c8
-    // make this b8
-    train13[2] = &track[23];  // c13
+    train13[2] = &track[44];  // c13
     train13[3] = &track[54];  // d7
 
     // train13[0] = &track[73];  // e10
@@ -142,8 +142,10 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     // Slightly better looking version, but not as expandable in the future
     for (int i = 0; i < Config::MAX_TRAINS; i++) {
         if (trains[i].active) {
-            curTrain = &trains[i];
-            if (trains[i].realSensorAhead == curSensor) break;
+            if (trains[i].realSensorAhead == curSensor) {
+                curTrain = &trains[i];
+                break;  // goes to the first train who has this sensor ahead of them (might not be the closest)
+            }
         }
     }
 
@@ -183,7 +185,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     if (nextBox == 'F') {
         nextSensorNum = curSensor->nextSensor->num;
     }
-    prevSensorMicros = curMicros;
+    // prevSensorMicros = curMicros;
     train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
                                  curSensor->distToNextSensor);
 }
@@ -220,80 +222,45 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
     switch (command) {
         case Command::INITIAL_RESERVATION: {
             int trainIndex = (receiveBuffer[1]) - 1;
-            Sensor reservationSensor = {.box = receiveBuffer[2], .num = static_cast<uint8_t>(receiveBuffer[3])};
             Train* curTrain = &trains[trainIndex];
-            int targetTrackNodeIdx = trackNodeIdxFromSensor(reservationSensor);
+            TrackNode* reservationSensor = curTrain->sensorAhead;
+            int targetTrackNodeIdx = reservationSensor->id;
 
-            ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
-
-            TrackNode* curSensor = &track[targetTrackNodeIdx];
-
-            // int targetTrackNodeIdx = trackNodeIdxFromSensor(reservationSensor);
-            if (trainReservation.reservationAttempt(&track[targetTrackNodeIdx], trainIndexToNum(trainIndex))) {
+            if (trainReservation.reservationAttempt(reservationSensor, trainIndexToNum(trainIndex))) {
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_SUCCESS);
-                if (!curTrain->path.empty()) {
-                    // check if the path is not empty and this was the first thing in the path
-                    TrackNode* expectedNode = *(curTrain->path.front());
-                    Sensor expectedSensor = {.box = expectedNode->name[0],
-                                             .num = (expectedNode->num + 1) - (expectedNode->name[0] - 'A') * 16};
-                    if (expectedSensor.box == 'F') {
-                        expectedSensor.num = expectedNode->num;
-                    }
-
-                    if (reservationSensor == expectedSensor) {
-                        curTrain->path.pop();
-                        while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
-                            TrackNode* popped = *(curTrain->path.pop());
-                            // printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
-                            //                                 popped->name);
-                        }
-                    } else {
-                        printer_proprietor::debugPrintF(
-                            printerProprietorTid, "Initial reservation sensor %c%u but front of path is: %s",
-                            reservationSensor.box, reservationSensor.num, expectedNode->name);
-                        if (expectedNode == curTrain->targetNode) {
-                            // print our path
-                            const char* debugPath[100] = {0};
-                            int counter = 0;
-                            for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
-                                TrackNode* node = *it;
-                                debugPath[counter] = node->name;
-                                counter++;
-                            }
-                            char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-                            int strSize = 0;
-                            for (int i = 0; i < counter; i++) {
-                                strcpy(strBuff + strSize, debugPath[i]);
-                                strSize += strlen(debugPath[i]);
-                                if (i != counter - 1) {
-                                    strcpy(strBuff + strSize, "->");
-                                    strSize += 2;
-                                }
-                            }
-                            printer_proprietor::debugPrintF(printerProprietorTid, "The path is currently: %s", strBuff);
-                        }
-                    }
-                }
 
                 uint32_t zoneNum = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
-                char nextBox = curSensor->nextSensor->name[0];
-
-                unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
+                char nextBox = reservationSensor->nextSensor->name[0];
+                unsigned int nextSensorNum = ((reservationSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
                 if (nextBox == 'F') {
-                    nextSensorNum = curSensor->nextSensor->num;
+                    nextSensorNum = reservationSensor->nextSensor->num;
+                }
+                char box = reservationSensor->name[0];
+                unsigned int sensorNum = ((reservationSensor->num + 1) - (box - 'A') * 16);
+                if (box == 'F') {
+                    sensorNum = reservationSensor->num;
                 }
 
-                printer_proprietor::formatToString(replyBuff + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%d", zoneNum,
-                                                   nextBox, static_cast<char>(nextSensorNum),
-                                                   curSensor->distToNextSensor);
+                // so the train knows it's initialization sensor and the next one?
+                printer_proprietor::formatToString(replyBuff + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%c", zoneNum,
+                                                   nextBox, static_cast<char>(nextSensorNum), box,
+                                                   static_cast<char>(sensorNum));
 
                 sys::Reply(clientTid, replyBuff, strlen(replyBuff));
 
+                // generate a new stopping location
+                // this scuffed function returns a tracknode*
+                // later on, this will generate some "appropriate" random location (or its done when generating path)
+                TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
+                curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
+                generatePath(curTrain, targetNode->id, 0);
+
             } else {
-                ASSERT(0, "the initial reservation did not work");
+                replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
+                replyBuff[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
+                sys::Reply(clientTid, replyBuff, strlen(replyBuff));
             }
 
-            ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
             return;
             break;
         }
@@ -311,13 +278,13 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             if (!curTrain->path.empty() && *curTrain->path.front() == curTrain->targetNode) {
                 // fail the reservation, which should be fine
                 // but we need to pop the last thing in the path
-                // ASSERT(0)
+                // WE SHOULD NOT BE HITTING THIS ANYMORE
                 TrackNode* popped = *(curTrain->path.pop());
 
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
                 replyBuff[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
                 printer_proprietor::debugPrintF(printerProprietorTid,
-                                                "Train requested a reservatation while the front of their path was "
+                                                "Train requested a reservation while the front of their path was "
                                                 "their target node (shouldn't happen) %s",
                                                 curTrain->targetNode->name);
                 sys::Reply(clientTid, replyBuff, strlen(replyBuff));
@@ -337,14 +304,33 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     if (expectedSensor.box == 'F') {
                         expectedSensor.num = expectedNode->num;
                     }
-                    // printer_proprietor::debugPrintF(printerProprietorTid,
-                    //                                 "Popped path node: %s from reservation sensor %c%u",
-                    //                                 expectedNode->name, reservationSensor.box,
-                    //                                 reservationSensor.num);
 
-                    // THIS WILL BREAK IF WE DON'T HIT OUR EXPECTED SENSOR (TURNOUT FAILS)
-                    ASSERT(reservationSensor == expectedSensor, "reservation sensor: %c%d expected sensor: %c%d",
-                           reservationSensor.box, reservationSensor.num, expectedSensor.box, expectedSensor.num);
+                    if (!(reservationSensor == expectedSensor)) {
+                        printer_proprietor::debugPrintF(
+                            printerProprietorTid, "BAD RESERVATION reservation sensor: %c%d expected sensor: %c%d",
+                            reservationSensor.box, reservationSensor.num, expectedSensor.box, expectedSensor.num);
+                        // print our path
+                        const char* debugPath[100] = {0};
+                        int counter = 0;
+                        for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+                            TrackNode* node = *it;
+                            debugPath[counter] = node->name;
+                            counter++;
+                        }
+                        char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+                        int strSize = 0;
+                        for (int i = 0; i < counter; i++) {
+                            strcpy(strBuff + strSize, debugPath[i]);
+                            strSize += strlen(debugPath[i]);
+                            if (i != counter - 1) {
+                                strcpy(strBuff + strSize, "->");
+                                strSize += 2;
+                            }
+                        }
+                        printer_proprietor::debugPrintF(printerProprietorTid, "The path is currently: %s", strBuff);
+                        clock_server::Delay(clockServerTid, 100);  // flush our printer prop
+                        ASSERT(0, "hopefully enough time has passed for pp to flush");
+                    }
                     // so look at what comes after this sensor. If it's a branch, change it
                     TrackNode* nextNode = expectedNode->edge[DIR_AHEAD].dest;
 
@@ -510,6 +496,13 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             return;
             break;  // just to surpress compilation warning
         }
+        case Command::FAKE_SENSOR_HIT: {
+            int trainIndex = receiveBuffer[1] - 1;
+            emptyReply(clientTid);  // reply before we send something to the train
+            fakeSensorHit(trainIndex);
+            return;
+            break;
+        }
         default:
             ASSERT(0, "bad command sent to train manager");
             return;
@@ -621,7 +614,8 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
     // if THIS TRAIN has already reserved the sensor ahead, use the sensor AFTER that
     // because we expect the train's next reservation to be the first sensor in this path
     TrackNode* source = curTrain->sensorAhead;
-    // this should no longer be true due to generating a path while stopped or on first sensor hit
+    // this should no longer be true due to generating a path while stopped
+    // UNLESS it is the first reservation on initialization, so we start at the next one
     while (trainReservation.isSectionReserved(source) == curTrain->id) {  // double check this is the train number
         printer_proprietor::debugPrintF(printerProprietorTid, "We already reserved ahead of sensor %s", source->name);
         source = source->nextSensor;
@@ -741,15 +735,40 @@ void TrainManager::initializeTrain(int trainIndex, Sensor initSensor) {
     int sensorIndex = trackNodeIdxFromSensor(initSensor);
     curTrain->sensorAhead = &track[sensorIndex];
     curTrain->realSensorAhead = &track[sensorIndex];
+
+    // i should try and do the initial reservation here, and then set train speed
+    // but if I just loop and block, I'll be blocking sensor inputs and stuff
+
     train_server::setTrainSpeed(trainTasks[trainIndex], TRAIN_SPEED_8);
     trains[trainIndex].speed = TRAIN_SPEED_8;
+    printer_proprietor::debugPrintF(printerProprietorTid, "done sending the init");
+}
 
-    int signedOffset = 0;
+void TrainManager::fakeSensorHit(int trainIndex) {
+    Train* curTrain = &trains[trainIndex];
+    ASSERT(curTrain->sensorAhead->name[0] == 'F',
+           "train %u next sensor was not a fake one, but they thought they hit it");
 
-    // generate a new stopping location
-    // this scuffed function returns a tracknode*
-    // later on, this will generate some "appropriate" random location (or its done when generating path)
-    TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
-    curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
-    generatePath(curTrain, targetNode->id, 0);
+    TrackNode* curSensor = curTrain->sensorAhead;
+    // update next sensor
+    curTrain->sensorAhead = curSensor->nextSensor;
+    curTrain->realSensorAhead = curSensor->nextSensor;
+    while (curTrain->realSensorAhead->name[0] == 'F') {
+        curTrain->realSensorAhead = curTrain->realSensorAhead->nextSensor;
+    }
+
+    curTrain->sensorBehind = curSensor;
+
+    char box = curSensor->name[0];
+    unsigned int sensorNum = ((curSensor->num + 1) - (box - 'A') * 16);
+    if (box == 'F') {
+        sensorNum = curSensor->num;
+    }
+    char nextBox = curSensor->nextSensor->name[0];
+    unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
+    if (nextBox == 'F') {
+        nextSensorNum = curSensor->nextSensor->num;
+    }
+    train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
+                                 curSensor->distToNextSensor);
 }

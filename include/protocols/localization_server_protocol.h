@@ -25,6 +25,7 @@ enum class Command : char {
     UPDATE_RESERVATION,
     NEW_DESTINATION,
     INIT_TRAIN,
+    FAKE_SENSOR_HIT,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -48,13 +49,15 @@ void resetTrack(int tid);
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 
 void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
-void initReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+void initReservation(int tid, int trainIndex, char* replyBuff);
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
                        ReservationType reservation);
 void newDestination(int tid, int trainIndex);
 
 void initTrain(int tid, int trainIndex, Sensor initSensor);
+
+void hitFakeSensor(int tid, int trainIndex);
 
 }  // namespace localization_server
 

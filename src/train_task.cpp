@@ -105,7 +105,7 @@ void TrainTask() {
 
                     ASSERT(upcomingSensor.num <= 16 && upcomingSensor.num >= 1, "got some bad sensor num: %u",
                            static_cast<uint8_t>(receiveBuff[4]));
-                    ASSERT(curSensor.num <= 16 && curSensor.num >= 1, "got some bad sensor num: %u",
+                    ASSERT(curSensor.num <= 16 && curSensor.num >= 1, "got some bad cursensor num: %u",
                            static_cast<uint8_t>(receiveBuff[2]));
 
                     unsigned int distance = 0;

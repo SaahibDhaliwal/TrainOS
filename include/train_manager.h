@@ -91,6 +91,7 @@ class TrainManager {
     TrackNode* trainIndexToTrackNode(int trainIndex, int count);
 
     void initializeTrain(int trainIndex, Sensor initSensor);
+    void fakeSensorHit(int trainIndex);
 };
 
 #endif
