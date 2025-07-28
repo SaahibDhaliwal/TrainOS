@@ -73,7 +73,7 @@ class TrainManager {
 
    public:
     TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);
-    void processInputCommand(char* receiveBuffer);
+    void setTrainSpeed(char* receiveBuffer);
     void processSensorReading(char* receiveBuffer);
     void processReverse();
     void processTurnoutNotifier();
@@ -88,6 +88,8 @@ class TrainManager {
     TrackNode* getTrack();
     Turnout* getTurnouts();
     TrackNode* trainIndexToTrackNode(int trainIndex, int count);
+
+    void initializeTrain(int trainIndex, Sensor initSensor);
 };
 
 #endif

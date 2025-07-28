@@ -149,4 +149,14 @@ void newDestination(int tid, int trainIndex) {
     handleSendResponse(res, tid);
 }
 
+void initTrain(int tid, int trainIndex, Sensor initSensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+
+    sendBuf[0] = toByte(Command::INIT_TRAIN);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex,
+                                       initSensor.box, initSensor.num);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace localization_server

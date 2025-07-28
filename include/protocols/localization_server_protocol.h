@@ -24,6 +24,7 @@ enum class Command : char {
     FREE_RESERVATION,
     UPDATE_RESERVATION,
     NEW_DESTINATION,
+    INIT_TRAIN,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -52,6 +53,8 @@ void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
                        ReservationType reservation);
 void newDestination(int tid, int trainIndex);
+
+void initTrain(int tid, int trainIndex, Sensor initSensor);
 
 }  // namespace localization_server
 

@@ -100,15 +100,15 @@ void LocalizationServer() {
             Command command = commandFromByte(receiveBuffer[0]);
             switch (command) {
                 case Command::SET_SPEED: {
-                    trainManager.processInputCommand(receiveBuffer);
+                    trainManager.setTrainSpeed(receiveBuffer);
                     break;
                 }
-                case Command::REVERSE_TRAIN: {
-                    int trainNumber = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
-                    int trainIdx = trainNumToIndex(trainNumber);
-                    trainManager.reverseTrain(trainIdx);
-                    break;
-                }
+                // case Command::REVERSE_TRAIN: {
+                //     int trainNumber = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
+                //     int trainIdx = trainNumToIndex(trainNumber);
+                //     trainManager.reverseTrain(trainIdx);
+                //     break;
+                // }
                 case Command::SET_TURNOUT: {
                     char turnoutDirection = receiveBuffer[1];
                     char turnoutNumber = receiveBuffer[2];
@@ -152,6 +152,12 @@ void LocalizationServer() {
                 }
                 case Command::SET_STOP: {
                     trainManager.setTrainStop(receiveBuffer);
+                    break;
+                }
+                case Command::INIT_TRAIN: {
+                    int trainIndex = receiveBuffer[1];
+                    Sensor initSensor = Sensor{.box = receiveBuffer[2], .num = static_cast<uint8_t>(receiveBuffer[3])};
+                    trainManager.initializeTrain(trainIndex, initSensor);
                     break;
                 }
                 default: {

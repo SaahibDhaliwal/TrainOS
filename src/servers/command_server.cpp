@@ -253,13 +253,47 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
         if (*cur < '0' || *cur > '9') return false;
         while (*cur >= '0' && *cur <= '9') {
-            if (offset > 1000000000000) return false;
+            if (offset > 1000000000000) return false;  // i think this gives a compiler error
             offset = offset * 10 + (*cur - '0');
             cur++;
         }
         if (negativeFlag) offset *= -1;
-        // ASSERT(0, "trainnum: %u box: %c, sensorNum: %u, offset: %d", trainNumber, box, sensorNum, offset);
         localization_server::setStopLocation(localizationTid, trainNumber, box, sensorNum, offset);
+
+    } else if (strncmp(command, "init ", 5) == 0) {
+        const char* cur = &command[5];
+
+        if (*cur < '0' || *cur > '9') return false;
+
+        int trainNumber = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (trainNumber > 255) return false;
+            trainNumber = trainNumber * 10 + (*cur - '0');
+            cur++;
+        }
+
+        if (*cur != ' ') return false;
+        cur++;
+
+        char box = *cur;
+        if ((box > 'M')) box = box - 32;  // forces uppercase
+        if (box < 'A' || (box > 'E')) return false;
+        cur++;
+
+        if (*cur < '0' || *cur > '9') return false;
+        int sensorNum = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (sensorNum > 16 && box >= 'A' && box <= 'E') return false;
+            sensorNum = sensorNum * 10 + (*cur - '0');
+            cur++;
+        }
+        // ASSERT(0, "sensornum: %d", sensorNum);
+        if (sensorNum == 0) return false;
+
+        int trainIdx = trainNumToIndex(trainNumber);
+        if (trainIdx == -1) return false;
+        Sensor initSensor = Sensor{.box = box, .num = static_cast<uint8_t>(sensorNum)};
+        localization_server::initTrain(localizationTid, trainIdx, initSensor);
 
     } else {
         return false;

@@ -31,23 +31,16 @@
 using namespace localization_server;
 
 void initializeTrains(Train* trains, int marklinServerTid) {
-    // void initializeTrains(Train* trains, int marklinServerTid) {
     for (int i = 0; i < Config::MAX_TRAINS; i += 1) {
         trains[i].speed = 0;
         trains[i].id = trainAddresses[i];
-        // trains[i].isReversing = false;
         trains[i].active = false;
-        // trains[i].velocity = 0;
-        // trains[i].nodeAhead = nullptr;
-        // trains[i].nodeBehind = nullptr;
         trains[i].sensorAhead = nullptr;
         trains[i].sensorBehind = nullptr;
         trains[i].stoppingSensor = nullptr;
         trains[i].whereToIssueStop = 0;
         trains[i].stoppingDistance = getStoppingDistSeed(i);
-        // trains[i].stopping = false;
         trains[i].targetNode = nullptr;
-        // trains[i].sensorWhereSpeedChangeStarted = nullptr;
         marklin_server::setTrainSpeed(marklinServerTid, TRAIN_STOP, trainAddresses[i]);
     }
 }
@@ -82,15 +75,6 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
         sys::Send(trainTasks[i], sendBuff, 4, nullptr, 0);
     }
 
-    // // complex
-    // train13[0] = track[76];  // e13
-    // train13[1] = track[2];   // a3
-    // train13[2] = track[19];  // b4
-    // train13[3] = track[79];  // e16
-    // train13[4] = track[72];  // e9
-    // train13[5] = track[19];  // b4
-    // train13[6] = track[70];  // e7
-
     // easy
     train13[0] = &track[73];  // e10
     train13[1] = &track[40];  // c9
@@ -119,27 +103,14 @@ TrackNode* TrainManager::trainIndexToTrackNode(int trainIndex, int count) {
     return train14[count];
 }
 
-void TrainManager::processInputCommand(char* receiveBuffer) {
-    Command command = commandFromByte(receiveBuffer[0]);
-    switch (command) {
-        case Command::SET_SPEED: {
-            unsigned int trainSpeed = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
-            unsigned int trainNumber = 10 * a2d(receiveBuffer[3]) + a2d(receiveBuffer[4]);
+void TrainManager::setTrainSpeed(char* receiveBuffer) {
+    unsigned int trainSpeed = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
+    unsigned int trainNumber = 10 * a2d(receiveBuffer[3]) + a2d(receiveBuffer[4]);
 
-            int trainIdx = trainNumToIndex(trainNumber);
-            train_server::setTrainSpeed(trainTasks[trainIdx], trainSpeed);
-            trains[trainIdx].speed = trainSpeed;
-            if (!trains[trainIdx].active) {
-                trains[trainIdx].active = true;
-            }
-            trains[trainIdx].sensorWhereSpeedChangeStarted = trains[trainIdx].sensorBehind;
-            laps = 0;
-            break;
-        }
-        default: {
-            ASSERT(0, "bad train manager server command");
-        }
-    }
+    int trainIdx = trainNumToIndex(trainNumber);
+    ASSERT(trains[trainIdx].active == true, "tried setting a speed to an inactive train");
+    train_server::setTrainSpeed(trainTasks[trainIdx], trainSpeed);
+    trains[trainIdx].speed = trainSpeed;
 }
 
 void TrainManager::processSensorReading(char* receiveBuffer) {
@@ -157,64 +128,18 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     int trackNodeIdx = ((box - 'A') * 16) + (sensorNum - 1);
     TrackNode* curSensor = &track[trackNodeIdx];
     Train* curTrain = nullptr;
+
+    // Slightly better looking version, but not as expandable in the future
     for (int i = 0; i < Config::MAX_TRAINS; i++) {
         if (trains[i].active) {
-            // if you're active, is this your first sensor?
-            // if it is, was this the same sensor hit as last time?
-            if (!trains[i].sensorBehind) {
-                // active but no sensor behind, hasn't hit sensor yet
-                // store this guy until the end to make sure we aren't waiting on someone else
-                curTrain = &trains[i];
-
-            } else if (trains[i].sensorAhead == curSensor) {
-                // if its not your first sensor, is it the sensor ahead of you?
-                // NOTE: does not properly account for two trains that have the same sensor ahead of them
-                curTrain = &(trains[i]);
-                break;
-            }
-        }
-    }
-    // Slightly better looking version, but not as expandable in the future
-    // for (int i = 0; i < Config::MAX_TRAINS; i++) {
-    //     if (trains[i].active) {
-    //         curTrain = &trains[i];
-    //         if (trains[i].sensorAhead == curSensor) break;
-    //     }
-    // }
-
-    // for when a train has been initialized and hasn't hit a first sensor, we check to see if it isn't another train's
-    // sensor that is spamming
-    // char debugBuff[200] = {0};
-    if (curTrain != nullptr && !curTrain->sensorBehind) {
-        // go through all the trains to see if it's one of theirs right now
-        for (int i = 0; i < Config::MAX_TRAINS; i++) {
-            if (trains[i].sensorBehind && trains[i].sensorBehind == curSensor) {
-                // printer_proprietor::formatToString(debugBuff, 200, "[Localization] sensor spam");
-                // printer_proprietor::debug(printerProprietorTid, debugBuff);
-                return;
-            }
+            curTrain = &trains[i];
+            if (trains[i].sensorAhead == curSensor) break;
         }
     }
 
     if (curTrain == nullptr) {
-        // printer_proprietor::formatToString(
-        //     debugBuff, 200, "[Localization] Could not determine a valid train for sensor hit %c%d", box, sensorNum);
-        // printer_proprietor::debug(printerProprietorTid, debugBuff);
         return;
     }
-
-    // if (!curTrain->sensorBehind) {
-    //     printer_proprietor::formatToString(debugBuff, 200,
-    //                                        "[Localization] [%c%u] is the FIRST sensor hit is for train [%d]", box,
-    //                                        sensorNum, curTrain->id);
-    //     printer_proprietor::debug(printerProprietorTid, debugBuff);
-    // } else {
-    //     printer_proprietor::formatToString(
-    //         debugBuff, 200,
-    //         "[Localization] [%c%u] is a sensor hit is for train [%d] since the sensor behind it was: %s", box,
-    //         sensorNum, curTrain->id, curTrain->sensorBehind->name);
-    //     printer_proprietor::debug(printerProprietorTid, debugBuff);
-    // }
 
     // we should maybe check this before searching through the trains?
     TrackNode* prevSensor = curTrain->sensorBehind;
@@ -230,7 +155,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         if (curSensor->nextSensor->name[0] == 'F') {
             curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
         }
-        curTrain->sensorWhereSpeedChangeStarted = curSensor;
 
         int signedOffset = 0;
 
@@ -239,7 +163,6 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         // later on, this will generate some "appropriate" random location (or its done when generating path)
         TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
         curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
-        // we're breaking here
         generatePath(curTrain, targetNode->id, 0);
 
     } else {
@@ -249,11 +172,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
             curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
         }
 
-        // curTrain->sensorAheadMicros = curMicros + (curSensor->distToNextSensor * 1000 * 1000000 /
-        // curTrain->velocity);
         curTrain->sensorBehind = curSensor;
-
-        // prevMicros = curMicros;
     }
 
     char nextBox = curSensor->nextSensor->name[0];
@@ -261,30 +180,9 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     if (nextBox == 'F') {
         nextSensorNum = curSensor->nextSensor->num;
     }
-    // ASSERT(0, "box: %c sensorNum: %d nextBox: %c nextSensorNum: %d", box, sensorNum, nextBox, nextSensorNum);
-    // ASSERT(0, "TID is: %d curtrain id: %d index is: %d", trainTasks[trainNumToIndex(curTrain->id)], curTrain->id,
-    //        trainNumToIndex(curTrain->id));
-    // uint64_t nextSensorDistance = curSensor->distToNextSensor;
-    // if (curSensor->nextSensor->name[0] == 'F') {
-    //     nextSensorDistance = curSensor->distToNextSensor + curSensor->nextSensor->distToNextSensor;
-    // }
-    // ASSERT(box != 'C' && sensorNum != 7, "nextBox: %c nextSensorNum: %u", nextBox, nextSensorNum);
-    // printer_proprietor::debugPrintF(
-    //     printerProprietorTid,
-    //     "[Localization Server] Sensor Read: %c%d Current time of sensor hit: %u ms Last time: %u ms Difference: %u
-    //     ms", box, sensorNum, curMicros / 1000, prevSensorMicros / 1000, (curMicros - prevSensorMicros) / 1000);
     prevSensorMicros = curMicros;
     train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
                                  curSensor->distToNextSensor);
-}
-
-void TrainManager::processReverse() {
-    ASSERT(!reversingTrains.empty(), "HAD A REVERSING PROCESS WITH NO REVERSING TRAINS\r\n");
-    int reversingTrainIdx = *reversingTrains.pop();
-    int trainSpeed = trains[reversingTrainIdx].speed;
-    int trainNumber = trains[reversingTrainIdx].id;
-    marklin_server::setTrainReverseAndSpeed(marklinServerTid, trainSpeed, trainNumber);
-    trains[reversingTrainIdx].isReversing = false;
 }
 
 #define DONE_TURNOUTS 1
@@ -435,7 +333,6 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                 // note: if the stopping flag is working as intended, we should never be reserving this in the first
                 // place
 
-                // && curTrain.path.size() != 1
                 if (!curTrain->path.empty()) {
                     TrackNode* expectedNode = *(curTrain->path.pop());
                     Sensor expectedSensor = {.box = expectedNode->name[0],
@@ -722,7 +619,6 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
     // printer_proprietor::debugPrintF(printerProprietorTid, "curtrain->targetNode: %s ", targetNode->name);
 
     curTrain->stoppingDistance = stoppingDistance;
-    curTrain->sensorWhereSpeedChangeStarted = curTrain->sensorBehind;
     RingBuffer<TrackNode*, 1000> backwardsPath;
     // since we start our search with a sensor ahead, our path will always start with a sensor
     // if THIS TRAIN has already reserved the sensor ahead, use the sensor AFTER that
@@ -840,4 +736,13 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
     }
 
     printer_proprietor::debugPrintF(printerProprietorTid, "Path: %s", strBuff);
+}
+
+void TrainManager::initializeTrain(int trainIndex, Sensor initSensor) {
+    Train* curTrain = &trains[trainIndex];
+    curTrain->active = true;
+    int sensorIndex = trackNodeIdxFromSensor(initSensor);
+    curTrain->sensorAhead = &track[sensorIndex];
+    train_server::setTrainSpeed(trainTasks[trainIndex], TRAIN_SPEED_8);
+    trains[trainIndex].speed = TRAIN_SPEED_8;
 }
