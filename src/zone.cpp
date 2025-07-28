@@ -102,22 +102,22 @@ char toByte(ReservationType r) {
 
 void TrainReservation::initZoneA(TrackNode* trackArray) {
     // -------------------- A
-    zoneMap.insert(&trackArray[0], &zoneArray[32]);
+    zoneMap.insert(&trackArray[0], &zoneArray[37]);
     zoneMap.insert(&trackArray[1], &zoneArray[31]);
     zoneMap.insert(&trackArray[2], &zoneArray[22]);
     zoneMap.insert(&trackArray[3], &zoneArray[19]);
     zoneMap.insert(&trackArray[4], &zoneArray[5]);
     zoneMap.insert(&trackArray[5], &zoneArray[4]);
     zoneMap.insert(&trackArray[6], &zoneArray[3]);
-    zoneMap.insert(&trackArray[7], &zoneArray[5]);
+    zoneMap.insert(&trackArray[7], &zoneArray[35]);
     zoneMap.insert(&trackArray[8], &zoneArray[2]);
-    zoneMap.insert(&trackArray[9], &zoneArray[5]);
-    zoneMap.insert(&trackArray[10], &zoneArray[5]);
+    zoneMap.insert(&trackArray[9], &zoneArray[36]);
+    zoneMap.insert(&trackArray[10], &zoneArray[36]);
     zoneMap.insert(&trackArray[11], &zoneArray[1]);
-    zoneMap.insert(&trackArray[12], &zoneArray[32]);
+    zoneMap.insert(&trackArray[12], &zoneArray[38]);
     zoneMap.insert(&trackArray[13], &zoneArray[30]);
     zoneMap.insert(&trackArray[14], &zoneArray[29]);
-    zoneMap.insert(&trackArray[15], &zoneArray[32]);
+    zoneMap.insert(&trackArray[15], &zoneArray[38]);
     // -------------------- B
     zoneMap.insert(&trackArray[16], &zoneArray[14]);
     zoneMap.insert(&trackArray[17], &zoneArray[13]);
@@ -187,17 +187,17 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[78], &zoneArray[25]);
     zoneMap.insert(&trackArray[79], &zoneArray[23]);
     // ------  BR1 ---------
-    zoneMap.insert(&trackArray[80], &zoneArray[5]);
-    zoneMap.insert(&trackArray[81], &zoneArray[5]);
+    zoneMap.insert(&trackArray[80], &zoneArray[36]);
+    zoneMap.insert(&trackArray[81], &zoneArray[36]);
     // ------  2 ---------
-    zoneMap.insert(&trackArray[82], &zoneArray[5]);
-    zoneMap.insert(&trackArray[83], &zoneArray[5]);
+    zoneMap.insert(&trackArray[82], &zoneArray[35]);
+    zoneMap.insert(&trackArray[83], &zoneArray[35]);
     // ------  3 ---------
     zoneMap.insert(&trackArray[84], &zoneArray[5]);
     zoneMap.insert(&trackArray[85], &zoneArray[5]);
     // ------  4 ---------
-    zoneMap.insert(&trackArray[86], &zoneArray[32]);
-    zoneMap.insert(&trackArray[87], &zoneArray[32]);
+    zoneMap.insert(&trackArray[86], &zoneArray[38]);
+    zoneMap.insert(&trackArray[87], &zoneArray[38]);
     // ------  5 ---------
     zoneMap.insert(&trackArray[88], &zoneArray[6]);
     zoneMap.insert(&trackArray[89], &zoneArray[6]);
@@ -220,8 +220,8 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[100], &zoneArray[32]);
     zoneMap.insert(&trackArray[101], &zoneArray[32]);
     // ------  12 ---------
-    zoneMap.insert(&trackArray[102], &zoneArray[32]);
-    zoneMap.insert(&trackArray[103], &zoneArray[32]);
+    zoneMap.insert(&trackArray[102], &zoneArray[37]);
+    zoneMap.insert(&trackArray[103], &zoneArray[37]);
     // ------  13 ---------
     zoneMap.insert(&trackArray[104], &zoneArray[25]);
     zoneMap.insert(&trackArray[105], &zoneArray[25]);
@@ -290,26 +290,35 @@ void TrainReservation::initZoneA(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[147], &zoneArray[10]);
     zoneMap.insert(&trackArray[148], &zoneArray[32]);
     zoneMap.insert(&trackArray[149], &zoneArray[22]);
+
+    zoneMap.insert(&trackArray[150], &zoneArray[32]);
+    zoneMap.insert(&trackArray[151], &zoneArray[37]);
+    zoneMap.insert(&trackArray[152], &zoneArray[37]);
+    zoneMap.insert(&trackArray[153], &zoneArray[38]);
+    zoneMap.insert(&trackArray[154], &zoneArray[35]);
+    zoneMap.insert(&trackArray[155], &zoneArray[5]);
+    zoneMap.insert(&trackArray[156], &zoneArray[36]);
+    zoneMap.insert(&trackArray[157], &zoneArray[35]);
 }
 
 void TrainReservation::initZoneB(TrackNode* trackArray) {
     // -------------------- A
-    zoneMap.insert(&trackArray[0], &zoneArray[32]);
+    zoneMap.insert(&trackArray[0], &zoneArray[37]);
     zoneMap.insert(&trackArray[1], &zoneArray[31]);
     zoneMap.insert(&trackArray[2], &zoneArray[22]);
     zoneMap.insert(&trackArray[3], &zoneArray[19]);
     zoneMap.insert(&trackArray[4], &zoneArray[5]);
     zoneMap.insert(&trackArray[5], &zoneArray[4]);
     zoneMap.insert(&trackArray[6], &zoneArray[3]);
-    zoneMap.insert(&trackArray[7], &zoneArray[5]);
+    zoneMap.insert(&trackArray[7], &zoneArray[35]);
     zoneMap.insert(&trackArray[8], &zoneArray[2]);
-    zoneMap.insert(&trackArray[9], &zoneArray[5]);
-    zoneMap.insert(&trackArray[10], &zoneArray[5]);
+    zoneMap.insert(&trackArray[9], &zoneArray[36]);
+    zoneMap.insert(&trackArray[10], &zoneArray[36]);
     zoneMap.insert(&trackArray[11], &zoneArray[1]);
-    zoneMap.insert(&trackArray[12], &zoneArray[32]);
+    zoneMap.insert(&trackArray[12], &zoneArray[38]);
     zoneMap.insert(&trackArray[13], &zoneArray[30]);
     zoneMap.insert(&trackArray[14], &zoneArray[1]);
-    zoneMap.insert(&trackArray[15], &zoneArray[32]);
+    zoneMap.insert(&trackArray[15], &zoneArray[38]);
     // -------------------- B
     zoneMap.insert(&trackArray[16], &zoneArray[14]);
     zoneMap.insert(&trackArray[17], &zoneArray[13]);
@@ -379,17 +388,17 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[78], &zoneArray[25]);
     zoneMap.insert(&trackArray[79], &zoneArray[23]);
     // ------  BR1 ---------
-    zoneMap.insert(&trackArray[80], &zoneArray[5]);
-    zoneMap.insert(&trackArray[81], &zoneArray[5]);
+    zoneMap.insert(&trackArray[80], &zoneArray[36]);
+    zoneMap.insert(&trackArray[81], &zoneArray[36]);
     // ------  2 ---------
-    zoneMap.insert(&trackArray[82], &zoneArray[5]);
-    zoneMap.insert(&trackArray[83], &zoneArray[5]);
+    zoneMap.insert(&trackArray[82], &zoneArray[35]);
+    zoneMap.insert(&trackArray[83], &zoneArray[35]);
     // ------  3 ---------
     zoneMap.insert(&trackArray[84], &zoneArray[5]);
     zoneMap.insert(&trackArray[85], &zoneArray[5]);
     // ------  4 ---------
-    zoneMap.insert(&trackArray[86], &zoneArray[32]);
-    zoneMap.insert(&trackArray[87], &zoneArray[32]);
+    zoneMap.insert(&trackArray[86], &zoneArray[38]);
+    zoneMap.insert(&trackArray[87], &zoneArray[38]);
     // ------  5 ---------
     zoneMap.insert(&trackArray[88], &zoneArray[6]);
     zoneMap.insert(&trackArray[89], &zoneArray[6]);
@@ -412,8 +421,8 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[100], &zoneArray[32]);
     zoneMap.insert(&trackArray[101], &zoneArray[32]);
     // ------  12 ---------
-    zoneMap.insert(&trackArray[102], &zoneArray[32]);
-    zoneMap.insert(&trackArray[103], &zoneArray[32]);
+    zoneMap.insert(&trackArray[102], &zoneArray[37]);
+    zoneMap.insert(&trackArray[103], &zoneArray[37]);
     // ------  13 ---------
     zoneMap.insert(&trackArray[104], &zoneArray[25]);
     zoneMap.insert(&trackArray[105], &zoneArray[25]);
@@ -471,23 +480,7 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     // ------  10 ---------
     zoneMap.insert(&trackArray[138], &zoneArray[3]);
     zoneMap.insert(&trackArray[139], &zoneArray[3]);
-    // ------  4 ---------
-    // zoneMap.insert(&trackArray[130], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[131], &zoneArray[        ]);
-    // // ------  5 ---------
-    // zoneMap.insert(&trackArray[132], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[133], &zoneArray[        ]);
 
-    // // ------  7 ---------
-    // zoneMap.insert(&trackArray[134], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[135], &zoneArray[        ]);
-
-    // // ------  9 ---------
-    // zoneMap.insert(&trackArray[136], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[137], &zoneArray[        ]);
-    // // ------  10 ---------
-    // zoneMap.insert(&trackArray[138], &zoneArray[        ]);
-    // zoneMap.insert(&trackArray[139], &zoneArray[        ]);
     // ------  FAKE SENSORS ---------
     zoneMap.insert(&trackArray[140], &zoneArray[8]);
     zoneMap.insert(&trackArray[141], &zoneArray[6]);
@@ -495,4 +488,13 @@ void TrainReservation::initZoneB(TrackNode* trackArray) {
     zoneMap.insert(&trackArray[143], &zoneArray[10]);
     zoneMap.insert(&trackArray[144], &zoneArray[32]);
     zoneMap.insert(&trackArray[145], &zoneArray[22]);
+
+    zoneMap.insert(&trackArray[146], &zoneArray[32]);
+    zoneMap.insert(&trackArray[147], &zoneArray[37]);
+    zoneMap.insert(&trackArray[148], &zoneArray[37]);
+    zoneMap.insert(&trackArray[149], &zoneArray[38]);
+    zoneMap.insert(&trackArray[150], &zoneArray[35]);
+    zoneMap.insert(&trackArray[151], &zoneArray[5]);
+    zoneMap.insert(&trackArray[152], &zoneArray[36]);
+    zoneMap.insert(&trackArray[153], &zoneArray[35]);
 }

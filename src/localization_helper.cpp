@@ -130,22 +130,19 @@ void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
     }
 // also our new sensors
 #if defined(TRACKA)
-    setNextSensor(&track[144], turnouts);
-    setNextSensor(&track[145], turnouts);
-    setNextSensor(&track[146], turnouts);
-    setNextSensor(&track[147], turnouts);
-    setNextSensor(&track[148], turnouts);
-    setNextSensor(&track[149], turnouts);
+    for (int i = 144; i < TRACK_MAX; i++) {  // only need to look through first 80 indices (16 * 5)
+        // do a dfs for the next sensor
+        setNextSensor(&track[i], turnouts);
+    }
 #else
-    setNextSensor(&track[140], turnouts);
-    setNextSensor(&track[141], turnouts);
-    setNextSensor(&track[142], turnouts);
-    setNextSensor(&track[143], turnouts);
-    setNextSensor(&track[144], turnouts);
-    setNextSensor(&track[145], turnouts);  // these do not
+    for (int i = 140; i < TRACK_MAX; i++) {  // only need to look through first 80 indices (16 * 5)
+        // do a dfs for the next sensor
+        setNextSensor(&track[i], turnouts);
+    }
 
     ASSERT(track[38].nextSensor->name[0] == 'F' && track[38].nextSensor->name[1] == '4',
-           "sensors were mapped wrong. C7 next sensor name: %s num: %d", track[38].nextSensor->name,
+           "THIS WILL FAIL IF YOU CHANGE OUR INITIAL CONFIG sensors were mapped wrong. C7 next sensor name: %s num: %d",
+           track[38].nextSensor->name,
            track[38].nextSensor->num);  // c7
     ASSERT(track[38].nextSensor->num == 4, "sensors were mapped wrong. C7 next sensor num: %s num: %d",
            track[38].nextSensor->num);  // c7

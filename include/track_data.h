@@ -7,10 +7,10 @@
 
 // maximum number of nodes in a layout
 #if defined(TRACKA)
-static constexpr int TRACK_MAX = 150;
+static constexpr int TRACK_MAX = 158;
 
 #else
-static constexpr int TRACK_MAX = 146;
+static constexpr int TRACK_MAX = 154;
 
 #endif
 

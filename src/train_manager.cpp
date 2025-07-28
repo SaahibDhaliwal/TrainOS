@@ -36,6 +36,7 @@ void initializeTrains(Train* trains, int marklinServerTid) {
         trains[i].id = trainAddresses[i];
         trains[i].active = false;
         trains[i].sensorAhead = nullptr;
+        trains[i].realSensorAhead = nullptr;
         trains[i].sensorBehind = nullptr;
         trains[i].stoppingSensor = nullptr;
         trains[i].whereToIssueStop = 0;
@@ -75,23 +76,32 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
         sys::Send(trainTasks[i], sendBuff, 4, nullptr, 0);
     }
 
-    // easy
-    train13[0] = &track[73];  // e10
-    train13[1] = &track[40];  // c9
-    // train13[1] = &track[17];  // b2
-    train13[2] = &track[50];  // d3
-    train13[3] = &track[47];  // c16
+    train13[0] = &track[56];  // d9
+    train13[1] = &track[39];  // c8
+    // make this b8
+    train13[2] = &track[23];  // c13
+    train13[3] = &track[54];  // d7
+
+    // train13[0] = &track[73];  // e10
+    // train13[1] = &track[40];  // c9
+    // train13[2] = &track[50];  // d3
+    // train13[3] = &track[47];  // c16
     // train13[4] = &track[2];   // a3
     // train13[5] = &track[39];  // c8
     // train13[6] = &track[44];  // c13
 
-    train14[0] = &track[73];  // e10
-    // train14[1] = &track[17];  // b2
+    // train14[0] = &track[73];  // e10
+    // // train14[1] = &track[17];  // b2
+    // // train14[2] = &track[50];  // d3
+    // // train14[3] = &track[47];  // c16
+    // train14[1] = &track[40];  // c9
     // train14[2] = &track[50];  // d3
     // train14[3] = &track[47];  // c16
-    train14[1] = &track[40];  // c9
-    train14[2] = &track[50];  // d3
-    train14[3] = &track[47];  // c16
+
+    train14[0] = &track[56];  // d9
+    train14[1] = &track[39];  // c8
+    train14[2] = &track[44];  // c13
+    train14[3] = &track[54];  // d7
 
     // uncomment this for testing offtrack
     //  trains[trainNumToIndex(16)].sensorAhead = &track[(('A' - 'A') * 16) + (3 - 1)];
@@ -133,7 +143,7 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
     for (int i = 0; i < Config::MAX_TRAINS; i++) {
         if (trains[i].active) {
             curTrain = &trains[i];
-            if (trains[i].sensorAhead == curSensor) break;
+            if (trains[i].realSensorAhead == curSensor) break;
         }
     }
 
@@ -152,24 +162,17 @@ void TrainManager::processSensorReading(char* receiveBuffer) {
         // prevMicros = curMicros;
         curTrain->sensorBehind = curSensor;
         curTrain->sensorAhead = curSensor->nextSensor;
-        if (curSensor->nextSensor->name[0] == 'F') {
-            curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
+        curTrain->realSensorAhead = curSensor->nextSensor;
+        while (curTrain->realSensorAhead->name[0] == 'F') {
+            curTrain->realSensorAhead = curTrain->realSensorAhead->nextSensor;
         }
-
-        int signedOffset = 0;
-
-        // generate a new stopping location
-        // this scuffed function returns a tracknode*
-        // later on, this will generate some "appropriate" random location (or its done when generating path)
-        TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
-        curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
-        generatePath(curTrain, targetNode->id, 0);
 
     } else {
         // update next sensor
         curTrain->sensorAhead = curSensor->nextSensor;
-        if (curSensor->nextSensor->name[0] == 'F') {
-            curTrain->sensorAhead = curSensor->nextSensor->nextSensor;
+        curTrain->realSensorAhead = curSensor->nextSensor;
+        while (curTrain->realSensorAhead->name[0] == 'F') {
+            curTrain->realSensorAhead = curTrain->realSensorAhead->nextSensor;
         }
 
         curTrain->sensorBehind = curSensor;
@@ -238,19 +241,13 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     }
 
                     if (reservationSensor == expectedSensor) {
-                        //     printer_proprietor::debugPrintF(
-                        //         printerProprietorTid, "Initial reservation sensor %c%u and front of path is: %s",
-                        //         reservationSensor.box, reservationSensor.num, expectedNode->name);
-                        //     curTrain->path.pop();
-                        //     while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR))
-                        //     {
-                        //         TrackNode* popped = *(curTrain->path.pop());
-                        //         printer_proprietor::debugPrintF(printerProprietorTid, "(init res) just popped node:
-                        //         %s",
-                        //                                         popped->name);
-                        //     }
-                        //     ASSERT(!curTrain->path.empty(), "popped too many things!");
-                        // } else {
+                        curTrain->path.pop();
+                        while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
+                            TrackNode* popped = *(curTrain->path.pop());
+                            // printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
+                            //                                 popped->name);
+                        }
+                    } else {
                         printer_proprietor::debugPrintF(
                             printerProprietorTid, "Initial reservation sensor %c%u but front of path is: %s",
                             reservationSensor.box, reservationSensor.num, expectedNode->name);
@@ -743,6 +740,16 @@ void TrainManager::initializeTrain(int trainIndex, Sensor initSensor) {
     curTrain->active = true;
     int sensorIndex = trackNodeIdxFromSensor(initSensor);
     curTrain->sensorAhead = &track[sensorIndex];
+    curTrain->realSensorAhead = &track[sensorIndex];
     train_server::setTrainSpeed(trainTasks[trainIndex], TRAIN_SPEED_8);
     trains[trainIndex].speed = TRAIN_SPEED_8;
+
+    int signedOffset = 0;
+
+    // generate a new stopping location
+    // this scuffed function returns a tracknode*
+    // later on, this will generate some "appropriate" random location (or its done when generating path)
+    TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
+    curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
+    generatePath(curTrain, targetNode->id, 0);
 }

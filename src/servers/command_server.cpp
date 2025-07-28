@@ -263,6 +263,19 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
     } else if (strncmp(command, "init ", 5) == 0) {
         const char* cur = &command[5];
 
+        bool sendReverse = false;
+        if (*cur == 'r' || *cur == 'R') {
+            cur++;
+            if (*cur == 'v' || *cur == 'V') {
+                sendReverse = true;
+                cur++;
+                if (*cur != ' ') return false;
+                cur++;
+            } else {
+                return false;
+            }
+        }
+
         if (*cur < '0' || *cur > '9') return false;
 
         int trainNumber = 0;
@@ -293,6 +306,10 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         int trainIdx = trainNumToIndex(trainNumber);
         if (trainIdx == -1) return false;
         Sensor initSensor = Sensor{.box = box, .num = static_cast<uint8_t>(sensorNum)};
+        if (sendReverse) {
+            // reverse the train?
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_REVERSE, trainNumber);
+        }
         localization_server::initTrain(localizationTid, trainIdx, initSensor);
 
     } else {

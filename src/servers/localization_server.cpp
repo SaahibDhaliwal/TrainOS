@@ -89,6 +89,7 @@ void LocalizationServer() {
     TrainManager trainManager(marklinServerTid, printerProprietorTid, clockServerTid, turnoutNotifierTid);
 
     uint32_t sensorTid = sys::Create(24, &SensorTask);
+    printer_proprietor::debugPrintF(printerProprietorTid, "localization server TID: %u", sys::MyTid());
 
     for (;;) {
         uint32_t clientTid;
@@ -155,7 +156,7 @@ void LocalizationServer() {
                     break;
                 }
                 case Command::INIT_TRAIN: {
-                    int trainIndex = receiveBuffer[1];
+                    int trainIndex = receiveBuffer[1] - 1;
                     Sensor initSensor = Sensor{.box = receiveBuffer[2], .num = static_cast<uint8_t>(receiveBuffer[3])};
                     trainManager.initializeTrain(trainIndex, initSensor);
                     break;

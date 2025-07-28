@@ -7,7 +7,7 @@
 #include "turnout.h"
 #include "unordered_map.h"
 
-#define ZONE_COUNT 34
+#define ZONE_COUNT 38
 
 enum class ReservationType : char { ONGOING = 3, STOPPED, PANIC, COUNT, UNKNOWN_TYPE };
 char toByte(ReservationType r);
