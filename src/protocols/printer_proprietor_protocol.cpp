@@ -384,4 +384,12 @@ void updateTrainDestination(int tid, int trainIndex, Sensor sensor) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
+void updateTrainBranch(int tid, int trainIndex, const char* str) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_BRANCH);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%s", trainIndex, str);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace printer_proprietor

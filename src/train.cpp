@@ -115,8 +115,14 @@ void Train::setTrainSpeed(unsigned int trainSpeed) {
 
         if (trainSpeed == TRAIN_STOP) {
             decelerateTrain();
+        } else if (!firstReservationFailure) {
+            accelerateTrain();
         } else {
-            // accelerateTrain(); this will be handled by generatePath (will clean up later)
+            printer_proprietor::debugPrintF(printerProprietorTid,
+                                            "%s BLOCKED PLAYER INPUT to set speed to %u since firstReservationFailure "
+                                            "is TRUE \n\r zone entrance sensor ahead is %c%d",
+                                            trainColour, trainSpeed, zoneEntraceSensorAhead.box,
+                                            zoneEntraceSensorAhead.num);
         }
     } else {
         printer_proprietor::debugPrintF(printerProprietorTid,
@@ -711,7 +717,10 @@ uint64_t Train::getReverseDelayTicks() {
 
 void Train::finishReverse() {
     ASSERT(reverseTid != 0);
-    ASSERT(isReversing);
+    if (!isPlayer) {
+        ASSERT(isReversing);  // crashes here
+    }
+
     printer_proprietor::debugPrintF(printerProprietorTid, "REVERSE THAT SHIT");
 
     marklin_server::setTrainReverse(marklinServerTid, myTrainNumber);
@@ -808,7 +817,7 @@ void Train::updatePlayerState() {
         ASSERT(stoppingDistance > 0);
 
         bool res = attemptReservation(zoneEntraceSensorAhead);
-        if (res && isSlowingDown) {
+        if (res && isSlowingDown && !isReversing) {
             printer_proprietor::debugPrintF(
                 printerProprietorTid, "%s \033[5m \033[38;5;160m (AUTO) SPEEDING BACK UP WHEN SLOWING DOWN \033[m",
                 trainColour);

@@ -174,6 +174,11 @@ void PrinterProprietor() {
                                    update_train_destination(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
                 break;
             }
+            case Command::UPDATE_TRAIN_BRANCH: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_branch(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
             case Command::DEBUG: {
                 if (debugMessages == 0) {
                     isDebugLogBufferParityEven = !isDebugLogBufferParityEven;

@@ -31,6 +31,7 @@ enum class Command : char {
     UPDATE_TRAIN_ZONE_DISTANCE,
     UPDATE_TRAIN_ORIENTATION,
     UPDATE_TRAIN_DESTINATION,
+    UPDATE_TRAIN_BRANCH,
     MEASUREMENT,
     DEBUG,
     KILL,
@@ -72,6 +73,7 @@ void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reser
 void updateTrainZoneDistance(int tid, int trainIndex, int64_t distance);
 void updateTrainOrientation(int tid, int trainIndex, bool isForward);
 void updateTrainDestination(int tid, int trainIndex, Sensor sensor);
+void updateTrainBranch(int tid, int trainIndex, const char* str);
 }  // namespace printer_proprietor
 
 #endif

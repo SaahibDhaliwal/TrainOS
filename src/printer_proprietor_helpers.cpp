@@ -365,7 +365,7 @@ void print_train_table(uint32_t consoleTid) {
         "  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │  │ Zone:                            │",
         "  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │  │ Orientation:                     │",
         "  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │  │ Destination:                     │",
-        "  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │  │ Path:                            │",
+        "  │ Next Branch:                     │  │ Next Branch:                     │  │ Next Branch:                     │  │ Next Branch:                     │  │ Next Branch:                     │  │ Next Branch:                     │",
         "  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │  │ ZoneEntranceDist:                │",
         "  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘  └──────────────────────────────────┘"
     };
@@ -450,6 +450,12 @@ void update_train_orientation(uint32_t consoleTid, int trainIndex, bool isForwar
 
 void update_train_destination(uint32_t consoleTid, int trainIndex, const char* msg) {
     console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 9,
+                           (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
+    console_server::Puts(consoleTid, 0, msg);
+}
+
+void update_train_branch(uint32_t consoleTid, int trainIndex, const char* msg) {
+    console_server::Printf(consoleTid, "\033[%d;%dH", TRAIN_START_ROW + 10,
                            (TRAIN_START_COL + 19) + (trainIndex * TRAIN_BOX_DIFF));
     console_server::Puts(consoleTid, 0, msg);
 }
