@@ -13,7 +13,9 @@ enum class Command : char {
     GET_REVERSE_TIME,
     FINISH_REVERSE,
     STOP_SENSOR,
-    // LOCATION_QUERY,
+    INIT_PLAYER,
+    INIT_CHASER,
+    INIT_BLOCKER,
     COUNT,
     UNKNOWN_COMMAND
 };
@@ -29,6 +31,8 @@ enum class Reply : char {
 };
 
 enum class Seed : char { SEED_8H, SEED14, COUNT, UNKNOWN_COMMAND };
+
+enum class TrainType : char { PLAYER = 1, CHASER, BLOCKER, COUNT, UNKNOWN_COMMAND };
 
 char toByte(Command c);
 char toByte(Reply r);
@@ -48,6 +52,8 @@ unsigned int getReverseDelayTicks(int tid);
 
 void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char targetBox, unsigned int targetSensorNum,
                   uint64_t offset);
+
+void initTrain(int tid, TrainType type);
 
 }  // namespace train_server
 

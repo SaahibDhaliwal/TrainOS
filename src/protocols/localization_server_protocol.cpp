@@ -148,6 +148,16 @@ void newDestination(int tid, int trainIndex) {
     handleSendResponse(res, tid);
 }
 
+void initPlayer(int tid, int trainIndex, Sensor initSensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+
+    sendBuf[0] = toByte(Command::INIT_PLAYER);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
+                                       initSensor.box, initSensor.num);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 void initTrain(int tid, int trainIndex, Sensor initSensor) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
 
@@ -162,6 +172,19 @@ void hitFakeSensor(int tid, int trainIndex) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::FAKE_SENSOR_HIT);
     printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void playerInput(int tid, char input) {
+    // our allowed player controls (r for reverse, q to quit)
+    if (input != 'w' && input != 'a' && input != 's' && input != 'd' && input != 'r' && input != 'q') {
+        return;
+    }
+
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::PLAYER_INPUT);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", input);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

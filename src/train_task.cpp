@@ -130,6 +130,16 @@ void TrainTask() {
                     train.newStopLocation(stopSensor, targetSensor, distance);
                     break;
                 }
+                case Command::INIT_PLAYER: {
+                    emptyReply(clientTid);  // immediate reply
+                    train.initPlayer();
+                    break;
+                }
+                case Command::INIT_CHASER: {
+                    emptyReply(clientTid);  // immediate reply
+                    train.initCPU();
+                    break;
+                }
 
                 default:
                     ASSERT(0, "BAD COMMAND FROM LOCALIZATION SERVER");
@@ -137,7 +147,11 @@ void TrainTask() {
             }
 
         } else if (clientTid == updaterTid) {
-            train.updateState();
+            if (train.isPlayer) {
+                train.updatePlayerState();
+            } else {
+                train.updateState();
+            }
             emptyReply(updaterTid);  // not immediate
 
         } else if (clientTid == train.getReverseTid()) {

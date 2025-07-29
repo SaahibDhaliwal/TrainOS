@@ -122,6 +122,47 @@ TrackNode* getNextSensor(TrackNode* start, Turnout* turnouts) {
     }
 }
 
+// ensure your starting node is not a sensor
+TrackNode* getNextRealSensor(TrackNode* start, Turnout* turnouts) {
+    TrackNode* nextNode = nullptr;
+    if (start->type != NodeType::BRANCH) {
+        nextNode = start->edge[DIR_AHEAD].dest;
+    } else if (turnouts[turnoutIdx(start->num)].state == SwitchState::STRAIGHT) {
+        if (start->num == 153 || start->num == 155) {
+            nextNode = start->reverse->edge[DIR_AHEAD].dest->reverse->edge[DIR_CURVED].dest;
+        } else {
+            nextNode = start->edge[DIR_CURVED].dest;
+        }
+    } else {
+        nextNode = start->edge[DIR_CURVED].dest;
+    }
+
+    bool deadendFlag = false;
+    while (nextNode->type != NodeType::SENSOR && nextNode->name[0] != 'F') {
+        if (nextNode->type == NodeType::BRANCH) {
+            // if we hit a branch node, there are two different edges to take
+            // so look at our inital turnout state to know which sensor is next
+            if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::CURVED) {
+                nextNode = nextNode->edge[DIR_CURVED].dest;
+            } else {
+                nextNode = nextNode->edge[DIR_STRAIGHT].dest;
+            }
+        } else if (nextNode->type == NodeType::EXIT) {  // pretty sure ENTER nodes do have a next sensor!
+            // ex: sensor A2, A14, A15 don't have a next sensor
+            deadendFlag = true;
+            break;
+        } else {
+            nextNode = nextNode->edge[DIR_AHEAD].dest;
+        }
+    }
+    if (!deadendFlag) {
+        return nextNode;
+    } else {
+        // ASSERT(0, "There was no next sensor");
+        return nullptr;
+    }
+}
+
 #define MAX_SENSORS 80
 void initTrackSensorInfo(TrackNode* track, Turnout* turnouts) {
     for (int i = 0; i < MAX_SENSORS; i++) {  // only need to look through first 80 indices (16 * 5)

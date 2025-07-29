@@ -115,7 +115,6 @@ void Train::setTrainSpeed(unsigned int trainSpeed) {
         if (trainSpeed == TRAIN_STOP) {
             decelerateTrain();
         } else {
-            if (!prevSensorHitMicros) initReservation();
             accelerateTrain();
         }
     } else {
@@ -523,7 +522,7 @@ void Train::updateState() {
     }
 
     if (zoneEntraceSensorAhead == targetSensor &&
-        distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance) {
+        distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isSlowingDown) {
         decelerateTrain();
     }
 
@@ -542,7 +541,7 @@ void Train::updateState() {
             accelerateTrain();
         }
     }
-
+    // i want to remove checking that we are not slowing down in the future.
     if (distRemainingToSensorAhead && !isSlowingDown && !isStopped) {
         printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
 
@@ -658,4 +657,125 @@ void Train::stop() {
     // these should not be zero until we actually stop
     stopSensor.box = 0;
     stopSensor.num = 0;
+}
+
+void Train::initCPU() {
+    initReservation();
+    setTrainSpeed(TRAIN_SPEED_8);
+}
+
+void Train::initPlayer() {
+    initReservation();
+    isPlayer = true;
+}
+
+void Train::updatePlayerState() {
+    int64_t curMicros = timerGet();                                     // micros
+    uint64_t timeSinceLastSensorHit = curMicros - prevSensorHitMicros;  // micros
+    uint64_t timeSinceLastStateUpdate = curMicros - prevUpdateMicros;
+
+    if (prevUpdateMicros == 0) {
+        timeSinceLastStateUpdate = curMicros - prevSensorHitMicros;
+    }
+
+    // have some timeout here
+    // if ((curMicros - prevSensorPredicitionMicros) / 1000 > TRAIN_SENSOR_TIMEOUT && newSensorsPassed >= 5) {
+    //     // do some kind of reset thing
+    //     stopped = true;
+    //     continue;
+    // }
+
+    // this only updates for accelerating from a stop, not slowing down
+    if (isAccelerating) {
+        Train::updateVelocityWithAcceleration(curMicros);
+    }
+
+    if (isSlowingDown) {
+        Train::updateVelocityWithDeceleration(curMicros);
+    }
+
+    if (isSlowingDown || isAccelerating) {  // TODO: !isSlowingDown?
+        distTravelledSinceLastSensorHit += ((int64_t)velocityEstimate * timeSinceLastStateUpdate) / 1000000000;  // mm
+    } else {
+        distTravelledSinceLastSensorHit = ((int64_t)velocityEstimate * timeSinceLastSensorHit) / 1000000000;  // mm
+    }
+
+    // distRemainingToSensorAhead = ((distanceToSensorAhead > distTravelledSinceLastSensorHit)
+    //                                   ? (distanceToSensorAhead - distTravelledSinceLastSensorHit)
+    //                                   : 0);
+    distRemainingToSensorAhead = (int64_t)distanceToSensorAhead - (int64_t)distTravelledSinceLastSensorHit;
+    // ASSERT(distRemainingToSensorAhead >= 0);
+
+    distRemainingToZoneEntranceSensorAhead = ((distanceToZoneEntraceSensorAhead > distTravelledSinceLastSensorHit)
+                                                  ? (distanceToZoneEntraceSensorAhead - distTravelledSinceLastSensorHit)
+                                                  : 0);
+
+    if (!isStopped) {
+        printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex,
+                                                    distRemainingToZoneEntranceSensorAhead - stoppingDistance);
+        printer_proprietor::updateTrainZoneDistance(printerProprietorTid, trainIndex, distTravelledSinceLastSensorHit);
+    }
+
+    // if our stop will end up in the next zone, reserve it
+    // only try to reserve if we are not stopped AND we haven't reached our target sensor yet?
+    // what if we are stopped but our target is not next?
+    if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isStopped &&
+        (curMicros - sensorAheadMicros) <= 3 * 1000) {
+        ASSERT(stoppingDistance > 0);
+
+        bool res = attemptReservation(curMicros);
+        if (res && isSlowingDown) {
+            printer_proprietor::debugPrintF(
+                printerProprietorTid, "%s \033[5m \033[38;5;160m (AUTO) SPEEDING BACK UP WHEN SLOWING DOWN \033[m",
+                trainColour);
+            accelerateTrain();
+        }
+    }
+
+    // i want to remove checking that we are not slowing down in the future.
+    if (distRemainingToSensorAhead && !isSlowingDown && !isStopped) {
+        printer_proprietor::updateTrainDistance(printerProprietorTid, trainIndex, distRemainingToSensorAhead);
+
+        // check if we think we've passed a fake sensor in order to tell the localization server
+        if (distRemainingToSensorAhead <= 0 && sensorAhead.box == 'F') {
+            printer_proprietor::debugPrintF(printerProprietorTid,
+                                            "%s I think I've hit my fake sensor %c%d since my distremaining was %d",
+                                            trainColour, sensorAhead.box, sensorAhead.num, distRemainingToSensorAhead);
+            localization_server::hitFakeSensor(parentTid, trainIndex);
+        }
+
+        // } else if (isStopped && !(zoneEntraceSensorAhead == targetSensor)) {
+        //     // try and make a reservation request again. If it works, go back to your speed?
+        //     ASSERT(!isSlowingDown, "we have stopped but 'stopping' has a timestamp");
+
+        //     // this would happen
+        //     if (!attemptReservation(curMicros)) {
+        //         clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
+        //     } else {
+        //         // we are hitting this twice, Why?
+        //         printer_proprietor::debugPrintF(printerProprietorTid,
+        //                                         "%s \033[5m \033[38;5;160m SPEEDING BACK UP FROM STOP \033[m",
+        //                                         trainColour);
+        //         accelerateTrain();
+        //         sensorAheadMicros = timerGet() + 500;  // hardcoded lol (ideally we always stop the same distance
+        //         away from
+        //                                                // our target so we should know what this is)
+        //     }
+    } else if (isStopped) {
+        // what if we are the player? we should not generating a new destination and accelerating
+
+        ASSERT(!isSlowingDown, "we have stopped but 'stopping' has a timestamp");
+        targetSensor.box = 0;
+        targetSensor.num = 0;
+        // get new destination, which will bring us back
+        // printer_proprietor::debugPrintF(printerProprietorTid, "%s YO I THINK IM STOPPED", trainColour);
+
+        // this will need to be changed VVV
+        sensorAheadMicros = timerGet() + 500;  // hardcoded lol (ideally we always stop the same distance away
+                                               // from our target so we should know what this is)
+    }
+    // otherwise, we are slowing down
+
+    tryToFreeZones(distTravelledSinceLastSensorHit);
+    prevUpdateMicros = curMicros;
 }

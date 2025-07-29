@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "config.h"
+#include "localization_server_protocol.h"
 #include "ring_buffer.h"
 #include "track_data.h"
 #include "train_task.h"
@@ -69,14 +70,20 @@ class TrainManager {
     RingBuffer<int, Config::MAX_TRAINS> reversingTrains;
     TrackNode* train13[NODE_MAX];
     TrackNode* train14[NODE_MAX];
+    localization_server::Train* playerTrain = nullptr;
+    int playerTrainIndex;
+    localization_server::BranchDirection playerDirection = localization_server::BranchDirection::STRAIGHT;
+    UnorderedMap<TrackNode*, localization_server::BranchDirection, SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT> switchMap;
 
     void generatePath(localization_server::Train* curTrain, int targetTrackNodeIdx, int signedOffset);
+    void initSwitchMap(TrackNode* track);
+    void notifierPop(TrackNode* nextNode);
 
    public:
     TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);
-    void setTrainSpeed(char* receiveBuffer);
+    void setTrainSpeed(unsigned int trainSpeed, unsigned int trainNumber);
     void processSensorReading(char* receiveBuffer);
-    void processReverse();
+    // void processReverse();
     void processTurnoutNotifier();
     void processStopping();
     void processTrainRequest(char* receiveBuffer, uint32_t clientTid);
@@ -91,7 +98,10 @@ class TrainManager {
     TrackNode* trainIndexToTrackNode(int trainIndex, int count);
 
     void initializeTrain(int trainIndex, Sensor initSensor);
+    void initializePlayer(int trainIndex, Sensor initSensor);
     void fakeSensorHit(int trainIndex);
+
+    void processPlayerInput(char input);
 };
 
 #endif

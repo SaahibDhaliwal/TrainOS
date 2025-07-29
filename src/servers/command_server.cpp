@@ -276,6 +276,14 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             }
         }
 
+        bool isPlayer = false;
+        if (*cur == 'p' || *cur == 'P') {
+            cur++;
+            isPlayer = true;
+            if (*cur != ' ') return false;
+            cur++;
+        }
+
         if (*cur < '0' || *cur > '9') return false;
 
         int trainNumber = 0;
@@ -310,7 +318,11 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
             // reverse the train?
             marklin_server::setTrainSpeed(marklinServerTid, TRAIN_REVERSE, trainNumber);
         }
-        localization_server::initTrain(localizationTid, trainIdx, initSensor);
+        if (isPlayer) {
+            localization_server::initPlayer(localizationTid, trainIdx, initSensor);
+        } else {
+            localization_server::initTrain(localizationTid, trainIdx, initSensor);
+        }
 
     } else {
         return false;
@@ -334,21 +346,31 @@ void CommandServer() {
 
     uint32_t terminalTid = sys::Create(23, &CommandTask);
     uint32_t localizationTid = sys::Create(25, &LocalizationServer);
-
+    bool gameStarted = false;
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
         int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
         receiveBuffer[msgLen] = '\0';
 
+        // this if statement might not be needed
         if (clientTid == terminalTid) {
-            bool validCommand = processInputCommand(receiveBuffer, marklinServerTid, printerProprietorTid,
-                                                    clockServerTid, localizationTid);
-
-            if (!validCommand) {
-                charReply(clientTid, toByte(Reply::FAILURE));
+            if (!gameStarted && receiveBuffer[0] == '!') {
+                gameStarted = true;
+                emptyReply(clientTid);
+            } else if (gameStarted) {
+                emptyReply(clientTid);
+                // pass along the character to localization server?
+                localization_server::playerInput(localizationTid, receiveBuffer[0]);
             } else {
-                charReply(clientTid, toByte(Reply::SUCCESS));
+                bool validCommand = processInputCommand(receiveBuffer, marklinServerTid, printerProprietorTid,
+                                                        clockServerTid, localizationTid);
+
+                if (!validCommand) {
+                    charReply(clientTid, toByte(Reply::FAILURE));
+                } else {
+                    charReply(clientTid, toByte(Reply::SUCCESS));
+                }
             }
         }
     }

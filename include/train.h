@@ -90,8 +90,6 @@ class Train {
 
     /////////////////////////////////////////////////////////////////////
 
-    void newSensorHitFromStopped(Sensor sensor);
-
     bool attemptReservation(int64_t curMicros);
 
     void initialSensorHit(Sensor curSensor);
@@ -105,6 +103,7 @@ class Train {
     void initReservation();
 
    public:
+    bool isPlayer = false;
     Train(unsigned int myTrainNumber, int parentTid, uint32_t printerProprietorTid, uint32_t marklinServerTid,
           uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid);
 
@@ -125,11 +124,14 @@ class Train {
     //
     void newStopLocation(Sensor stopSensor, Sensor targetSensor, uint64_t offset);
     void updateState();
+    void updatePlayerState();
     //
     void updateVelocityWithAcceleration(int64_t curMicros);
     void updateVelocityWithDeceleration(int64_t curMicros);
 
     void finishReverse();
+    void initCPU();
+    void initPlayer();
 
     uint64_t getReverseDelayTicks();
     uint64_t getStopDelayTicks(int64_t curMicros);

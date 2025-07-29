@@ -24,6 +24,7 @@ void CommandTask() {
 
     char userInput[Config::MAX_COMMAND_LENGTH];
     int userInputIdx = 0;
+    bool gameStarted = false;
     for (;;) {
         char ch = console_server::Getc(consoleTid, 0);
 
@@ -33,12 +34,17 @@ void CommandTask() {
 
                 userInput[userInputIdx] = '\0';  // mark end of user input command
 
-                if (userInput[0] == 'd') {
-                    int tid = name_server::WhoIs("console_dump");
-                    emptySend(tid);
-                } else if (userInput[0] == 'm') {
+                // if (userInput[0] == 'd') {
+                //     int tid = name_server::WhoIs("console_dump");
+                //     emptySend(tid);
+                // } else
+                if (userInput[0] == 'm') {
                     int tid = name_server::WhoIs("measure_dump");
                     emptySend(tid);
+                } else if (userInput[0] == '!') {
+                    gameStarted = true;
+                    // send something to the command server
+                    charSend(commandServerTid, userInput[0]);
                 } else {
                     char replyChar;
                     sys::Send(commandServerTid, userInput, userInputIdx, &replyChar, 1);
@@ -51,9 +57,14 @@ void CommandTask() {
                     printer_proprietor::backspace(printerProprietorTid);
                     userInputIdx -= 1;
                 }
+            } else if (gameStarted && ch >= 0x20 && ch <= 0x7E) {
+                // if it's one of our player commands and we started the game
+                charSend(commandServerTid, ch);
+                if (ch == 'q') gameStarted = false;  // so we can quit?
+                printer_proprietor::printC(printerProprietorTid, 0, ch);
+
             } else if (ch >= 0x20 && ch <= 0x7E && userInputIdx < 254) {
                 userInput[userInputIdx++] = ch;
-
                 printer_proprietor::printC(printerProprietorTid, 0, ch);
             }  // if
         }  // if

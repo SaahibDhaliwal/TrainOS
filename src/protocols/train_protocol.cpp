@@ -85,4 +85,17 @@ void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char 
     handleSendResponse(res, tid);
 }
 
+void initTrain(int tid, TrainType type) {
+    char sendBuf[2] = {0};
+    if (type == TrainType::PLAYER) {
+        sendBuf[0] = toByte(Command::INIT_PLAYER);
+    } else if (type == TrainType::CHASER) {
+        sendBuf[0] = toByte(Command::INIT_CHASER);
+    } else {
+        sendBuf[0] = toByte(Command::INIT_BLOCKER);
+    }
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
 }  // namespace train_server

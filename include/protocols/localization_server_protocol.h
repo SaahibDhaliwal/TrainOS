@@ -25,11 +25,15 @@ enum class Command : char {
     UPDATE_RESERVATION,
     NEW_DESTINATION,
     INIT_TRAIN,
+    INIT_PLAYER,
     FAKE_SENSOR_HIT,
+    PLAYER_INPUT,
     COUNT,
     UNKNOWN_COMMAND
 };
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
+
+enum class BranchDirection : char { LEFT = 1, RIGHT, STRAIGHT, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);
 char toByte(Reply r);
@@ -56,8 +60,11 @@ void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> res
 void newDestination(int tid, int trainIndex);
 
 void initTrain(int tid, int trainIndex, Sensor initSensor);
+void initPlayer(int tid, int trainIndex, Sensor initSensor);
 
 void hitFakeSensor(int tid, int trainIndex);
+
+void playerInput(int tid, char input);
 
 }  // namespace localization_server
 

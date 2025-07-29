@@ -77,6 +77,8 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
         sys::Send(trainTasks[i], sendBuff, 4, nullptr, 0);
     }
 
+    initSwitchMap(track);
+
     train13[0] = &track[56];  // d9
     train13[1] = &track[39];  // c8
     train13[2] = &track[44];  // c13
@@ -113,10 +115,7 @@ TrackNode* TrainManager::trainIndexToTrackNode(int trainIndex, int count) {
     return train14[count];
 }
 
-void TrainManager::setTrainSpeed(char* receiveBuffer) {
-    unsigned int trainSpeed = 10 * a2d(receiveBuffer[1]) + a2d(receiveBuffer[2]);
-    unsigned int trainNumber = 10 * a2d(receiveBuffer[3]) + a2d(receiveBuffer[4]);
-
+void TrainManager::setTrainSpeed(unsigned int trainSpeed, unsigned int trainNumber) {
     int trainIdx = trainNumToIndex(trainNumber);
     ASSERT(trains[trainIdx].active == true, "tried setting a speed to an inactive train");
     train_server::setTrainSpeed(trainTasks[trainIdx], trainSpeed);
@@ -203,6 +202,17 @@ void TrainManager::processTurnoutNotifier() {
         sys::Reply(turnoutNotifierTid, sendBuff, 3);
     }
 }
+void TrainManager::notifierPop(TrackNode* nextNode) {
+    char sendBuff[3];
+    std::pair<char, char> c = *(turnoutQueue.pop());
+    printer_proprietor::formatToString(sendBuff, 3, "%c%c", c.first, c.second);
+    sys::Reply(turnoutNotifierTid, sendBuff, 3);
+    stopTurnoutNotifier = true;
+    // instead of adding to queue, we could just make the marklin call right here, since it'll
+    // only ever be one... right?
+    printer_proprietor::debugPrintF(
+        printerProprietorTid, "PLAYER had a branch state conflict, sent turnout notifier to switch %s", nextNode->name);
+}
 
 uint32_t TrainManager::getReverseTid() {
     return reverseTid;
@@ -248,13 +258,16 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
 
                 sys::Reply(clientTid, replyBuff, strlen(replyBuff));
 
-                // generate a new stopping location
-                // this scuffed function returns a tracknode*
-                // later on, this will generate some "appropriate" random location (or its done when generating path)
-                TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
-                curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
-                generatePath(curTrain, targetNode->id, 0);
-
+                if (curTrain != playerTrain) {
+                    // generate a new stopping location
+                    // this scuffed function returns a tracknode*
+                    // later on, this will generate some "appropriate" random location (or its done when generating
+                    // path)
+                    TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
+                    curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
+                    // don't generate a path if it's the player
+                    generatePath(curTrain, targetNode->id, 0);
+                }
             } else {
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
                 replyBuff[1] = trainReservation.trackNodeToZoneNum(&track[targetTrackNodeIdx]);
@@ -414,6 +427,172 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     ASSERT(!curTrain->path.empty(), "we popped too many items in our path");
                     ASSERT((*curTrain->path.front())->type == NodeType::SENSOR,
                            "the first thing in our path is not a sensor");
+                } else if (curTrain == playerTrain) {
+                    // check if a branch is coming up in this reservation
+                    //  so look at what comes after this sensor. If it's a branch, change it
+
+                    TrackNode* nextNode = curSensor->edge[DIR_AHEAD].dest;
+
+                    // loop through our nodes until we get a branch or a sensor
+                    while (nextNode->type != NodeType::BRANCH) {
+                        if (nextNode->type == NodeType::SENSOR) break;
+                        nextNode = nextNode->edge[DIR_AHEAD].dest;
+                    }
+
+                    if (nextNode->type == NodeType::BRANCH) {
+                        // get the next sensor in our path after the branch
+                        // THIS WILL BE TRICKY WITH MIDDLE SWITCHES. It goes 154 then 153 and 156 then 155
+
+                        // UNLESS ITS A MIDDLE SWITCH
+                        if (playerDirection != localization_server::BranchDirection::STRAIGHT &&
+                            playerDirection != *(switchMap.get(nextNode)) && nextNode->id < 116) {  // not middle
+                            // player did a misinput
+                            playerDirection = localization_server::BranchDirection::STRAIGHT;
+                            printer_proprietor::debugPrintF(
+                                printerProprietorTid,
+                                "The player's turn was inconsistent with the type of switch for %s", nextNode->name);
+                        } else if (playerDirection == localization_server::BranchDirection::RIGHT &&
+                                   (nextNode->num == 154 || nextNode->num == 156)) {
+                            nextNode = nextNode->edge[DIR_STRAIGHT].dest;
+                        }
+
+                        // if next node is 156 and player input is [right], change to 155 (nextNode->edge[DIR_STRAIGHT])
+                        // if next node is 154 and player input is [right], change to 153 (nextNode->edge[DIR_STRAIGHT])
+
+                        switch (playerDirection) {
+                            case localization_server::BranchDirection::STRAIGHT: {
+                                // only send a switch command if the switch was curved
+                                if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::CURVED) {
+                                    TrackNode* oldNextSensor = curSensor->nextSensor;
+                                    // update turnouts
+                                    turnouts[turnoutIdx(nextNode->num)].state = SwitchState::STRAIGHT;
+                                    // add to turnout queue
+                                    turnoutQueue.push(
+                                        std::pair<char, char>(33, (nextNode->num)));  // dont want to static_cast it
+
+                                    // this logic will default 155 and 153 straight
+                                    if (nextNode->num == 153 || nextNode->num == 155) {
+                                        turnouts[turnoutIdx(nextNode->num + 1)].state = SwitchState::CURVED;
+                                        turnoutQueue.push(std::pair<char, char>(34, (nextNode->num + 1)));
+                                    } else if (nextNode->num == 154 || nextNode->num == 156) {
+                                        turnouts[turnoutIdx(nextNode->num - 1)].state = SwitchState::CURVED;
+                                        turnoutQueue.push(std::pair<char, char>(34, (nextNode->num - 1)));
+                                    }
+                                    TrackNode* newNextSensor = getNextSensor(nextNode, turnouts);
+                                    ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
+                                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                                    "newnextsensor for branch %s is %s", nextNode->name,
+                                                                    newNextSensor->name);
+                                    // start at the reverse of the new upcoming sensor, so we can work backwards to
+                                    // update sensors
+                                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                                    // clear the user input
+                                    playerDirection = localization_server::BranchDirection::STRAIGHT;
+                                    notifierPop(nextNode);
+                                    if (curTrain->realSensorAhead == oldNextSensor) {
+                                        curTrain->realSensorAhead = getNextRealSensor(nextNode, turnouts);
+                                    }
+                                    printer_proprietor::debugPrintF(
+                                        printerProprietorTid,
+                                        "curTrain real sensor ahead: %s sensor before branch is: %s their next sensor "
+                                        "was: %s but its now: %s",
+                                        curTrain->realSensorAhead->name, curSensor->name, curSensor->nextSensor->name,
+                                        oldNextSensor->nextSensor->name);
+                                }
+                                break;
+                            }
+                            case localization_server::BranchDirection::LEFT: {
+                                // only send a switch command if the switch was curved
+                                // also check if this tracknode is a left curved branch
+
+                                if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::STRAIGHT) {
+                                    TrackNode* oldNextSensor = curSensor->nextSensor;
+                                    // if it's straight, make it curved
+                                    turnouts[turnoutIdx(nextNode->num)].state = SwitchState::CURVED;
+                                    // add to turnout queue
+                                    turnoutQueue.push(
+                                        std::pair<char, char>(34, (nextNode->num)));  // dont want to static_cast it
+                                    if (nextNode->num == 153 || nextNode->num == 155) {
+                                        turnouts[turnoutIdx(nextNode->num + 1)].state = SwitchState::STRAIGHT;
+                                        turnoutQueue.push(std::pair<char, char>(
+                                            33, (nextNode->num + 1)));  // dont want to static_cast it
+                                    } else if (nextNode->num == 154 || nextNode->num == 156) {
+                                        turnouts[turnoutIdx(nextNode->num - 1)].state = SwitchState::STRAIGHT;
+                                        turnoutQueue.push(std::pair<char, char>(
+                                            33, (nextNode->num - 1)));  // dont want to static_cast it
+                                    }
+                                    TrackNode* newNextSensor = getNextSensor(nextNode, turnouts);
+                                    ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
+                                    // start at the reverse of the new upcoming sensor, so we can work backwards to
+                                    // update sensors
+                                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                                    "newnextsensor for branch %s is %s", nextNode->name,
+                                                                    newNextSensor->name);
+                                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                                    // clear the user input
+                                    playerDirection = localization_server::BranchDirection::STRAIGHT;
+                                    notifierPop(nextNode);
+                                    if (curTrain->realSensorAhead == oldNextSensor) {
+                                        curTrain->realSensorAhead = getNextRealSensor(nextNode, turnouts);
+                                    }
+                                    printer_proprietor::debugPrintF(
+                                        printerProprietorTid,
+                                        "curTrain real sensor ahead: %s sensor before branch is: %s their next sensor "
+                                        "was: %s but its now: %s",
+                                        curTrain->realSensorAhead->name, curSensor->name, curSensor->nextSensor->name,
+                                        oldNextSensor->nextSensor->name);
+                                }
+                                break;
+                            }
+                            case localization_server::BranchDirection::RIGHT: {
+                                // only send a switch command if the switch was curved
+                                // also check if this tracknode is a left curved branch
+                                if (turnouts[turnoutIdx(nextNode->num)].state == SwitchState::STRAIGHT) {
+                                    TrackNode* oldNextSensor = curSensor->nextSensor;
+                                    // if it's straight, make it curved
+                                    turnouts[turnoutIdx(nextNode->num)].state = SwitchState::CURVED;
+                                    // add to turnout queue
+                                    turnoutQueue.push(
+                                        std::pair<char, char>(34, (nextNode->num)));  // dont want to static_cast it
+                                    if (nextNode->num == 153 || nextNode->num == 155) {
+                                        turnouts[turnoutIdx(nextNode->num + 1)].state = SwitchState::STRAIGHT;
+                                        turnoutQueue.push(std::pair<char, char>(
+                                            33, (nextNode->num + 1)));  // dont want to static_cast it
+                                    } else if (nextNode->num == 154 || nextNode->num == 156) {
+                                        turnouts[turnoutIdx(nextNode->num - 1)].state = SwitchState::STRAIGHT;
+                                        turnoutQueue.push(std::pair<char, char>(
+                                            33, (nextNode->num - 1)));  // dont want to static_cast it
+                                    }
+                                    TrackNode* newNextSensor = getNextSensor(nextNode, turnouts);
+                                    ASSERT(newNextSensor != nullptr, "newNextSensor == nullptr");
+                                    // start at the reverse of the new upcoming sensor, so we can work backwards to
+                                    // update sensors
+                                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                                    "newnextsensor for branch %s is %s", nextNode->name,
+                                                                    newNextSensor->name);
+                                    setAllImpactedSensors(newNextSensor->reverse, turnouts, newNextSensor, 0);
+                                    // clear the user input
+                                    playerDirection = localization_server::BranchDirection::STRAIGHT;
+                                    notifierPop(nextNode);
+                                    if (curTrain->realSensorAhead == oldNextSensor) {
+                                        curTrain->realSensorAhead = getNextRealSensor(nextNode, turnouts);
+                                    }
+                                    TrackNode* oldbranchSensor = getNextSensor(nextNode->reverse, turnouts);
+                                    printer_proprietor::debugPrintF(
+                                        printerProprietorTid,
+                                        "curTrain real sensor ahead: %s sensor before branch is: %s their next sensor "
+                                        "was: %s but its now: %s",
+                                        curTrain->realSensorAhead->name, curSensor->name, curSensor->nextSensor->name,
+                                        oldNextSensor->nextSensor->name);
+                                }
+                                /* code */
+                                break;
+                            }
+
+                            default:
+                                break;
+                        }
+                    }
                 }
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_SUCCESS);
 
@@ -739,9 +918,26 @@ void TrainManager::initializeTrain(int trainIndex, Sensor initSensor) {
     // i should try and do the initial reservation here, and then set train speed
     // but if I just loop and block, I'll be blocking sensor inputs and stuff
 
-    train_server::setTrainSpeed(trainTasks[trainIndex], TRAIN_SPEED_8);
+    train_server::initTrain(trainTasks[trainIndex], train_server::TrainType::CHASER);
+
+    // train_server::setTrainSpeed(trainTasks[trainIndex], TRAIN_SPEED_8);
     trains[trainIndex].speed = TRAIN_SPEED_8;
     printer_proprietor::debugPrintF(printerProprietorTid, "done sending the init");
+}
+
+void TrainManager::initializePlayer(int trainIndex, Sensor initSensor) {
+    Train* curTrain = &trains[trainIndex];
+    playerTrain = curTrain;
+    curTrain->active = true;
+    int sensorIndex = trackNodeIdxFromSensor(initSensor);
+    curTrain->sensorAhead = &track[sensorIndex];
+    curTrain->realSensorAhead = &track[sensorIndex];
+    playerTrainIndex = trainIndex;
+
+    // send something to the train so it knows it's the player
+    train_server::initTrain(trainTasks[trainIndex], train_server::TrainType::PLAYER);
+
+    printer_proprietor::debugPrintF(printerProprietorTid, "done telling the train it's the player");
 }
 
 void TrainManager::fakeSensorHit(int trainIndex) {
@@ -771,4 +967,60 @@ void TrainManager::fakeSensorHit(int trainIndex) {
     }
     train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
                                  curSensor->distToNextSensor);
+}
+
+void TrainManager::processPlayerInput(char input) {
+    ASSERT(playerTrain != nullptr, "you didn't init the player");
+    switch (input) {
+        case 'w': {
+            setTrainSpeed(TRAIN_SPEED_8, playerTrain->id);
+            break;
+        }
+        case 'a': {
+            playerDirection = localization_server::BranchDirection::LEFT;
+            break;
+        }
+        case 's': {
+            printer_proprietor::debugPrintF(printerProprietorTid, "sending stop to the player train");
+            setTrainSpeed(TRAIN_STOP, playerTrain->id);
+            break;
+        }
+        case 'd': {
+            playerDirection = localization_server::BranchDirection::RIGHT;
+            break;
+        }
+        case 'r': {
+            reverseTrain(playerTrainIndex);
+            break;
+        }
+
+        default:
+            ASSERT(0, "bad player input was given");
+            break;
+    }
+}
+
+void TrainManager::initSwitchMap(TrackNode* track) {
+    switchMap.insert(&track[80], localization_server::BranchDirection::LEFT);  // 1
+    switchMap.insert(&track[82], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[84], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[86], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[88], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[90], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[92], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[94], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[96], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[98], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[100], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[102], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[104], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[106], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[108], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[110], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[112], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[114], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[116], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[118], localization_server::BranchDirection::LEFT);
+    switchMap.insert(&track[120], localization_server::BranchDirection::RIGHT);
+    switchMap.insert(&track[122], localization_server::BranchDirection::LEFT);  // 156
 }
