@@ -121,18 +121,24 @@ void TrainTask() {
                     break;
                 }
                 case Command::STOP_SENSOR: {
+                    printer_proprietor::debugPrintF(printerProprietorTid, "RECEIVING STOP INFO AND IMMEDIATE REPLY");
+
                     emptyReply(clientTid);  // immediate reply
+
+                    printer_proprietor::debugPrintF(printerProprietorTid, "BACK IN STOP SENSOR");
+
                     Sensor stopSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
                     Sensor targetSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
                     Sensor firstSensor{.box = receiveBuff[5], .num = static_cast<uint8_t>(receiveBuff[6])};
+                    bool reverse = receiveBuff[7] == 't';
 
                     printer_proprietor::debugPrintF(printerProprietorTid, "FIRST SENSOR IS: %c%u", firstSensor.box,
                                                     firstSensor.num);
 
                     unsigned int distance = 0;
-                    a2ui(&receiveBuff[7], 10, &distance);
+                    a2ui(&receiveBuff[8], 10, &distance);
 
-                    train.newStopLocation(stopSensor, targetSensor, firstSensor, distance);
+                    train.newStopLocation(stopSensor, targetSensor, firstSensor, distance, reverse);
 
                     break;
                 }

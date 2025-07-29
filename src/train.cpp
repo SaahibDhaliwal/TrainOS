@@ -311,14 +311,32 @@ void Train::reverseCommand() {
     }
 }
 
-void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor firstSensor, uint64_t offset) {
+void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor firstSensor, uint64_t offset,
+                            bool reverse) {
     stopSensor = newStopSensor;
     targetSensor = newTargetSensor;
     stopSensorOffset = offset;
 
     printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
 
-    if (finishReverseOnNextDest) {
+    if (reverse) {
+        printer_proprietor::debugPrintF(printerProprietorTid, "REVERSE THAT SHIT");
+
+        marklin_server::setTrainReverse(marklinServerTid, myTrainNumber);
+        isForward = !isForward;
+
+        printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
+
+        if (!isForward) {
+            // stopping distance is the distance from sensor bar to front of train + front of train to stop
+            // isReversing would mean we need to subtract this distance ^
+            // from the distance of the back of the train to the sensor bar
+            // back of train to sensor bar: 14.5 cm
+            stoppingDistance += 115;
+        } else {
+            stoppingDistance -= 115;  // TODO: Why subtract here?
+        }
+
         int initialReservedZonesNum = reservedZones.size();
         int initialZoneExitsNum = zoneExits.size();
         int startIdx = trackNodeIdxFromSensor(sensorAhead);
@@ -625,6 +643,7 @@ void Train::updateState() {
     if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isStopped &&
         !(zoneEntraceSensorAhead == targetSensor) && (curMicros - sensorAheadMicros) <= 3 * 1000) {
         ASSERT(stoppingDistance > 0);
+        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 1");
 
         bool res = attemptReservation(zoneEntraceSensorAhead);
         if (res && isSlowingDown) {
@@ -651,6 +670,11 @@ void Train::updateState() {
         ASSERT(!isSlowingDown, "we have stopped but 'stopping' has a timestamp");
 
         // this would happen
+        printer_proprietor::debugPrintF(
+            printerProprietorTid, "THE ZONE ENTRANCE SENSOR AHEAD IS %c%u AND TARGET SENSOR IS %c%u",
+            zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num, targetSensor.box, targetSensor.num);
+
+        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 2");
         if (!attemptReservation(zoneEntraceSensorAhead)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
         } else {
@@ -669,7 +693,13 @@ void Train::updateState() {
         targetSensor.num = 0;
         // get new destination, which will bring us back
         printer_proprietor::debugPrintF(printerProprietorTid, "%s YO I THINK IM STOPPED", trainColour);
-        localization_server::newDestination(parentTid, trainIndex);
+
+        localization_server::DestinationInfo destInfo = localization_server::newDestination(parentTid, trainIndex);
+
+        newStopLocation(destInfo.stopSensor, destInfo.targetSensor, destInfo.firstSensor, destInfo.distance,
+                        destInfo.reverse);
+
+        printer_proprietor::debugPrintF(printerProprietorTid, "BACK FROM SENDING NEW DESTINATION");
     }
     // otherwise, we are slowing down
 
@@ -754,6 +784,9 @@ void Train::stop() {
 
 void Train::initCPU() {
     initReservation();
+    localization_server::DestinationInfo destInfo = localization_server::newDestination(parentTid, trainIndex);
+    newStopLocation(destInfo.stopSensor, destInfo.targetSensor, destInfo.firstSensor, destInfo.distance,
+                    destInfo.reverse);
     setTrainSpeed(TRAIN_SPEED_8);
 }
 
@@ -816,6 +849,7 @@ void Train::updatePlayerState() {
         (curMicros - sensorAheadMicros) <= 3 * 1000) {
         ASSERT(stoppingDistance > 0);
 
+        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 3");
         bool res = attemptReservation(zoneEntraceSensorAhead);
         if (res && isSlowingDown && !isReversing) {
             printer_proprietor::debugPrintF(

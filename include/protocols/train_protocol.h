@@ -46,6 +46,10 @@ void setTrainSpeed(int tid, unsigned int trainSpeed);
 
 void reverseTrain(int tid);
 
+void newDestinationReply(int tid, char stopBox, unsigned int stopSensorNum, char targetBox,
+                         unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum, uint64_t offset,
+                         bool reverse);
+
 void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
                   char firstBox, unsigned int firstSensorNum, uint64_t offset);
 

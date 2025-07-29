@@ -126,7 +126,7 @@ class Train {
     //
     void reverseCommand();
     //
-    void newStopLocation(Sensor stopSensor, Sensor targetSensor, Sensor firstSensor, uint64_t offset);
+    void newStopLocation(Sensor stopSensor, Sensor targetSensor, Sensor firstSensor, uint64_t offset, bool reverse);
     void updateState();
     void updatePlayerState();
     //

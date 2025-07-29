@@ -57,7 +57,16 @@ void initReservation(int tid, int trainIndex, char* replyBuff);
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
                        ReservationType reservation);
-void newDestination(int tid, int trainIndex);
+
+struct DestinationInfo {
+    Sensor stopSensor;
+    Sensor targetSensor;
+    Sensor firstSensor;
+    unsigned int distance;
+    bool reverse;
+};
+
+DestinationInfo newDestination(int tid, int trainIndex);
 
 void initTrain(int tid, int trainIndex, Sensor initSensor);
 void initPlayer(int tid, int trainIndex, Sensor initSensor);

@@ -139,13 +139,29 @@ void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> res
     handleSendResponse(res, tid);
 }
 
-void newDestination(int tid, int trainIndex) {
+DestinationInfo newDestination(int tid, int trainIndex) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
 
     sendBuf[0] = toByte(Command::NEW_DESTINATION);
     printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+
+    char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, receiveBuff, Config::MAX_MESSAGE_LENGTH - 1);
+
     handleSendResponse(res, tid);
+
+    Sensor stopSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
+    Sensor targetSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+    Sensor firstSensor{.box = receiveBuff[5], .num = static_cast<uint8_t>(receiveBuff[6])};
+    bool reverse = receiveBuff[7] == 't';
+    unsigned int distance = 0;
+    a2ui(&receiveBuff[8], 10, &distance);
+
+    return DestinationInfo{.stopSensor = stopSensor,
+                           .targetSensor = targetSensor,
+                           .firstSensor = firstSensor,
+                           .distance = distance,
+                           .reverse = reverse};
 }
 
 void initPlayer(int tid, int trainIndex, Sensor initSensor) {
