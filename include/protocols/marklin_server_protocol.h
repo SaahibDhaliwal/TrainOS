@@ -35,6 +35,8 @@ int Puts(int tid, int channel, const char* str);
 
 int setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
 
+int setTrainReverse(int tid, unsigned int trainNumber);
+
 int setTrainReverseAndSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
 
 int setTurnout(int tid, unsigned int turnoutDirection, unsigned int turnoutNumber);

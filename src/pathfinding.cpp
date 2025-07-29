@@ -114,7 +114,7 @@
 // }
 
 uint64_t computeForwardShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path,
-                                    TrainReservation* trainReservation) {
+                                    TrainReservation* trainReservation, int printerTid) {
     uint64_t distances[TRACK_MAX];
     TrackNode* parents[TRACK_MAX];
     PriorityQueue<std::pair<uint64_t, TrackNode*>, TRACK_MAX> pq;
@@ -137,7 +137,7 @@ uint64_t computeForwardShortestPath(TrackNode* source, TrackNode* target, RingBu
         auto [curDist, curNode] = pq.top();
         pq.pop();
 
-        if (curNode == target) break;  // found shortest path to target
+        if (curNode == target || curNode == target->reverse) break;  // found shortest path to target
 
         if (curDist > distances[curNode->id]) continue;  // stale pq entry
 
@@ -173,31 +173,45 @@ uint64_t computeForwardShortestPath(TrackNode* source, TrackNode* target, RingBu
         }
     }
 
-    TrackNode* cur = target;
+    TrackNode* actualTarget = target;
+    if (distances[target->reverse->id] < distances[target->id]) {
+        actualTarget = target->reverse;
+    }
+
+    TrackNode* cur = actualTarget;
+
     while (parents[cur->id]) {
         path.push(cur);
         cur = parents[cur->id];
     }
     path.push(cur);
 
-    ASSERT(target != nullptr);
-    ASSERT(target->id >= 0 && target->id < TRACK_MAX);
+    ASSERT(actualTarget != nullptr);
+    ASSERT(actualTarget->id >= 0 && actualTarget->id < TRACK_MAX);
     if (path.size() == 1) {
-        ASSERT(distances[target->id] == UINT64_MAX);
+        printer_proprietor::debugPrintF(printerTid, "THE PATH IS JUST ONE NODE %s", (*path.front())->name);
+        ASSERT(distances[actualTarget->id] == UINT64_MAX);
     }
 
-    return distances[target->id];
+    return distances[actualTarget->id];
 }
 
-PATH_FINDING_RESULT computeShortestPath(TrackNode* source, TrackNode* target, RingBuffer<TrackNode*, 1000>& path,
-                                        TrainReservation* trainReservation, int printerTid) {
+PATH_FINDING_RESULT computeShortestPath(TrackNode* sourceOne, TrackNode* sourceTwo, TrackNode* target,
+                                        RingBuffer<TrackNode*, 1000>& path, TrainReservation* trainReservation,
+                                        int printerTid) {
     RingBuffer<TrackNode*, 1000> forwardPath;
     RingBuffer<TrackNode*, 1000> reversePath;
 
-    uint64_t forwardPathLen = computeForwardShortestPath(source, target, forwardPath, trainReservation);
-    uint64_t reversePathLen = computeForwardShortestPath(source->reverse, target, reversePath, trainReservation);
+    printer_proprietor::debugPrintF(printerTid, "computing PATH WITH %s", sourceOne->name);
+    uint64_t forwardPathLen = computeForwardShortestPath(sourceOne, target, forwardPath, trainReservation, printerTid);
+    uint64_t reversePathLen = UINT64_MAX;
+    if (sourceTwo) {
+        printer_proprietor::debugPrintF(printerTid, "computing PATH WITH %s", sourceTwo->name);
+        reversePathLen = computeForwardShortestPath(sourceTwo, target, reversePath, trainReservation, printerTid);
+    }
 
     if (forwardPathLen == UINT64_MAX && reversePathLen == UINT64_MAX) {
+        uart_printf(CONSOLE, "PAPA THERE IS NO PATH FROM: %s TO %s", sourceOne->name, target->name);
         return PATH_FINDING_RESULT::NO_PATH;
     } else if (reversePathLen == UINT64_MAX) {
         path = forwardPath;

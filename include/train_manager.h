@@ -78,6 +78,7 @@ class TrainManager {
     void generatePath(localization_server::Train* curTrain, int targetTrackNodeIdx, int signedOffset);
     void initSwitchMap(TrackNode* track);
     void notifierPop(TrackNode* nextNode);
+    uint64_t generateRandomTargetIdx(TrackNode* curSensor);
 
    public:
     TrainManager(int marklinServerTid, int printerProprietorTid, int clockServerTid, uint32_t turnoutNotifierTid);

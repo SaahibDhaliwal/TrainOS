@@ -58,6 +58,8 @@ class Train {
     uint64_t reversingStartTime = 0;  // micros
     uint64_t totalReversingTime = 0;  // micros
 
+    bool finishReverseOnNextDest = false;
+
     bool isSlowingDown = false;
     bool isStopped = true;
     uint64_t stopStartTime = 0;          // micros
@@ -89,8 +91,10 @@ class Train {
     int64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
+    void newSensorHitFromStopped(Sensor sensor);
 
-    bool attemptReservation(int64_t curMicros);
+    bool attemptReservation(Sensor reservationSensor);
+    void attemptInitialReservation(Sensor reservationSensor);
 
     void initialSensorHit(Sensor curSensor);
     void regularSensorHit(uint64_t curMicros, Sensor curSensor);
@@ -122,7 +126,7 @@ class Train {
     //
     void reverseCommand();
     //
-    void newStopLocation(Sensor stopSensor, Sensor targetSensor, uint64_t offset);
+    void newStopLocation(Sensor stopSensor, Sensor targetSensor, Sensor firstSensor, uint64_t offset);
     void updateState();
     void updatePlayerState();
     //
@@ -132,6 +136,7 @@ class Train {
     void finishReverse();
     void initCPU();
     void initPlayer();
+    void reverseFromStop();
 
     uint64_t getReverseDelayTicks();
     uint64_t getStopDelayTicks(int64_t curMicros);

@@ -54,33 +54,12 @@ void reverseTrain(int tid) {
     handleSendResponse(res, tid);
 }
 
-unsigned int getReverseDelayTicks(int tid) {
-    char sendBuf[2] = {0};
-    sendBuf[0] = toByte(Command::GET_REVERSE_TIME);
-
-    char receiveBuffer[21] = {0};  // max digits is 20
-
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf), receiveBuffer, 21);
-    handleSendResponse(res, tid);
-
-    unsigned int result = 0;
-    a2ui(receiveBuffer, 10, &result);
-    return result;
-}
-
-void finishReverse(int tid) {
-    char sendBuf[2] = {0};
-    sendBuf[0] = toByte(Command::FINISH_REVERSE);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf), nullptr, 0);
-    handleSendResponse(res, tid);
-}
-
-void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char targetBox, unsigned int targetSensorNum,
-                  uint64_t offset) {
+void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
+                  char firstBox, unsigned int firstSensorNum, uint64_t offset) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::STOP_SENSOR);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%u", currentBox,
-                                       currentSensorNum, targetBox, targetSensorNum, offset);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%c%c%u", stopBox,
+                                       stopSensorNum, targetBox, targetSensorNum, firstBox, firstSensorNum, offset);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

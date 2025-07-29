@@ -115,19 +115,25 @@ void TrainTask() {
                     break;
                 }
                 case Command::REVERSE_COMMAND: {
-                    emptyReply(clientTid);  // immediate reply
                     train.reverseCommand();
+                    emptyReply(clientTid);  // reply after finishing reverse (I don't want the path until after)
+
                     break;
                 }
                 case Command::STOP_SENSOR: {
                     emptyReply(clientTid);  // immediate reply
                     Sensor stopSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
                     Sensor targetSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+                    Sensor firstSensor{.box = receiveBuff[5], .num = static_cast<uint8_t>(receiveBuff[6])};
+
+                    printer_proprietor::debugPrintF(printerProprietorTid, "FIRST SENSOR IS: %c%u", firstSensor.box,
+                                                    firstSensor.num);
 
                     unsigned int distance = 0;
-                    a2ui(&receiveBuff[5], 10, &distance);
+                    a2ui(&receiveBuff[7], 10, &distance);
 
-                    train.newStopLocation(stopSensor, targetSensor, distance);
+                    train.newStopLocation(stopSensor, targetSensor, firstSensor, distance);
+
                     break;
                 }
                 case Command::INIT_PLAYER: {
@@ -154,22 +160,6 @@ void TrainTask() {
             }
             emptyReply(updaterTid);  // not immediate
 
-        } else if (clientTid == train.getReverseTid()) {
-            Command command = commandFromByte(receiveBuff[0]);
-            switch (command) {
-                case Command::GET_REVERSE_TIME: {
-                    uIntReply(clientTid, train.getReverseDelayTicks());
-                    break;
-                }
-                case Command::FINISH_REVERSE: {
-                    train.finishReverse();
-                    break;
-                }
-                default: {
-                    printer_proprietor::debugPrintF(printerProprietorTid, "UNKOWN COMMAND");
-                    break;
-                }
-            }
         } else {
             ASSERT(0, "someone else sent to train task?");
         }

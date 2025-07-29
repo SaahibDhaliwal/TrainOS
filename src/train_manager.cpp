@@ -288,10 +288,10 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
 
             TrackNode* curSensor = &track[targetTrackNodeIdx];
 
-            if (!curTrain->path.empty() && *curTrain->path.front() == curTrain->targetNode) {
+            if (!curTrain->path.empty() &&
+                *curTrain->path.front() == curTrain->targetNode) {  // WE SHOULD NOT BE HITTING THIS ANYMORE
                 // fail the reservation, which should be fine
                 // but we need to pop the last thing in the path
-                // WE SHOULD NOT BE HITTING THIS ANYMORE
                 TrackNode* popped = *(curTrain->path.pop());
 
                 replyBuff[0] = toByte(train_server::Reply::RESERVATION_FAILURE);
@@ -421,8 +421,8 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                     // pop until the front of our path is a sensor
                     while (!curTrain->path.empty() && !((*curTrain->path.front())->type == NodeType::SENSOR)) {
                         TrackNode* popped = *(curTrain->path.pop());
-                        // printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
-                        //                                 popped->name);
+                        printer_proprietor::debugPrintF(printerProprietorTid, "(res) just popped node: %s",
+                                                        popped->name);
                     }
                     ASSERT(!curTrain->path.empty(), "we popped too many items in our path");
                     ASSERT((*curTrain->path.front())->type == NodeType::SENSOR,
@@ -667,11 +667,20 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
             Train* curTrain = &trains[trainIndex];
 
             TrackNode* prevTarget = curTrain->targetNode;
-            TrackNode* targetNode = trainIndexToTrackNode(trainIndex, curTrain->trackCount);
             curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
             // must reply before generating path, since it will send a stop location back to client
             emptyReply(clientTid);
-            generatePath(curTrain, targetNode->id, 0);
+
+            if (curTrain->trackCount == 1) {
+                Sensor target = {.box = 'A', .num = 4};
+
+                int idx = trackNodeIdxFromSensor(target);
+
+                generatePath(curTrain, idx, 0);
+            } else {
+                generatePath(curTrain, generateRandomTargetIdx(curTrain->sensorBehind), 0);
+            }
+
             return;
             break;  // just to surpress compilation warning
         }
@@ -756,12 +765,27 @@ void TrainManager::setTrainStop(char* receiveBuffer) {
     generatePath(curTrain, targetTrackNodeIdx, signedOffset);
 }
 
+uint64_t TrainManager::generateRandomTargetIdx(TrackNode* curSensor) {
+    TrackNode* targetNode = nullptr;
+    while (!targetNode || curSensor->nextSensor == targetNode || curSensor->nextSensor->reverse == targetNode) {
+        unsigned int seed = timerGet();
+        char box = 'A' + (seed % 5);    // Random letter A-E
+        int nodeNum = 1 + (seed % 16);  // Random number 1-16
+        int targetTrackNodeIdx = ((box - 'A') * 16) + (nodeNum - 1);
+        targetNode = &track[targetTrackNodeIdx];
+    }
+
+    return targetNode->id;
+}
+
 // this will override the trains path
 void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int signedOffset) {
     // if signed offset is a big negative number, then we're fine
     // but if larger than our stopping distance, we need to choose a new target
     int stoppingDistance = curTrain->stoppingDistance - signedOffset;
+
     TrackNode* targetNode = &track[targetTrackNodeIdx];
+
     // iterate over nodes until the difference is larger than zero
     // "fakes" a target that is within our stopping distance
     while (stoppingDistance < 0) {
@@ -800,6 +824,10 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
         source = source->nextSensor;
     }
 
+    // this should no longer be true due to generating a path while stopped or on first sensor hit
+    // ASSERT(trainReservation.isSectionReserved(sourceOne) != curTrain->id, "We already reserved ahead of sensor %s",
+    //        sourceOne->name);
+
     // pop anything that was already in the trains path
     while (!curTrain->path.empty()) {
         TrackNode* test = *(curTrain->path.pop());
@@ -813,15 +841,19 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
 
     // printer_proprietor::debugPrintF(printerProprietorTid, "COMPUTING SHORTEST PATH");
 
-    PATH_FINDING_RESULT result =
-        computeShortestPath(source, curTrain->targetNode, backwardsPath, &trainReservation, printerProprietorTid);
+    PATH_FINDING_RESULT result = computeShortestPath(sourceOne, sourceTwo, curTrain->targetNode, backwardsPath,
+                                                     &trainReservation, printerProprietorTid);
 
     // printer_proprietor::debugPrintF(printerProprietorTid, "SHORTEST PATH RESULT WAS %d", result);
     ASSERT(curTrain != nullptr);
-    ASSERT(source != nullptr);
+    ASSERT(sourceOne != nullptr);
+
     // THIS WAS IN THE INITIAL SENSOR HIT, BUT NOT IN THE ORIGINAL
     if (result == PATH_FINDING_RESULT::REVERSE) {
         reverseTrain(trainNumToIndex(curTrain->id));  // this call does a reverse which assumes the train is in motion
+        TrackNode* temp = curTrain->sensorAhead;
+        curTrain->sensorAhead = curTrain->sensorBehind->reverse;
+        curTrain->sensorBehind = temp;
     } else if (result == PATH_FINDING_RESULT::NO_PATH) {
         printer_proprietor::debugPrintF(printerProprietorTid, "pathfinding couldn't find a path with source");
     }
@@ -864,6 +896,7 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
 
     char stopBox = curTrain->stoppingSensor->name[0];
     unsigned int stopSensorNum = ((curTrain->stoppingSensor->num + 1) - (stopBox - 'A') * 16);
+
     if (stopBox == 'F') {
         ASSERT(0, "this should never be reached: trying to stop on a fake sensor");
         stopSensorNum = curTrain->stoppingSensor->num;
@@ -876,8 +909,12 @@ void TrainManager::generatePath(Train* curTrain, int targetTrackNodeIdx, int sig
 
     char tarBox = curTrain->targetNode->name[0];
     unsigned int tarNum = ((curTrain->targetNode->num + 1) - (tarBox - 'A') * 16);
+
+    char startBox = curTrain->sensorAhead->name[0];
+    unsigned int startNum = ((curTrain->sensorAhead->num + 1) - (startBox - 'A') * 16);
+
     train_server::sendStopInfo(trainTasks[trainNumToIndex(curTrain->id)], stopBox, stopSensorNum, tarBox, tarNum,
-                               curTrain->whereToIssueStop);
+                               startBox, startNum, curTrain->whereToIssueStop);
 
     // traverse shortest path backwards to get our forwards path
     auto it = backwardsPath.end();
@@ -925,102 +962,12 @@ void TrainManager::initializeTrain(int trainIndex, Sensor initSensor) {
     printer_proprietor::debugPrintF(printerProprietorTid, "done sending the init");
 }
 
-void TrainManager::initializePlayer(int trainIndex, Sensor initSensor) {
-    Train* curTrain = &trains[trainIndex];
-    playerTrain = curTrain;
-    curTrain->active = true;
-    int sensorIndex = trackNodeIdxFromSensor(initSensor);
-    curTrain->sensorAhead = &track[sensorIndex];
-    curTrain->realSensorAhead = &track[sensorIndex];
-    playerTrainIndex = trainIndex;
+int signedOffset = 0;
 
-    // send something to the train so it knows it's the player
-    train_server::initTrain(trainTasks[trainIndex], train_server::TrainType::PLAYER);
-
-    printer_proprietor::debugPrintF(printerProprietorTid, "done telling the train it's the player");
-}
-
-void TrainManager::fakeSensorHit(int trainIndex) {
-    Train* curTrain = &trains[trainIndex];
-    ASSERT(curTrain->sensorAhead->name[0] == 'F',
-           "train %u next sensor was not a fake one, but they thought they hit it");
-
-    TrackNode* curSensor = curTrain->sensorAhead;
-    // update next sensor
-    curTrain->sensorAhead = curSensor->nextSensor;
-    curTrain->realSensorAhead = curSensor->nextSensor;
-    while (curTrain->realSensorAhead->name[0] == 'F') {
-        curTrain->realSensorAhead = curTrain->realSensorAhead->nextSensor;
-    }
-
-    curTrain->sensorBehind = curSensor;
-
-    char box = curSensor->name[0];
-    unsigned int sensorNum = ((curSensor->num + 1) - (box - 'A') * 16);
-    if (box == 'F') {
-        sensorNum = curSensor->num;
-    }
-    char nextBox = curSensor->nextSensor->name[0];
-    unsigned int nextSensorNum = ((curSensor->nextSensor->num + 1) - (nextBox - 'A') * 16);
-    if (nextBox == 'F') {
-        nextSensorNum = curSensor->nextSensor->num;
-    }
-    train_server::sendSensorInfo(trainTasks[trainNumToIndex(curTrain->id)], box, sensorNum, nextBox, nextSensorNum,
-                                 curSensor->distToNextSensor);
-}
-
-void TrainManager::processPlayerInput(char input) {
-    ASSERT(playerTrain != nullptr, "you didn't init the player");
-    switch (input) {
-        case 'w': {
-            setTrainSpeed(TRAIN_SPEED_8, playerTrain->id);
-            break;
-        }
-        case 'a': {
-            playerDirection = localization_server::BranchDirection::LEFT;
-            break;
-        }
-        case 's': {
-            printer_proprietor::debugPrintF(printerProprietorTid, "sending stop to the player train");
-            setTrainSpeed(TRAIN_STOP, playerTrain->id);
-            break;
-        }
-        case 'd': {
-            playerDirection = localization_server::BranchDirection::RIGHT;
-            break;
-        }
-        case 'r': {
-            reverseTrain(playerTrainIndex);
-            break;
-        }
-
-        default:
-            ASSERT(0, "bad player input was given");
-            break;
-    }
-}
-
-void TrainManager::initSwitchMap(TrackNode* track) {
-    switchMap.insert(&track[80], localization_server::BranchDirection::LEFT);  // 1
-    switchMap.insert(&track[82], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[84], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[86], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[88], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[90], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[92], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[94], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[96], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[98], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[100], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[102], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[104], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[106], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[108], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[110], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[112], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[114], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[116], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[118], localization_server::BranchDirection::LEFT);
-    switchMap.insert(&track[120], localization_server::BranchDirection::RIGHT);
-    switchMap.insert(&track[122], localization_server::BranchDirection::LEFT);  // 156
+// generate a new stopping location
+// this scuffed function returns a tracknode*
+// later on, this will generate some "appropriate" random location (or its done when generating path)
+TrackNode* targetNode = trainIndexToTrackNode(trainNumToIndex(curTrain->id), curTrain->trackCount);
+curTrain->trackCount = (curTrain->trackCount + 1) % NODE_MAX;
+generatePath(curTrain, targetNode->id, 0);
 }

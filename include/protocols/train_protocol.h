@@ -46,12 +46,8 @@ void setTrainSpeed(int tid, unsigned int trainSpeed);
 
 void reverseTrain(int tid);
 
-void finishReverse(int tid);
-
-unsigned int getReverseDelayTicks(int tid);
-
-void sendStopInfo(int tid, char currentBox, unsigned int currentSensorNum, char targetBox, unsigned int targetSensorNum,
-                  uint64_t offset);
+void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
+                  char firstBox, unsigned int firstSensorNum, uint64_t offset);
 
 void initTrain(int tid, TrainType type);
 
