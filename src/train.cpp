@@ -70,6 +70,7 @@ Train::Train(unsigned int myTrainNumber, int parentTid, uint32_t printerPropriet
     init_trackb(track);
 #endif
     initializeDistanceMatrix(track, distanceMatrix);
+    trainReservation.initialize(track, printerProprietorTid);
 }
 
 uint32_t Train::getReverseTid() {
@@ -475,9 +476,9 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
                 }
             }
 
-            newReservedZones.push({.sensorMarkingEntrance = newReservationSensor, .zoneNum = (*it).zoneNum});
-
-            --it;
+            newReservedZones.push(
+                {.sensorMarkingEntrance = newReservationSensor,
+                 .zoneNum = static_cast<uint8_t>(trainReservation.trackNodeToZoneNum(reservationSensorNode))});
         }
 
         ASSERT(newReservedZones.size() == reservedZones.size());

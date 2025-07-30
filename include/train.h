@@ -22,6 +22,7 @@ class Train {
 
     TrackNode track[TRACK_MAX];
     uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
+    TrainReservation trainReservation;
 
     // ************ STATIC TRAIN STATE *************
     uint8_t speed = 0;              // Marklin Box Unit
