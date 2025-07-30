@@ -231,9 +231,6 @@ PATH_FINDING_RESULT computeShortestPath(TrackNode* sourceOne, TrackNode* sourceT
 }
 
 void computeShortestDistancesFromSource(TrackNode* source, uint64_t distRow[TRACK_MAX]) {
-    for (int i = 0; i < TRACK_MAX; i++) {
-        distRow[i] = UINT64_MAX;
-    }
     PriorityQueue<std::pair<uint64_t, TrackNode*>, TRACK_MAX> pq;
 
     uint64_t sourceNum = source->id;
@@ -276,6 +273,12 @@ void computeShortestDistancesFromSource(TrackNode* source, uint64_t distRow[TRAC
 }
 
 void initializeDistanceMatrix(TrackNode* track, uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX]) {
+    for (int i = 0; i < TRACK_MAX; i++) {
+        for (int j = 0; j < TRACK_MAX; j++) {
+            distanceMatrix[i][j] = UINT64_MAX;
+        }
+    }
+
     for (int i = 0; i < TRACK_MAX; ++i) {
         if (track[i].type == NodeType::EXIT) continue;
         computeShortestDistancesFromSource(&track[i], distanceMatrix[i]);

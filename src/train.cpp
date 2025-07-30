@@ -272,9 +272,14 @@ void Train::processSensorHit(Sensor curSensor, Sensor newSensorAhead, uint64_t d
     int64_t curMicros = timerGet();
 
     if (prevSensorHitMicros != 0 && sensorAhead.box != 'F') {
-        ASSERT(curSensor.box == sensorAhead.box && curSensor.num == sensorAhead.num,
-               "Train %u was not expecting this sensor to come next. We expected sensor %c%d but got sensor %c%d",
-               myTrainNumber, sensorAhead.box, sensorAhead.num, curSensor.box, curSensor.num);
+        if (!(curSensor.box == sensorAhead.box) || !(curSensor.num == sensorAhead.num)) {
+            printer_proprietor::debugPrintF(printerProprietorTid, "The cursensor is %c%d and sensorAhead is %c%d",
+                                            curSensor.box, curSensor.num, newSensorAhead.box, newSensorAhead.num);
+            clock_server::Delay(clockServerTid, 100);
+            ASSERT(curSensor.box == sensorAhead.box && curSensor.num == sensorAhead.num,
+                   "Train %u was not expecting this sensor to come next. We expected sensor %c%d but got sensor %c%d",
+                   myTrainNumber, sensorAhead.box, sensorAhead.num, curSensor.box, curSensor.num);
+        }
     }
 
     distanceToSensorAhead = distance;
@@ -301,10 +306,10 @@ uint64_t Train::getStopDelayTicks(int64_t curMicros) {
 
 void Train::reverseCommand() {
     if (isStopped) {
-        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 1");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 1");
         finishReverse();
     } else {
-        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 2");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 2");
 
         decelerateTrain();
         isReversing = true;
@@ -339,7 +344,8 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
 
         int initialReservedZonesNum = reservedZones.size();
         int initialZoneExitsNum = zoneExits.size();
-        int startIdx = trackNodeIdxFromSensor(sensorAhead);
+        TrackNode* sensorAheadNodeReversed = track[trackNodeIdxFromSensor(sensorAhead)].reverse;
+        int startIdx = sensorAheadNodeReversed->id;
 
         sensorAhead = firstSensor;  // this helps with reservations
 
@@ -351,8 +357,6 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
         printer_proprietor::updateTrainNextSensor(printerProprietorTid, trainIndex, sensorAhead);
 
         printer_proprietor::debugPrintF(printerProprietorTid, "ATTEMPTING RESERVATIONS");
-
-        TrackNode* sensorAheadNodeReversed = track[startIdx].reverse;
 
         char tarBox = sensorAheadNodeReversed->name[0];
         unsigned int tarNum = ((sensorAheadNodeReversed->num + 1) - (tarBox - 'A') * 16);
@@ -367,7 +371,7 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
 
             printer_proprietor::debugPrintF(printerProprietorTid, "ATTEMPTING RESERVATION WITH %c%u",
                                             reservationSensor.box, reservationSensor.num);
-            attemptReservation(reservationSensor);
+            attemptReservation(reservationSensor);  // what happens if this fails?
         }
 
         for (int i = 0; i < initialReservedZonesNum; i++) {  // remove stale zones
@@ -453,6 +457,10 @@ bool Train::attemptReservation(Sensor reservationSensor) {
             // we have a new zone entrace sensor we care about
             zoneEntraceSensorAhead = Sensor{.box = replyBuff[2], .num = static_cast<uint8_t>(replyBuff[3])};
             printer_proprietor::updateTrainZoneSensor(printerProprietorTid, trainIndex, zoneEntraceSensorAhead);
+
+            if (sensorBehind == reservationSensor) {
+                sensorAhead = zoneEntraceSensorAhead;
+            }
 
             unsigned int distance = 0;  // TODO: we are casting to unsigned int, when we have a uint64_t
             a2ui(&replyBuff[4], 10, &distance);
@@ -643,9 +651,9 @@ void Train::updateState() {
     if (distRemainingToZoneEntranceSensorAhead <= STOPPING_THRESHOLD + stoppingDistance && !isStopped &&
         !(zoneEntraceSensorAhead == targetSensor) && (curMicros - sensorAheadMicros) <= 3 * 1000) {
         ASSERT(stoppingDistance > 0);
-        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 1");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 1");
 
-        bool res = attemptReservation(zoneEntraceSensorAhead);
+        bool res = attemptReservation(zoneEntraceSensorAhead);  // if this fails, it will start slowing down the train
         if (res && isSlowingDown) {
             printer_proprietor::debugPrintF(printerProprietorTid,
                                             "%s \033[5m \033[38;5;160m SPEEDING BACK UP WHEN SLOWING DOWN \033[m",
@@ -662,7 +670,7 @@ void Train::updateState() {
             printer_proprietor::debugPrintF(printerProprietorTid,
                                             "%s I think I've hit my fake sensor %c%d since my distremaining was %d",
                                             trainColour, sensorAhead.box, sensorAhead.num, distRemainingToSensorAhead);
-            localization_server::hitFakeSensor(parentTid, trainIndex);
+            localization_server::hitFakeSensor(parentTid, trainIndex);  // localization blocked
         }
 
     } else if (isStopped && !(zoneEntraceSensorAhead == targetSensor)) {
@@ -674,7 +682,7 @@ void Train::updateState() {
             printerProprietorTid, "THE ZONE ENTRANCE SENSOR AHEAD IS %c%u AND TARGET SENSOR IS %c%u",
             zoneEntraceSensorAhead.box, zoneEntraceSensorAhead.num, targetSensor.box, targetSensor.num);
 
-        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 2");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 2");
         if (!attemptReservation(zoneEntraceSensorAhead)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
         } else {
@@ -849,7 +857,7 @@ void Train::updatePlayerState() {
         (curMicros - sensorAheadMicros) <= 3 * 1000) {
         ASSERT(stoppingDistance > 0);
 
-        printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 3");
+        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE 3");
         bool res = attemptReservation(zoneEntraceSensorAhead);
         if (res && isSlowingDown && !isReversing) {
             printer_proprietor::debugPrintF(
@@ -865,9 +873,10 @@ void Train::updatePlayerState() {
 
         // check if we think we've passed a fake sensor in order to tell the localization server
         if (distRemainingToSensorAhead <= 0 && sensorAhead.box == 'F') {
-            printer_proprietor::debugPrintF(printerProprietorTid,
-                                            "%s I think I've hit my fake sensor %c%d since my distremaining was %d",
-                                            trainColour, sensorAhead.box, sensorAhead.num, distRemainingToSensorAhead);
+            // printer_proprietor::debugPrintF(printerProprietorTid,
+            //                                 "%s I think I've hit my fake sensor %c%d since my distremaining was %d",
+            //                                 trainColour, sensorAhead.box, sensorAhead.num,
+            //                                 distRemainingToSensorAhead);
             localization_server::hitFakeSensor(parentTid, trainIndex);
         }
 

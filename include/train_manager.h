@@ -74,6 +74,7 @@ class TrainManager {
     int playerTrainIndex;
     localization_server::BranchDirection playerDirection = localization_server::BranchDirection::STRAIGHT;
     UnorderedMap<TrackNode*, localization_server::BranchDirection, SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT> switchMap;
+    uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
 
     void generatePath(localization_server::Train* curTrain, int targetTrackNodeIdx, int signedOffset);
     void initSwitchMap(TrackNode* track);
