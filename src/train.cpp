@@ -462,6 +462,19 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
                 newReservationSensor.num = reservationSensorNode->num;
             }
 
+            for (auto it2 = newReservedZones.begin(); it2 != newReservedZones.end(); ++it2) {
+                if ((*it2).sensorMarkingEntrance == newReservationSensor) {
+                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                    "YOOOOOOOOOOOOOOOOO WE ARE PUSHING A DUPE SENSOR %c%u",
+                                                    newReservationSensor.box, newReservationSensor.num);
+                }
+
+                if ((*it2).zoneNum == (*it).zoneNum) {
+                    printer_proprietor::debugPrintF(
+                        printerProprietorTid, "YOOOOOOOOOOOOOOOOO WE ARE PUSHING A DUPE ZONE NUM  %u", (*it).zoneNum);
+                }
+            }
+
             newReservedZones.push({.sensorMarkingEntrance = newReservationSensor, .zoneNum = (*it).zoneNum});
 
             --it;
@@ -603,6 +616,21 @@ bool Train::attemptReservation(Sensor reservationSensor) {
 
             ReservedZone reservation{.sensorMarkingEntrance = reservationSensor,
                                      .zoneNum = static_cast<uint8_t>(replyBuff[1])};
+
+            for (auto it = reservedZones.begin(); it != reservedZones.end(); ++it) {
+                if ((*it).sensorMarkingEntrance == reservation.sensorMarkingEntrance) {
+                    printer_proprietor::debugPrintF(
+                        printerProprietorTid, "YOOOOOOOOOOOOOOOOO WE ARE PUSHING A DUPE SENSOR %c%u",
+                        reservation.sensorMarkingEntrance.box, reservation.sensorMarkingEntrance.num);
+                }
+
+                if ((*it).zoneNum == reservation.zoneNum) {
+                    printer_proprietor::debugPrintF(printerProprietorTid,
+                                                    "YOOOOOOOOOOOOOOOOO WE ARE PUSHING A DUPE ZONE NUM  %u",
+                                                    reservation.zoneNum);
+                }
+            }
+
             reservedZones.push(reservation);
 
             // let's create an exit entry for a previous zone
