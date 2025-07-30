@@ -56,6 +56,8 @@ class TrainReservation {
     bool freeReservation(TrackNode* sensor, unsigned int trainNumber);
     void updateReservation(TrackNode* sensor, unsigned int trainNumber, ReservationType reservation);
     // void reserveSection(TrackNode* whereverThisNodeIs, unsigned int trainNumber);
+    ReservationType reservationStatus(TrackNode* sensor);
+    bool isTrackNodeInZone(TrackNode* node, uint32_t zoneNum);
 };
 
 #endif

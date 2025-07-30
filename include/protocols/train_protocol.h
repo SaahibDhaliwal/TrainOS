@@ -51,7 +51,7 @@ void newDestinationReply(int tid, char stopBox, unsigned int stopSensorNum, char
                          bool reverse);
 
 void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
-                  char firstBox, unsigned int firstSensorNum, uint64_t offset);
+                  char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse);
 
 void initTrain(int tid, TrainType type);
 

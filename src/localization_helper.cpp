@@ -81,7 +81,7 @@ void setNextSensor(TrackNode* start, Turnout* turnouts) {
     }
 }
 
-// ensure your starting node is not a sensor
+// ensure your starting node IS a sensor
 TrackNode* getNextSensor(TrackNode* start, Turnout* turnouts) {
     TrackNode* nextNode = nullptr;
     if (start->type != NodeType::BRANCH) {

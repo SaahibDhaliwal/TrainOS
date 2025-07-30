@@ -85,6 +85,7 @@ class Train {
     bool recentZoneAddedFlag = false;
 
     bool firstReservationFailure = false;
+    bool firstUpdatedReservation = true;
 
     Sensor zoneEntranceSensorAhead;                      // sensor ahead of train marking a zone entrace
     uint64_t distanceToZoneEntranceSensorAhead = 0;      // mm, static
@@ -105,6 +106,7 @@ class Train {
     void decelerateTrain();
     uint64_t predictNextSensorHitTimeMicros();
     void initReservation();
+    void waitForReservation(Sensor reservationSensor);
 
    public:
     bool isPlayer = false;

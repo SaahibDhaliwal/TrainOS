@@ -77,6 +77,8 @@ class TrainManager {
     uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
 
     void generatePath(localization_server::Train* curTrain, int targetTrackNodeIdx, int signedOffset);
+    void generatePathWithoutZone(localization_server::Train* curTrain, localization_server::Train* otherTrain,
+                                 uint32_t curTrainZone, uint32_t otherTrainZone);
     void initSwitchMap(TrackNode* track);
     void notifierPop(TrackNode* nextNode);
     uint64_t generateRandomTargetIdx(TrackNode* curSensor);

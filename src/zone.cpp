@@ -29,6 +29,15 @@ int TrainReservation::isSectionReserved(TrackNode* start) {
     return false;
 }
 
+ReservationType TrainReservation::reservationStatus(TrackNode* sensor) {
+    ZoneSegment* result = mapchecker(sensor);
+    return result->reservationType;
+}
+
+bool TrainReservation::isTrackNodeInZone(TrackNode* node, uint32_t zoneNum) {
+    return (*mapchecker(node)).zoneNum == zoneNum;
+}
+
 ZoneSegment* TrainReservation::mapchecker(TrackNode* entrySensor) {
     ZoneSegment** search = zoneMap.get(entrySensor);
     ASSERT(search != nullptr, "That node doesn't exist in the map. node: %s", entrySensor->name);
