@@ -86,8 +86,8 @@ class Train {
 
     bool firstReservationFailure = false;
 
-    Sensor zoneEntraceSensorAhead;                       // sensor ahead of train marking a zone entrace
-    uint64_t distanceToZoneEntraceSensorAhead = 0;       // mm, static
+    Sensor zoneEntranceSensorAhead;                      // sensor ahead of train marking a zone entrace
+    uint64_t distanceToZoneEntranceSensorAhead = 0;      // mm, static
     int64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
 
     /////////////////////////////////////////////////////////////////////
