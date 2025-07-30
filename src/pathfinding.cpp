@@ -160,7 +160,7 @@ uint64_t computeForwardShortestPathAvoidingZone(TrackNode* source, TrackNode* ta
             TrackNode* destNode = edge->dest;
             uint64_t newDistToDest = curDist + edge->dist;
 
-            // if (trainReservation->isTrackNodeInZone(destNode, zoneNum)) continue;
+            if (trainReservation->isTrackNodeInZone(destNode, zoneNum)) continue;
 
             ASSERT(destNode != nullptr);
 

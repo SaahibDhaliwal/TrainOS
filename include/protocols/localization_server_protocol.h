@@ -55,8 +55,6 @@ void setStopLocation(int localizationTid, int trainNumber, char box, int sensorN
 void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 void initReservation(int tid, int trainIndex, char* replyBuff);
 void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
-void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
-                       ReservationType reservation);
 
 struct DestinationInfo {
     Sensor stopSensor;
@@ -65,6 +63,14 @@ struct DestinationInfo {
     unsigned int distance;
     bool reverse;
 };
+
+struct UpdateResInfo {
+    DestinationInfo destInfo;
+    bool hasNewPath;
+};
+
+UpdateResInfo updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
+                                ReservationType reservation);
 
 DestinationInfo newDestination(int tid, int trainIndex);
 

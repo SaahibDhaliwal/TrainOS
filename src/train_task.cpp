@@ -86,6 +86,8 @@ void TrainTask() {
     Train train(myTrainNumber, parentTid, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid,
                 stopNotifierTid);
 
+    printer_proprietor::debugPrintF(printerProprietorTid, "%u tid is %u", myTrainNumber, sys::MyTid());
+
     for (;;) {
         char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
         sys::Receive(&clientTid, receiveBuff, Config::MAX_MESSAGE_LENGTH - 1);

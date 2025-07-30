@@ -66,6 +66,17 @@ void newDestinationReply(int tid, char stopBox, unsigned int stopSensorNum, char
     sys::Reply(tid, sendBuf, strlen(sendBuf) + 1);
 }
 
+void newUpdateReply(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
+                    char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = 'T';
+    char reverseChar = reverse ? 't' : 'f';
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%c%c%c%u", stopBox,
+                                       stopSensorNum, targetBox, targetSensorNum, firstBox, firstSensorNum, reverseChar,
+                                       offset);
+    sys::Reply(tid, sendBuf, strlen(sendBuf) + 1);
+}
+
 void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
                   char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};

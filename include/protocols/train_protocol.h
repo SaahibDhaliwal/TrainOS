@@ -50,6 +50,9 @@ void newDestinationReply(int tid, char stopBox, unsigned int stopSensorNum, char
                          unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum, uint64_t offset,
                          bool reverse);
 
+void newUpdateReply(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
+                    char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse);
+
 void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
                   char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse);
 

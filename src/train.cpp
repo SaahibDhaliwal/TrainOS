@@ -113,11 +113,31 @@ void Train::waitForReservation(Sensor reservationSensor) {
     //     printerProprietorTid, "%s \033[48;5;22m Reservation w zoneEntranceSensorAhead: %c%d targetSensor: %c%d",
     //     trainColour, zoneEntranceSensorAhead.box, zoneEntranceSensorAhead.num, targetSensor.box, targetSensor.num);
     localization_server::makeReservation(parentTid, trainIndex, reservationSensor, replyBuff);
-
+    int64_t curTime = timerGet();
+    bool firstUpdate = true;
     while (replyFromByte(replyBuff[0]) != Reply::RESERVATION_SUCCESS) {
         replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};  // clear it?
         clock_server::Delay(clockServerTid, 50);
         localization_server::makeReservation(parentTid, trainIndex, reservationSensor, replyBuff);
+        int64_t newDelayTime = timerGet();
+        if (newDelayTime - curTime >= 1000000 * 2) {
+            localization_server::UpdateResInfo updateResInfo =
+                localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+            printer_proprietor::debugPrintF(
+                printerProprietorTid,
+                "%s (BUSY WAIT FOR RESERVATION) update reservation got back to me with has new path: %d", trainColour,
+                updateResInfo.hasNewPath);
+
+            if (updateResInfo.hasNewPath) {
+                newStopLocation(updateResInfo.destInfo.stopSensor, updateResInfo.destInfo.targetSensor,
+                                updateResInfo.destInfo.firstSensor, updateResInfo.destInfo.distance,
+                                updateResInfo.destInfo.reverse);
+            }
+            //     localization_server::updateReservation(parentTid, trainIndex, reservedZones,
+            //     ReservationType::STOPPED);;
+        }
+        // if this fails enough times
+        //  update reservations
     }
 
     uint64_t distToExitSensor = distRemainingToZoneEntranceSensorAhead + DISTANCE_FROM_SENSOR_BAR_TO_BACK_OF_TRAIN;
@@ -388,9 +408,9 @@ void Train::newStopLocation(Sensor newStopSensor, Sensor newTargetSensor, Sensor
             // isReversing would mean we need to subtract this distance ^
             // from the distance of the back of the train to the sensor bar
             // back of train to sensor bar: 14.5 cm
-            stoppingDistance += 115;
+            stoppingDistance += 120;
         } else {
-            stoppingDistance -= 115;  // TODO: Why subtract here?
+            stoppingDistance -= 120;  // TODO: Why subtract here?
         }
 
         int initialReservedZonesNum = reservedZones.size();
@@ -518,7 +538,7 @@ void Train::updateVelocityWithAcceleration(int64_t curMicros) {
 
         uint64_t newStoppingDistance = ((getStoppingDistSeed(trainIndex) * v_ratio_numerator * v_ratio_numerator) /
                                         (v_ratio_denominator * v_ratio_denominator)) +
-                                       10;
+                                       20;
         if (newStoppingDistance < getStoppingDistSeed(trainIndex)) {
             stoppingDistance = newStoppingDistance;
         }
@@ -531,7 +551,18 @@ void Train::updateVelocityWithDeceleration(int64_t curMicros) {
     uint64_t deltaV = (getDecelerationSeed(trainIndex) * timeSinceDecelerationStart) / 1000000;  // mm/ms
 
     if (deltaV >= velocityBeforeSlowing) {
-        localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+        // localization_server::UpdateResInfo updateResInfo =
+        //     localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+        // printer_proprietor::debugPrintF(
+        //     printerProprietorTid,
+        //     "%s (INSTANTLY ON TRAIN STOP) update reservation got back to me with has new path: %d", trainColour,
+        //     updateResInfo.hasNewPath);
+
+        // if (updateResInfo.hasNewPath) {
+        //     newStopLocation(updateResInfo.destInfo.stopSensor, updateResInfo.destInfo.targetSensor,
+        //                     updateResInfo.destInfo.firstSensor, updateResInfo.destInfo.distance,
+        //                     updateResInfo.destInfo.reverse);
+        // }
         velocityEstimate = 0;
         stoppingDistance = 0;
         isSlowingDown = false;
@@ -549,7 +580,7 @@ void Train::updateVelocityWithDeceleration(int64_t curMicros) {
 
         uint64_t newStoppingDistance = ((getStoppingDistSeed(trainIndex) * v_ratio_numerator * v_ratio_numerator) /
                                         (v_ratio_denominator * v_ratio_denominator)) +
-                                       10;
+                                       20;
         if (newStoppingDistance < getStoppingDistSeed(trainIndex)) {
             stoppingDistance = newStoppingDistance;
         }
@@ -809,13 +840,24 @@ void Train::updateState() {
         if (!attemptReservation(zoneEntranceSensorAhead)) {
             clock_server::Delay(clockServerTid, 10);  // try again in 10 ticks
             uint64_t timeSinceDecelerationStart = curMicros - stopStartTime;
-            if (timeSinceDecelerationStart > 1000000 * 2 && firstUpdatedReservation) {
-                // if we've been stopped for three seconds
+            if (timeSinceDecelerationStart > 1000000 * 2) {
+                localization_server::UpdateResInfo updateResInfo = localization_server::updateReservation(
+                    parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
+
                 printer_proprietor::debugPrintF(
-                    printerProprietorTid, "%s \033[5m \033[38;5;160m OK IM UPDATING RESERVATIONS TO SAY IM STOPPED",
-                    trainColour);
-                localization_server::updateReservation(parentTid, trainIndex, reservedZones, ReservationType::STOPPED);
-                firstUpdatedReservation = false;
+                    printerProprietorTid, "%s (IN BIG DELAY) update reservation got back to me with has new path: %d",
+                    trainColour, updateResInfo.hasNewPath);
+
+                if (updateResInfo.hasNewPath) {
+                    newStopLocation(updateResInfo.destInfo.stopSensor, updateResInfo.destInfo.targetSensor,
+                                    updateResInfo.destInfo.firstSensor, updateResInfo.destInfo.distance,
+                                    updateResInfo.destInfo.reverse);
+                }
+
+                // // if we've been stopped for three seconds
+                // printer_proprietor::debugPrintF(
+                //     printerProprietorTid, "%s \033[5m \033[38;5;160m OK IM UPDATING RESERVATIONS TO SAY IM STOPPED",
+                //     trainColour);
             }
         } else {
             // we are hitting this twice, Why? (update) I dont think we are anymore?

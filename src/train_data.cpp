@@ -13,8 +13,8 @@ static const uint64_t trainFastVelocitySeedTrackB[Config::MAX_TRAINS] = {596041,
 // acceleration are mm/s^2 * 1000 for decimals
 static const uint64_t trainAccelSeedTrackB[Config::MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
 static const uint64_t trainDecelSeedTrackB[Config::MAX_TRAINS] = {87922, 87922, 87922, 87922, 87922, 87922};
-static const uint64_t trainStopVelocitySeedTrackB[Config::MAX_TRAINS] = {253549, 257347, 253548,
-                                                                         266566, 266566, 311583};
+static const uint64_t trainStopVelocitySeedTrackB[Config::MAX_TRAINS] = {223549, 227347, 223548,
+                                                                         236566, 236566, 281583};
 static const uint64_t trainStoppingDistSeedTrackB[Config::MAX_TRAINS] = {370, 370, 370, 370, 370, 370};
 
 // speed 6, loosely for tr 14

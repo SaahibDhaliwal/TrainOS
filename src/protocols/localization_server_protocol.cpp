@@ -120,12 +120,14 @@ void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
     handleSendResponse(res, tid);
 }
 
-void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
-                       ReservationType reservation) {
+UpdateResInfo updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
+                                ReservationType reservation) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_RESERVATION);
     sendBuf[1] = static_cast<char>(trainIndex + 1);
     sendBuf[2] = toByte(reservation);
+
+    char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
 
     int strSize = 3;
 
@@ -135,8 +137,26 @@ void updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> res
         strSize += strlen(sendBuf + strSize);
     }
 
-    int res = sys::Send(tid, sendBuf, strSize + 1, nullptr, 0);
+    int res = sys::Send(tid, sendBuf, strSize + 1, receiveBuff, Config::MAX_MESSAGE_LENGTH - 1);
+
     handleSendResponse(res, tid);
+
+    if (receiveBuff[0] == 'T') {
+        Sensor stopSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
+        Sensor targetSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
+        Sensor firstSensor{.box = receiveBuff[5], .num = static_cast<uint8_t>(receiveBuff[6])};
+        bool reverse = receiveBuff[7] == 't';
+        unsigned int distance = 0;
+        a2ui(&receiveBuff[8], 10, &distance);
+        return UpdateResInfo{.destInfo = DestinationInfo{.stopSensor = stopSensor,
+                                                         .targetSensor = targetSensor,
+                                                         .firstSensor = firstSensor,
+                                                         .distance = distance,
+                                                         .reverse = reverse},
+                             .hasNewPath = true};
+    }
+
+    return UpdateResInfo{.hasNewPath = false};
 }
 
 DestinationInfo newDestination(int tid, int trainIndex) {

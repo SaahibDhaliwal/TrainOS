@@ -61,7 +61,7 @@ void CommandTask() {
                 // if it's one of our player commands and we started the game
                 charSend(commandServerTid, ch);
                 if (ch == 'q') gameStarted = false;  // so we can quit?
-                printer_proprietor::printC(printerProprietorTid, 0, ch);
+                // printer_proprietor::printC(printerProprietorTid, 0, ch);
 
             } else if (ch >= 0x20 && ch <= 0x7E && userInputIdx < 254) {
                 userInput[userInputIdx++] = ch;
