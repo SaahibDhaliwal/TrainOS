@@ -2,7 +2,6 @@
 
 #include <cstdarg>
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
@@ -10,6 +9,7 @@
 #include "name_server_protocol.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "train_protocol.h"
 #include "util.h"
 
 namespace marklin_server {
@@ -157,6 +157,13 @@ int setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber) {
     return Puts(tid, 0, buf);
 }
 
+int setTrainReverse(int tid, unsigned int trainNumber) {
+    char buf[3] = {0};
+    buf[0] = static_cast<char>(TRAIN_REVERSE);
+    buf[1] = static_cast<char>(trainNumber);
+    return Puts(tid, 0, buf);
+}
+
 int setTrainReverseAndSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber) {
     char buf[5] = {0};
     buf[0] = static_cast<char>(TRAIN_REVERSE);
@@ -179,12 +186,15 @@ int solenoidOff(int tid) {
     return Puts(tid, 0, buf);
 }
 
-void reverseTrainTask() {
-    int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
-    ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
-    int parentTid = sys::MyParentTid();
-    clock_server::Delay(clockServerTid, 550);
-    emptySend(parentTid);
-    sys::Exit();
-}
+// void reverseTrainTask() {
+//     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
+//     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
+//     int parentTid = sys::MyParentTid();
+
+//     int delayTicks = train_server::getReverseDelayTicks(parentTid);
+//     clock_server::Delay(clockServerTid, delayTicks);
+
+//     train_server::finishReverse(parentTid);
+//     sys::Exit();
+// }
 }  // namespace marklin_server

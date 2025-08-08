@@ -8,6 +8,7 @@ int emptySend(int clientTid);
 int charReply(int clientTid, char reply);
 int emptyReply(int clientTid);
 int emptyReceive(uint32_t* outSenderTid);
+uint64_t uIntReceive(uint32_t* outSenderTid);
 int uIntReply(int clientTid, uint64_t reply);
 int intReply(int clientTid, int64_t reply);
 

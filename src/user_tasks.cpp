@@ -7,9 +7,7 @@
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "command_server.h"
-#include "command_server_protocol.h"
 #include "console_server.h"
-#include "console_server_protocol.h"
 #include "fixed_map.h"
 #include "generic_protocol.h"
 #include "marklin_server.h"
@@ -42,7 +40,7 @@ void FinalFirstUserTask() {
     sys::Create(40, &MarklinServer);
     int printerProprietorTid = sys::Create(35, &PrinterProprietor);
     printer_proprietor::startupPrint(printerProprietorTid);
-    sys::Create(20, &CommandServer);
+    sys::Create(21, &CommandServer);
     sys::Exit();
 }
 

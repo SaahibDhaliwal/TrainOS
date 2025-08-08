@@ -2,6 +2,8 @@
 #define __CONSOLE_SERVER_PROTOCOL__
 #include <cstdint>
 
+constexpr const char* CONSOLE_SERVER_NAME = "console_server";
+
 namespace console_server {
 enum class Command : char {
     GET,

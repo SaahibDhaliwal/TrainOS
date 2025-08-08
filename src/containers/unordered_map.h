@@ -1,3 +1,6 @@
+#ifndef __UNORDERED_MAP__
+#define __UNORDERED_MAP__
+
 #include <functional>
 #include <utility>
 
@@ -5,6 +8,7 @@
 #include "intrusive_node.h"
 #include "queue.h"
 #include "rpi.h"
+
 template <typename Key, typename Value, size_t MAP_CAPACITY, class Hash = std::hash<Key>,
           class KeyEqual = std::equal_to<Key>>
 class UnorderedMap {
@@ -111,3 +115,5 @@ class UnorderedMap {
         return *get(k);      // returns a reference to the slot
     }
 };
+
+#endif

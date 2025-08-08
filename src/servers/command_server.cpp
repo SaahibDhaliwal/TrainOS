@@ -1,11 +1,9 @@
 #include "command_server.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "command_client.h"
 #include "command_server_protocol.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "generic_protocol.h"
 #include "localization_server.h"
@@ -19,7 +17,7 @@
 #include "rpi.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
-#include "train.h"
+#include "train_task.h"
 #include "turnout.h"
 using namespace command_server;
 
@@ -52,7 +50,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
 
         if (trainSpeed > 14) return false;
-        if (trainSpeed != 14 && trainSpeed != 8 && trainSpeed != 0) return false;
+        // if (trainSpeed != 14 && trainSpeed != 8 && trainSpeed != 0) return false;
 
         if (*cur != '\0') return false;
 
@@ -192,21 +190,24 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         if (box < 'A' || ((box > 'E') && (box < 'M'))) return false;
         cur++;
 
+        // branch
         if (box == 'B' && (*cur == 'R' || *cur == 'r')) {
             box = 'F';  // bad practice but oh well
             cur++;
         }
 
+        // merge
         if (box == 'M' && (*cur == 'R' || *cur == 'r')) {
             box = 'G';
             cur++;
         }
 
+        // entry/exit
         if (box == 'E') {
             if (*cur == 'N' || *cur == 'n') {
                 box = 'H';
                 cur++;
-                return false;
+                return false;  // break on entry
             } else if (*cur == 'X' || *cur == 'x') {
                 box = 'I';
                 cur++;
@@ -225,6 +226,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
         // ASSERT(0, "sensornum: %d", sensorNum);
         if (sensorNum == 0) return false;
+        // 153 for middle switch, 18 for branches
         if ((box == 'F' || box == 'G') && (sensorNum < 153 && sensorNum > 18)) return false;
 
         if ((box == 'B' && sensorNum == 7) || (box == 'B' && sensorNum == 11) || (box == 'B' && sensorNum == 9) ||
@@ -242,7 +244,7 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         if (*cur != ' ') return false;
         cur++;
 
-        int offset = 0;
+        int64_t offset = 0;
         bool negativeFlag = false;
         if (*cur == '-') {
             negativeFlag = true;
@@ -251,13 +253,76 @@ bool processInputCommand(char* command, int marklinServerTid, int printerProprie
         }
         if (*cur < '0' || *cur > '9') return false;
         while (*cur >= '0' && *cur <= '9') {
-            if (offset > 1000000000000) return false;
+            if (offset > 1000000000000) return false;  // i think this gives a compiler error
             offset = offset * 10 + (*cur - '0');
             cur++;
         }
         if (negativeFlag) offset *= -1;
-        // ASSERT(0, "trainnum: %u box: %c, sensorNum: %u, offset: %d", trainNumber, box, sensorNum, offset);
         localization_server::setStopLocation(localizationTid, trainNumber, box, sensorNum, offset);
+
+    } else if (strncmp(command, "init ", 5) == 0) {
+        const char* cur = &command[5];
+
+        bool sendReverse = false;
+        if (*cur == 'r' || *cur == 'R') {
+            cur++;
+            if (*cur == 'v' || *cur == 'V') {
+                sendReverse = true;
+                cur++;
+                if (*cur != ' ') return false;
+                cur++;
+            } else {
+                return false;
+            }
+        }
+
+        bool isPlayer = false;
+        if (*cur == 'p' || *cur == 'P') {
+            cur++;
+            isPlayer = true;
+            if (*cur != ' ') return false;
+            cur++;
+        }
+
+        if (*cur < '0' || *cur > '9') return false;
+
+        int trainNumber = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (trainNumber > 255) return false;
+            trainNumber = trainNumber * 10 + (*cur - '0');
+            cur++;
+        }
+
+        if (*cur != ' ') return false;
+        cur++;
+
+        char box = *cur;
+        if ((box > 'M')) box = box - 32;  // forces uppercase
+        if (box < 'A' || (box > 'E')) return false;
+        cur++;
+
+        if (*cur < '0' || *cur > '9') return false;
+        int sensorNum = 0;
+        while (*cur >= '0' && *cur <= '9') {
+            if (sensorNum > 16 && box >= 'A' && box <= 'E') return false;
+            sensorNum = sensorNum * 10 + (*cur - '0');
+            cur++;
+        }
+        // ASSERT(0, "sensornum: %d", sensorNum);
+        if (sensorNum == 0) return false;
+
+        int trainIdx = trainNumToIndex(trainNumber);
+        if (trainIdx == -1) return false;
+        Sensor initSensor = Sensor{.box = box, .num = static_cast<uint8_t>(sensorNum)};
+        if (sendReverse) {
+            // reverse the train?
+            marklin_server::setTrainSpeed(marklinServerTid, TRAIN_REVERSE, trainNumber);
+        }
+        if (isPlayer) {
+            localization_server::initPlayer(localizationTid, trainIdx, initSensor);
+        } else {
+            localization_server::initTrain(localizationTid, trainIdx, initSensor);
+        }
 
     } else {
         return false;
@@ -279,23 +344,33 @@ void CommandServer() {
     int clockServerTid = name_server::WhoIs(CLOCK_SERVER_NAME);
     ASSERT(clockServerTid >= 0, "UNABLE TO GET CLOCK_SERVER_NAME\r\n");
 
-    uint32_t terminalTid = sys::Create(20, &CommandTask);
+    uint32_t terminalTid = sys::Create(23, &CommandTask);
     uint32_t localizationTid = sys::Create(25, &LocalizationServer);
-
+    bool gameStarted = false;
     for (;;) {
         uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH];
         int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
         receiveBuffer[msgLen] = '\0';
 
+        // this if statement might not be needed
         if (clientTid == terminalTid) {
-            bool validCommand = processInputCommand(receiveBuffer, marklinServerTid, printerProprietorTid,
-                                                    clockServerTid, localizationTid);
-
-            if (!validCommand) {
-                charReply(clientTid, toByte(Reply::FAILURE));
+            if (!gameStarted && receiveBuffer[0] == '!') {
+                gameStarted = true;
+                emptyReply(clientTid);
+            } else if (gameStarted) {
+                emptyReply(clientTid);
+                // pass along the character to localization server?
+                localization_server::playerInput(localizationTid, receiveBuffer[0]);
             } else {
-                charReply(clientTid, toByte(Reply::SUCCESS));
+                bool validCommand = processInputCommand(receiveBuffer, marklinServerTid, printerProprietorTid,
+                                                        clockServerTid, localizationTid);
+
+                if (!validCommand) {
+                    charReply(clientTid, toByte(Reply::FAILURE));
+                } else {
+                    charReply(clientTid, toByte(Reply::SUCCESS));
+                }
             }
         }
     }

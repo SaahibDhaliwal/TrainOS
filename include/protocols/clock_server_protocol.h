@@ -1,6 +1,8 @@
 #ifndef __CLOCK_SERVER_PROTOCOL__
 #define __CLOCK_SERVER_PROTOCOL__
 
+constexpr const char* CLOCK_SERVER_NAME = "clock_server";
+
 namespace clock_server {
 enum class Command : char { TIME, DELAY, DELAY_UNTIL, KILL, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char { FAILURE, SUCCESS, COUNT, UNKNOWN_REPLY };

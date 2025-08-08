@@ -1,7 +1,6 @@
 
 #include "console_server.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "config.h"
 #include "console_server_protocol.h"
@@ -76,7 +75,7 @@ void ConsoleServer() {
 
     RingBuffer<char, Config::CONSOLE_QUEUE_SIZE> charQueue;
 
-    int notifierPriority = 63;  // TODO: think about this prio
+    int notifierPriority = 35;  // TODO: think about this prio
 
     int txNotifier = sys::Create(notifierPriority, ConsoleTXNotifier);
     int rxNotifier = sys::Create(notifierPriority, ConsoleRXNotifier);
@@ -217,11 +216,10 @@ void ConsoleServer() {
         while (!charQueue.empty() && !uartTXFull(CONSOLE)) {  // drain as much as possible
             unsigned char ch = *charQueue.pop();
             uartPutTX(CONSOLE, ch);
-            charQueue2.push(ch);  // onto our logger
+            // charQueue2.push(ch);  // onto our logger
             drainedAny = true;
         }
 
-        // TODO: FIX ME
         if (!charQueue.empty() && !waitForTx && command != Command::TX_CONNECT && drainedAny) {
             emptyReply(txNotifier);  // re-enable TX interrupts
             waitForTx = true;

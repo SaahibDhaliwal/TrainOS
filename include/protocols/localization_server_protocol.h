@@ -3,7 +3,10 @@
 
 #include <cstdint>
 
-// #include "command.h"
+#include "ring_buffer.h"
+#include "sensor.h"
+#include "zone.h"
+
 // #include "command_server_protocol.h"
 constexpr const char* LOCALIZATION_SERVER_NAME = "localization_server";
 
@@ -16,10 +19,21 @@ enum class Command : char {
     SOLENOID_OFF,
     SET_STOP,
     RESET_TRACK,
+    INITIAL_RESERVATION,
+    MAKE_RESERVATION,
+    FREE_RESERVATION,
+    UPDATE_RESERVATION,
+    NEW_DESTINATION,
+    INIT_TRAIN,
+    INIT_PLAYER,
+    FAKE_SENSOR_HIT,
+    PLAYER_INPUT,
     COUNT,
     UNKNOWN_COMMAND
 };
 enum class Reply : char { SUCCESS, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
+
+enum class BranchDirection : char { LEFT = 1, RIGHT, STRAIGHT, COUNT, UNKNOWN_REPLY };
 
 char toByte(Command c);
 char toByte(Reply r);
@@ -37,6 +51,35 @@ void solenoidOff(int tid);
 void resetTrack(int tid);
 
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
+
+void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+void initReservation(int tid, int trainIndex, char* replyBuff);
+void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+
+struct DestinationInfo {
+    Sensor stopSensor;
+    Sensor targetSensor;
+    Sensor firstSensor;
+    unsigned int distance;
+    bool reverse;
+};
+
+struct UpdateResInfo {
+    DestinationInfo destInfo;
+    bool hasNewPath;
+};
+
+UpdateResInfo updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones,
+                                ReservationType reservation);
+
+DestinationInfo newDestination(int tid, int trainIndex);
+
+void initTrain(int tid, int trainIndex, Sensor initSensor);
+void initPlayer(int tid, int trainIndex, Sensor initSensor);
+
+void hitFakeSensor(int tid, int trainIndex);
+
+void playerInput(int tid, char input);
 
 }  // namespace localization_server
 

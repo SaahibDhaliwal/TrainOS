@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
@@ -11,7 +10,6 @@
 #include "interrupt.h"
 #include "intrusive_node.h"
 #include "localization_server_protocol.h"
-#include "marklin_command_protocol.h"
 #include "marklin_server.h"
 #include "marklin_server_protocol.h"
 #include "name_server.h"
@@ -27,8 +25,7 @@
 #include "test_utils.h"
 #include "timer.h"
 
-void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t printerProprietorTid,
-                         uint32_t localizationServerTid) {
+void process_sensor_byte(unsigned char byte, int sensorByteIdx, uint32_t localizationServerTid) {
     int sensorByteCount = sensorByteIdx + 1;
     char box = 'A' + (sensorByteCount - 1) / 2;
 
@@ -62,7 +59,7 @@ void SensorTask() {
         marklin_server::Putc(marklinTid, 0, SENSOR_READ_ALL);
         for (int i = 0; i < 10; i++) {
             unsigned char result = marklin_server::Getc(marklinTid, 0);
-            if (result) process_sensor_byte(result, i, printerProprietorTid, localizationServerTid);
+            if (result) process_sensor_byte(result, i, localizationServerTid);
         }
 
     }  // for

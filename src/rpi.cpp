@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "config.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "name_server_protocol.h"
 #include "test_utils.h"

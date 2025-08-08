@@ -5,6 +5,11 @@
 
 #include "command.h"
 #include "command_server_protocol.h"
+#include "ring_buffer.h"
+#include "sensor.h"
+#include "zone.h"
+
+constexpr const char* PRINTER_PROPRIETOR_NAME = "printer_proprietor";
 
 namespace printer_proprietor {
 enum class Command : char {
@@ -17,7 +22,16 @@ enum class Command : char {
     COMMAND_FEEDBACK,
     UPDATE_TURNOUT,
     UPDATE_SENSOR,
-    UPDATE_TRAIN,
+    UPDATE_TRAIN_VELOCITY,
+    UPDATE_TRAIN_STATUS,
+    UPDATE_TRAIN_DISTANCE,
+    UPDATE_TRAIN_SENSOR,
+    UPDATE_TRAIN_ZONE_SENSOR,
+    UPDATE_TRAIN_ZONE,
+    UPDATE_TRAIN_ZONE_DISTANCE,
+    UPDATE_TRAIN_ORIENTATION,
+    UPDATE_TRAIN_DESTINATION,
+    UPDATE_TRAIN_BRANCH,
     MEASUREMENT,
     DEBUG,
     KILL,
@@ -40,13 +54,26 @@ void commandFeedback(command_server::Reply reply, int tid);
 void clearCommandPrompt(int tid);
 void backspace(int tid);
 void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx);
-void updateSensor(int tid, char sensorBox, unsigned int sensorNum, int64_t lastEstimate, int64_t nextSample);
-void updateTrainStatus(int tid, int trainNum, uint64_t velocity);
+void updateSensor(int tid, Sensor sensor, int64_t lastEstimate, int64_t nextSample);
+
 void startupPrint(int tid);
 void measurementOutput(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
                        const uint64_t mmDeltaD);
 int formatToString(char* buff, int buffSize, const char* fmt, ...);
 void debug(int tid, const char* str);
+void debugPrintF(int tid, const char* fmt, ...);
+
+// trains
+void updateTrainStatus(int tid, int trainIndex, bool isActive);
+void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity);
+void updateTrainDistance(int tid, int trainIndex, int64_t distance);
+void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor);
+void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor);
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones);
+void updateTrainZoneDistance(int tid, int trainIndex, int64_t distance);
+void updateTrainOrientation(int tid, int trainIndex, bool isForward);
+void updateTrainDestination(int tid, int trainIndex, Sensor sensor);
+void updateTrainBranch(int tid, int trainIndex, const char* str);
 }  // namespace printer_proprietor
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef __RPS_PROTOCOL__
 #define __RPS_PROTOCOL__
 
+constexpr const char* RPS_SERVER_NAME = "rps_server";
+
 namespace rps {
 enum class Command : char { SIGNUP, PLAY, QUIT, COUNT, UNKNOWN_COMMAND };
 

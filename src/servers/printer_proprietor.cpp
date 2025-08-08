@@ -1,19 +1,19 @@
 #include "printer_proprietor.h"
 
-#include "clock_server.h"
 #include "clock_server_protocol.h"
 #include "command.h"
 #include "config.h"
-#include "console_server.h"
 #include "console_server_protocol.h"
 #include "display_refresher.h"
 #include "generic_protocol.h"
 #include "name_server_protocol.h"
 #include "printer_proprietor_helpers.h"
 #include "printer_proprietor_protocol.h"
+#include "ring_buffer.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "timer.h"
+#include "train_task.h"
 #include "turnout.h"
 
 using namespace printer_proprietor;
@@ -33,6 +33,8 @@ void PrinterProprietor() {
     initialize_sensors(sensorBuffer);
     int sensorBufferIdx = 0;
     bool isSensorBufferParityEven = true;
+
+    bool isDebugLogBufferParityEven = true;
 
     unsigned int measurementMessages = 0;
     unsigned int debugMessages = 0;
@@ -127,13 +129,64 @@ void PrinterProprietor() {
 
                 break;
             }
-            case Command::UPDATE_TRAIN: {
-                WITH_HIDDEN_CURSOR(consoleServerTid, print_train_status(consoleServerTid, &receiveBuffer[1]));
+            case Command::UPDATE_TRAIN_STATUS: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   change_train_status(consoleServerTid, receiveBuffer[1] - 1, receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_VELOCITY: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_velocity(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_DISTANCE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_distance(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_SENSOR: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_sensor(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ZONE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_zone(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ZONE_DISTANCE: {
+                WITH_HIDDEN_CURSOR(consoleServerTid, update_train_zone_distance(consoleServerTid, receiveBuffer[1] - 1,
+                                                                                &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ZONE_SENSOR: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_zone_sensor(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_ORIENTATION: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_orientation(consoleServerTid, receiveBuffer[1] - 1, receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_DESTINATION: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_destination(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
+                break;
+            }
+            case Command::UPDATE_TRAIN_BRANCH: {
+                WITH_HIDDEN_CURSOR(consoleServerTid,
+                                   update_train_branch(consoleServerTid, receiveBuffer[1] - 1, &receiveBuffer[2]));
                 break;
             }
             case Command::DEBUG: {
-                WITH_HIDDEN_CURSOR(consoleServerTid, print_debug(consoleServerTid, debugMessages, &receiveBuffer[2]));
-                debugMessages += 1;
+                if (debugMessages == 0) {
+                    isDebugLogBufferParityEven = !isDebugLogBufferParityEven;
+                }
+
+                WITH_HIDDEN_CURSOR(consoleServerTid, print_debug(consoleServerTid, debugMessages, &receiveBuffer[1],
+                                                                 isDebugLogBufferParityEven));
+                debugMessages = (debugMessages + 1) % DEBUG_BUFFER_SIZE;
                 break;
             }
             default: {

@@ -8,7 +8,7 @@ void handleSendResponse(int res, int clientTid) {
     if (res < 0) {
         switch (res) {
             case -1:
-                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id\r\n", clientTid);
+                uart_printf(CONSOLE, "[ERROR]: tid %u is not a valid task id, sent by %u\r\n", clientTid, sys::MyTid());
                 break;
             case -2:
                 uart_printf(CONSOLE, "[ERROR]: tid %u was not waiting for a reply\r\n", clientTid);
@@ -41,6 +41,15 @@ int emptyReply(int clientTid) {
 int emptyReceive(uint32_t* outSenderTid) {
     int res = sys::Receive(outSenderTid, nullptr, 0);
     return res;
+}
+
+uint64_t uIntReceive(uint32_t* outSenderTid) {
+    char receiveBuffer[21] = {0};  // max digits is 20
+    int res = sys::Receive(outSenderTid, receiveBuffer, 21);
+    if (res < 0) return -1;
+    unsigned int result = 0;
+    a2ui(receiveBuffer, 10, &result);
+    return result;
 }
 
 int charReply(int clientTid, char reply) {

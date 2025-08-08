@@ -32,6 +32,12 @@ class RingBuffer {
         return &buffer[head];
     }
 
+    T* back() {
+        if (empty()) return nullptr;
+        size_t lastPos = (tail + CAPACITY - 1) % CAPACITY;
+        return &buffer[lastPos];
+    }
+
     size_t size() const {
         return count;
     }
@@ -57,6 +63,10 @@ class RingBuffer {
             return rb->buffer[pos];
         }
 
+        T* operator->() const {
+            return &rb->buffer[pos];
+        }
+
         Iterator& operator++() {
             pos = (pos + 1) % CAPACITY;
             --remaining;
@@ -75,6 +85,28 @@ class RingBuffer {
 
         bool operator!=(const Iterator& other) const {
             return remaining != other.remaining;
+        }
+
+        // Prefix decrement
+        Iterator& operator--() {
+            pos = (pos + CAPACITY - 1) % CAPACITY;
+            ++remaining;
+            return *this;
+        }
+
+        // Postfix decrement
+        Iterator operator--(int) {
+            Iterator tmp = *this;
+            --(*this);
+            return tmp;
+        }
+
+        Iterator operator-(int n) const {
+            Iterator temp = *this;
+            while (n-- > 0) {
+                --temp;
+            }
+            return temp;
         }
 
         friend class RingBuffer;

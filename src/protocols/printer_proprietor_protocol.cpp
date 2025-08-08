@@ -4,9 +4,11 @@
 
 #include "config.h"
 #include "generic_protocol.h"
+#include "ring_buffer.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
 #include "util.h"
+#include "zone.h"
 
 namespace printer_proprietor {
 
@@ -175,12 +177,15 @@ void updateTurnout(int tid, Command_Byte command, unsigned int turnoutIdx) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateSensor(int tid, char sensorBox, unsigned int sensorNum, int64_t timeDiff, int64_t distDiff) {
+void updateSensor(int tid, Sensor sensor, int64_t timeDiff, int64_t distDiff) {
+    if (sensor.box == 'F') {
+        return;
+    }
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::UPDATE_SENSOR);
 
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u #Time Diff:%4d ms   Distance Diff:%4d mm",
-                   sensorBox, sensorNum, timeDiff, distDiff);
+                   sensor.box, sensor.num, timeDiff, distDiff);
 
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
@@ -192,13 +197,129 @@ void startupPrint(int tid) {
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
-void updateTrainStatus(int tid, int trainNum, uint64_t velocity) {
+void updateTrainVelocity(int tid, int trainIndex, uint64_t velocity) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::UPDATE_TRAIN);
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_VELOCITY);
+    unsigned int decimal = velocity % 1000;
+    unsigned int integer = velocity / 1000;
+    trainIndex++;
+    // formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u      mm/s", trainIndex + 1, velocity / 1000,
+    if (decimal < 10 && integer < 10) {  // two digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u     mm/s ", trainIndex, velocity / 1000,
+                       decimal);
+    } else if ((decimal < 100 && integer < 10) || (decimal < 10 && integer < 100)) {  // three digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u    mm/s ", trainIndex, integer, decimal);
+    } else if ((decimal < 100 && integer < 1000) || (decimal < 1000 && integer < 100)) {  // four digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u   mm/s ", trainIndex, integer, decimal);
+    } else if ((decimal < 1000 && integer < 10000) || (decimal < 10000 && integer < 1000)) {  // five digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u  mm/s", trainIndex, integer, decimal);
+    } else {  // six or more digits
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u.%u mm/s", trainIndex, integer, decimal);
+    }
 
-    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "[Train %u]: Velocity Estimate: %u.%u mm/s       ",
-                   trainNum, velocity / 1000, velocity % 1000);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainDistance(int tid, int trainIndex, int64_t distance) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_DISTANCE);
+    trainIndex++;
+
+    // some silly checking. I'm not proud of this
+    if (distance < 0) {
+        if (distance < -1000 && distance > -10000) {  // three digits plus negative
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
+        } else if (distance < -100) {  // three total
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
+        } else if (distance < -10) {
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
+        } else {  // does this ever happen?
+            return;
+        }
+
+    } else if (distance < 10) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
+    } else if (distance < 100) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
+    } else if (distance < 1000) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
+    } else {  // does this ever happen?
+        return;
+    }
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainZoneDistance(int tid, int trainIndex, int64_t distance) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE_DISTANCE);
+    trainIndex++;
+
+    // some silly checking. I'm not proud of this
+    if (distance < 0) {
+        if (distance < -1000 && distance > -10000) {  // three digits plus negative
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d mm", trainIndex, distance);
+        } else if (distance < -100) {  // three total
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d  mm", trainIndex, distance);
+        } else if (distance < -10) {
+            formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%d   mm", trainIndex, distance);
+        } else {  // does this ever happen?
+            return;
+        }
+
+    } else if (distance < 10) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u    mm", trainIndex, distance);
+    } else if (distance < 100) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u   mm", trainIndex, distance);
+    } else if (distance < 1000) {
+        formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%u  mm", trainIndex, distance);
+    } else {  // does this ever happen?
+        return;
+    }
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainStatus(int tid, int trainIndex, bool isActive) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_STATUS);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c.", trainIndex + 1,
+                   isActive);  // period so "false" doesn't concat our string
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainNextSensor(int tid, int trainIndex, Sensor sensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_SENSOR);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u  ", trainIndex + 1, sensor.box, sensor.num);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainZoneSensor(int tid, int trainIndex, Sensor sensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE_SENSOR);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u ", trainIndex + 1, sensor.box, sensor.num);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainZone(int tid, int trainIndex, RingBuffer<ReservedZone, 32> reservedZones) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ZONE);
+    sendBuf[1] = static_cast<char>(trainIndex + 1);
+
+    int strSize = 2;
+
+    for (auto it = reservedZones.begin(); it != reservedZones.end(); ++it) {
+        printer_proprietor::formatToString(sendBuf + strSize, Config::MAX_MESSAGE_LENGTH - strSize - 1, "%u ",
+                                           it->zoneNum);
+        strSize += strlen(sendBuf + strSize);
+    }
+
+    sys::Send(tid, sendBuf, strSize + 1, nullptr, 0);
 }
 
 void updateTrainStatus(int tid, const char* srcName, const char* dstName, const uint64_t microsDeltaT,
@@ -211,6 +332,13 @@ void updateTrainStatus(int tid, const char* srcName, const char* dstName, const 
 
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s,%s,%u.%u,%u", srcName, dstName, ms, micros,
                    mmDeltaT);
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainOrientation(int tid, int trainIndex, bool isForward) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_ORIENTATION);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c.", trainIndex + 1, isForward);
     sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
 }
 
@@ -231,6 +359,35 @@ void debug(int tid, const char* str) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::DEBUG);
     formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%s", str);
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void debugPrintF(int tid, const char* fmt, ...) {
+    char out[Config::MAX_MESSAGE_LENGTH];
+    out[0] = toByte(Command::DEBUG);
+    va_list va;
+    va_start(va, fmt);
+    int len = formatToBuffer(out + 1, Config::MAX_MESSAGE_LENGTH - 1, fmt, va);
+    va_end(va);
+
+    int res = sys::Send(tid, out, strlen(out) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void updateTrainDestination(int tid, int trainIndex, Sensor sensor) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_DESTINATION);
+
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%u ", trainIndex + 1, sensor.box, sensor.num);
+
+    sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+}
+
+void updateTrainBranch(int tid, int trainIndex, const char* str) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(Command::UPDATE_TRAIN_BRANCH);
+    formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%s", trainIndex, str);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
 }

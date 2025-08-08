@@ -1,6 +1,8 @@
 #ifndef __MARKLIN_SERVER_PROTOCOL__
 #define __MARKLIN_SERVER_PROTOCOL__
 
+constexpr const char* MARKLIN_SERVER_NAME = "marklin_server";
+
 namespace marklin_server {
 
 enum class Command : char {
@@ -32,6 +34,8 @@ int Putc(int tid, int channel, unsigned char ch);
 int Puts(int tid, int channel, const char* str);
 
 int setTrainSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
+
+int setTrainReverse(int tid, unsigned int trainNumber);
 
 int setTrainReverseAndSpeed(int tid, unsigned int trainSpeed, unsigned int trainNumber);
 
