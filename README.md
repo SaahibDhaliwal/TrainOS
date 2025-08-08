@@ -1,11 +1,4 @@
-# CS452 – Train Control (Part 2)
-
-## Logistics
-Saahib Dhaliwal (s46dhali)  
-Dan Duran (dduranro)  
-
-Repository: [CS452 Kernel](https://git.uwaterloo.ca/cs-452-trains/Kernel)  
-Commit: `7b07e88e77e21f197402e1072fa843f48f94f441`
+Implemented a preemptive microkernel for the Raspberry Pi (BCM2711, ARMv8, single-core) from scratch. It supports real-time train control through efficient task management, interprocess communication, and interrupt-driven I/O.
 
 ---
 
