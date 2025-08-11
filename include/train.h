@@ -44,9 +44,7 @@ class Train {
 
     Sensor sensorAhead;                            // sensor ahead of train
     Sensor sensorBehind;                           // sensor behind train
-    Sensor stopSensor;                             // sensor we are waiting to hit
     Sensor targetSensor;                           // sensor we are waiting to hit
-    uint64_t stopSensorOffset = 0;                 // mm, static
     uint64_t distanceToSensorAhead = 0;            // mm, static
     int64_t distRemainingToSensorAhead = 0;        // mm, dynamic
     uint64_t distTravelledSinceLastSensorHit = 0;  // mm, dynamic
@@ -116,20 +114,16 @@ class Train {
 
     // getters
     uint32_t getReverseTid();
-    Sensor getStopSensor();
 
     void setTrainSpeed(unsigned int trainSpeed);
     // on sensor hit
     void processSensorHit(Sensor currentSensor, Sensor sensorAhead, uint64_t distanceToSensorAhead);
 
-    // reservation stuff
-    bool shouldTrainReserveNextZone();
-
     void tryToFreeZones(uint64_t distTravelledSinceLastSensorHit = 0);
     //
     void reverseCommand();
     //
-    void newStopLocation(Sensor stopSensor, Sensor targetSensor, Sensor firstSensor, uint64_t offset, bool reverse);
+    void newStopLocation(Sensor targetSensor, Sensor firstSensor, bool reverse);
     void updateState();
     void updatePlayerState();
     //

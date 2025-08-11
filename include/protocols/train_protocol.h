@@ -7,7 +7,6 @@
 namespace train_server {
 enum class Command : char {
     NEW_SENSOR = 3,
-    // SKIPPED_SENSOR,
     SET_SPEED,
     REVERSE_COMMAND,
     GET_REVERSE_TIME,
@@ -46,15 +45,15 @@ void setTrainSpeed(int tid, unsigned int trainSpeed);
 
 void reverseTrain(int tid);
 
-void newDestinationReply(int tid, char stopBox, unsigned int stopSensorNum, char targetBox,
-                         unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum, uint64_t offset,
-                         bool reverse);
+void newDestinationReply(int tid, char targetBox, unsigned int targetSensorNum, char firstBox,
+                         unsigned int firstSensorNum, bool reverse);
 
-void newUpdateReply(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
-                    char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse);
+void newUpdateReply(int tid, char targetBox, unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum,
+                    bool reverse);
 
-void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
-                  char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse);
+// do we still want stopping offsets or nah?
+void sendStopInfo(int tid, char targetBox, unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum,
+                  uint64_t offset, bool reverse);
 
 void initTrain(int tid, TrainType type);
 
