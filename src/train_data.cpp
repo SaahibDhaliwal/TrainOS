@@ -29,8 +29,8 @@ static const uint64_t trainFastVelocitySeedTrackA[Config::MAX_TRAINS] = {601640,
                                                                          266566, 625911, 525104};
 static const uint64_t trainAccelSeedTrackA[Config::MAX_TRAINS] = {78922, 78922, 78922, 78922, 78922, 78922};
 static const uint64_t trainDecelSeedTrackA[Config::MAX_TRAINS] = {87922, 87922, 87922, 87922, 87922, 87922};
-static const uint64_t trainStopVelocitySeedTrackA[Config::MAX_TRAINS] = {254904, 257347, 253548,
-                                                                         266566, 265294, 311583};
+static const uint64_t trainStopVelocitySeedTrackA[Config::MAX_TRAINS] = {224904, 227347, 223548,
+                                                                         236566, 235294, 281583};
 static const uint64_t trainStoppingDistSeedTrackA[Config::MAX_TRAINS] = {370, 370, 370, 370, 370, 370};
 
 int trainNumToIndex(int trainNum) {
@@ -69,7 +69,7 @@ uint64_t getAccelerationSeed(int trainIdx) {
     ASSERT(trainIdx >= 0 && trainIdx < Config::MAX_TRAINS);
 
 #if defined(TRACKA)
-    return trainAccelSeedTrackB[trainIdx];
+    return trainAccelSeedTrackA[trainIdx];
 #else
     return trainAccelSeedTrackB[trainIdx];
 #endif

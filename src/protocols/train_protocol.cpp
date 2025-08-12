@@ -74,8 +74,9 @@ void newUpdateReply(int tid, char targetBox, unsigned int targetSensorNum, char 
     sys::Reply(tid, sendBuf, strlen(sendBuf) + 1);
 }
 
-void sendStopInfo(int tid, char stopBox, unsigned int stopSensorNum, char targetBox, unsigned int targetSensorNum,
-                  char firstBox, unsigned int firstSensorNum, uint64_t offset, bool reverse) {
+// is this just unused since we dont call from cmd line?
+void sendStopInfo(int tid, char targetBox, unsigned int targetSensorNum, char firstBox, unsigned int firstSensorNum,
+                  uint64_t offset, bool reverse) {
     char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
     sendBuf[0] = toByte(Command::STOP_SENSOR);
     char reverseChar = reverse ? 't' : 'f';

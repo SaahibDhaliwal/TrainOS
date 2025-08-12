@@ -12,7 +12,7 @@
 #include "turnout.h"
 #include "zone.h"
 
-#define NODE_MAX 4
+#define NODE_MAX 5
 
 namespace localization_server {
 

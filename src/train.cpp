@@ -175,7 +175,6 @@ void Train::waitForReservation(Sensor reservationSensor) {
 void Train::setTrainSpeed(unsigned int trainSpeed) {
     if (!isReversing && !isSlowingDown) {
         speed = trainSpeed;
-        stoppingDistance = stopDistFromSpeed(trainIndex, trainSpeed);
 
         if (trainSpeed == TRAIN_STOP) {
             decelerateTrain();
@@ -362,11 +361,8 @@ void Train::processSensorHit(Sensor curSensor, Sensor newSensorAhead, uint64_t d
 
 void Train::reverseCommand() {
     if (isStopped) {
-        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 1");
         finishReverse();
     } else {
-        // printer_proprietor::debugPrintF(printerProprietorTid, "IN HERE PAPA NUMERO 2");
-
         decelerateTrain();
         isReversing = true;
     }
@@ -378,22 +374,13 @@ void Train::newStopLocation(Sensor newTargetSensor, Sensor firstSensor, bool rev
     printer_proprietor::updateTrainDestination(printerProprietorTid, trainIndex, targetSensor);
 
     if (reverse) {
+        ASSERT(isStopped);
         printer_proprietor::debugPrintF(printerProprietorTid, "REVERSE THAT SHIT");
 
         marklin_server::setTrainReverse(marklinServerTid, myTrainNumber);
         isForward = !isForward;
 
         printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
-
-        if (!isForward) {
-            // stopping distance is the distance from sensor bar to front of train + front of train to stop
-            // isReversing would mean we need to subtract this distance ^
-            // from the distance of the back of the train to the sensor bar
-            // back of train to sensor bar: 14.5 cm
-            stoppingDistance += 120;
-        } else {
-            stoppingDistance -= 120;  // TODO: Why subtract here?
-        }
 
         int initialReservedZonesNum = reservedZones.size();
         int initialZoneExitsNum = zoneExits.size();
@@ -460,6 +447,7 @@ void Train::newStopLocation(Sensor newTargetSensor, Sensor firstSensor, bool rev
             newReservedZones.push(
                 {.sensorMarkingEntrance = newReservationSensor,
                  .zoneNum = static_cast<uint8_t>(trainReservation.trackNodeToZoneNum(reservationSensorNode))});
+            --it;
         }
 
         ASSERT(newReservedZones.size() == reservedZones.size());
@@ -511,9 +499,7 @@ void Train::newStopLocation(Sensor newTargetSensor, Sensor firstSensor, bool rev
         distanceToZoneEntranceSensorAhead = distanceToExit;
         waitForReservation(zoneEntranceSensorAhead);
         accelerateTrain();
-        sensorAheadMicros =
-            predictNextSensorHitTimeMicros();  // hardcoded lol (ideally we always stop the same distance away
-        // from our target so we should know what this is)
+        sensorAheadMicros = predictNextSensorHitTimeMicros();
     } else {
         waitForReservation(zoneEntranceSensorAhead);
         accelerateTrain();
@@ -524,7 +510,11 @@ void Train::updateVelocityWithAcceleration(int64_t curMicros) {
     uint64_t timeSinceAccelerationStart = curMicros - accelerationStartTime;
     if (timeSinceAccelerationStart >= totalAccelerationTime) {
         velocityEstimate = velocityFromSpeed(trainIndex, speed);
-        stoppingDistance = getStoppingDistSeed(trainIndex);
+        // stopping distance is the distance from sensor bar to front of train + front of train to stop
+        // isReversing would mean we need to subtract this distance ^
+        // from the distance of the back of the train to the sensor bar
+        // back of train to sensor bar: 14.5 cm
+        stoppingDistance = isForward ? getStoppingDistSeed(trainIndex) : getStoppingDistSeed(trainIndex) + 115;
         isAccelerating = false;
     } else {
         velocityEstimate = (getAccelerationSeed(trainIndex) * timeSinceAccelerationStart) / 1000000;
@@ -535,7 +525,7 @@ void Train::updateVelocityWithAcceleration(int64_t curMicros) {
                                         (v_ratio_denominator * v_ratio_denominator)) +
                                        20;
         if (newStoppingDistance < getStoppingDistSeed(trainIndex)) {
-            stoppingDistance = newStoppingDistance;
+            stoppingDistance = isForward ? newStoppingDistance : newStoppingDistance + 115;
         }
     }
     printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
@@ -565,7 +555,7 @@ void Train::updateVelocityWithDeceleration(int64_t curMicros) {
                                         (v_ratio_denominator * v_ratio_denominator)) +
                                        20;
         if (newStoppingDistance < getStoppingDistSeed(trainIndex)) {
-            stoppingDistance = newStoppingDistance;
+            stoppingDistance = isForward ? newStoppingDistance : newStoppingDistance + 115;
         }
     }
     printer_proprietor::updateTrainVelocity(printerProprietorTid, trainIndex, velocityEstimate);
@@ -623,7 +613,7 @@ bool Train::attemptReservation(Sensor reservationSensor) {
             printer_proprietor::debugPrintF(printerProprietorTid,
                                             "%s \033[48;5;22m Made Reservation for Zone: %d using Zone Entrance "
                                             "Sensor: %c%d because I was %u mm away. Next zone "
-                                            "entrance sensor is %c%d which is %u mm away",
+                                            "entrance sensor: %c%d in %u mm",
                                             trainColour, replyBuff[1], zoneExit.sensorMarkingExit.box,
                                             zoneExit.sensorMarkingExit.num, distRemainingToZoneEntranceSensorAhead,
                                             zoneEntranceSensorAhead.box, zoneEntranceSensorAhead.num,
@@ -730,8 +720,7 @@ void Train::accelerateTrain() {
 
     uint64_t deltaV = targetVelocity - velocityEstimate;  // mm/s × 1000
     totalAccelerationTime = (deltaV * 1000000) / acceleration;
-    printer_proprietor::debugPrintF(printerProprietorTid,
-                                    "%s \033[5m \033[38;5;160m SENDING COMMAND TO SPEED BACK UP \033[m", trainColour);
+    printer_proprietor::debugPrintF(printerProprietorTid, "%s SENDING COMMAND TO SPEED BACK UP", trainColour);
     marklin_server::setTrainSpeed(marklinServerTid, TRAIN_SPEED_8, myTrainNumber);
 }
 
@@ -857,8 +846,7 @@ void Train::updateState() {
             printer_proprietor::debugPrintF(printerProprietorTid,
                                             "%s \033[5m \033[38;5;160m SPEEDING BACK UP FROM STOP \033[m", trainColour);
             accelerateTrain();
-            sensorAheadMicros = timerGet() + 500;  // hardcoded lol (ideally we always stop the same distance away from
-                                                   // our target so we should know what this is)
+            sensorAheadMicros = predictNextSensorHitTimeMicros();  // can I change this?
             firstReservationFailure = true;
         }
     } else if (isStopped) {
@@ -934,16 +922,6 @@ void Train::finishReverse() {
     isForward = !isForward;
 
     printer_proprietor::updateTrainOrientation(printerProprietorTid, trainIndex, isForward);
-
-    if (!isForward) {
-        // stopping distance is the distance from sensor bar to front of train + front of train to stop
-        // isReversing would mean we need to subtract this distance ^
-        // from the distance of the back of the train to the sensor bar
-        // back of train to sensor bar: 14.5 cm
-        stoppingDistance += 115;
-    } else {
-        stoppingDistance -= 115;  // TODO: Why subtract here?
-    }
 
     // need to create zoneExits for everything except for the latest zone we reserved (to stop in)
 

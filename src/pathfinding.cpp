@@ -128,7 +128,8 @@ uint64_t computeForwardShortestPathAvoidingZone(TrackNode* source, TrackNode* ta
     if (source == target) {
         source = source->nextSensor;
     }
-    printer_proprietor::debugPrintF(printerTid, "target node is: %s source is: %s", target->name, source->name);
+    printer_proprietor::debugPrintF(printerTid, "(path while avoiding zone) target node is: %s source is: %s",
+                                    target->name, source->name);
 
     uint64_t sourceNum = source->id;
     distances[sourceNum] = 0;

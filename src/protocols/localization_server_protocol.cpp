@@ -144,9 +144,9 @@ UpdateResInfo updateReservation(int tid, int trainIndex, RingBuffer<ReservedZone
     if (receiveBuff[0] == 'T') {
         Sensor targetSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
         Sensor firstSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
-        bool reverse = receiveBuff[7] == 't';
+        bool reverse = receiveBuff[5] == 't';
         unsigned int distance = 0;
-        a2ui(&receiveBuff[8], 10, &distance);
+        a2ui(&receiveBuff[6], 10, &distance);
         return UpdateResInfo{
             .destInfo =
                 DestinationInfo{
@@ -170,9 +170,9 @@ DestinationInfo newDestination(int tid, int trainIndex) {
 
     Sensor targetSensor{.box = receiveBuff[1], .num = static_cast<uint8_t>(receiveBuff[2])};
     Sensor firstSensor{.box = receiveBuff[3], .num = static_cast<uint8_t>(receiveBuff[4])};
-    bool reverse = receiveBuff[7] == 't';
+    bool reverse = receiveBuff[5] == 't';
     unsigned int distance = 0;
-    a2ui(&receiveBuff[8], 10, &distance);
+    a2ui(&receiveBuff[6], 10, &distance);
 
     return DestinationInfo{
         .targetSensor = targetSensor, .firstSensor = firstSensor, .distance = distance, .reverse = reverse};

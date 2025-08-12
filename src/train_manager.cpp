@@ -62,6 +62,7 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
     init_tracka(track);
 #else
+    initialTurnoutConfigTrackB(turnouts);
     initializeTurnouts(turnouts, marklinServerTid, printerProprietorTid, clockServerTid);
     init_trackb(track);
 #endif
@@ -90,9 +91,11 @@ TrainManager::TrainManager(int marklinServerTid, int printerProprietorTid, int c
     // // train13[2] = &track[44];  // c13
     // train13[3] = &track[54];  // d7
 
-    train13[0] = &track[73];  // e10
-    train13[1] = &track[40];  // c9
-    train13[2] = &track[20];  // b5 instead
+    train13[0] = &track[17];
+
+    // train13[0] = &track[76];  // e13
+    train13[1] = &track[30];  // b15
+    train13[2] = &track[67];  // e4
     // train13[2] = &track[50];  // d3
     train13[3] = &track[47];  // c16
 
@@ -323,34 +326,51 @@ void TrainManager::processTrainRequest(char* receiveBuffer, uint32_t clientTid) 
                         printer_proprietor::debugPrintF(
                             printerProprietorTid, "BAD RESERVATION reservation sensor: %c%d expected sensor: %c%d",
                             reservationSensor.box, reservationSensor.num, expectedSensor.box, expectedSensor.num);
-                    }
 
-                    // if (!(reservationSensor == expectedSensor)) {
-                    //     printer_proprietor::debugPrintF(
-                    //         printerProprietorTid, "BAD RESERVATION reservation sensor: %c%d expected sensor: %c%d",
-                    //         reservationSensor.box, reservationSensor.num, expectedSensor.box, expectedSensor.num);
-                    //     // print our path
-                    //     const char* debugPath[100] = {0};
-                    //     int counter = 0;
-                    //     for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
-                    //         TrackNode* node = *it;
-                    //         debugPath[counter] = node->name;
-                    //         counter++;
-                    //     }
-                    //     char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
-                    //     int strSize = 0;
-                    //     for (int i = 0; i < counter; i++) {
-                    //         strcpy(strBuff + strSize, debugPath[i]);
-                    //         strSize += strlen(debugPath[i]);
-                    //         if (i != counter - 1) {
-                    //             strcpy(strBuff + strSize, "->");
-                    //             strSize += 2;
-                    //         }
-                    //     }
-                    //     printer_proprietor::debugPrintF(printerProprietorTid, "The path is currently: %s", strBuff);
-                    //     clock_server::Delay(clockServerTid, 100);  // flush our printer prop
-                    //     ASSERT(0, "hopefully enough time has passed for pp to flush");
-                    // }
+                        // try to loop through the path to see if this reservation sensor would be coming up in the
+                        // future
+
+                        for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+                            TrackNode* node = *it;
+                            if (curSensor == node) {
+                                printer_proprietor::debugPrintF(
+                                    printerProprietorTid,
+                                    "TRAIN %u YOUR RESERVATION SENSOR WAS WITHIN THE PATH, JUST NOT THE FRONT!!!! "
+                                    "---------------------------------",
+                                    trainIndexToNum(trainIndex));
+
+                                // if this is happening, and the sensor is "relatively close" to the front, we can just
+                                // pop the path until then?
+
+                                // // // print our path
+                                // const char* debugPath[100] = {0};
+                                // int counter = 0;
+                                // for (auto it = curTrain->path.begin(); it != curTrain->path.end(); ++it) {
+                                //     TrackNode* node = *it;
+                                //     debugPath[counter] = node->name;
+                                //     counter++;
+                                // }
+                                // char strBuff[Config::MAX_MESSAGE_LENGTH] = {0};
+                                // int strSize = 0;
+                                // for (int i = 0; i < counter; i++) {
+                                //     strcpy(strBuff + strSize, debugPath[i]);
+                                //     strSize += strlen(debugPath[i]);
+                                //     if (i != counter - 1) {
+                                //         strcpy(strBuff + strSize, "->");
+                                //         strSize += 2;
+                                //     }
+                                // }
+                                // printer_proprietor::debugPrintF(printerProprietorTid,
+                                //                                 "The PATH THAT WAS SEARCHED is currently: %s",
+                                //                                 strBuff);
+                                while (*(curTrain->path.begin()) != node) {
+                                    curTrain->path.pop();
+                                }
+                                printer_proprietor::debugPrintF(printerProprietorTid, " I HAVE NOW PRUNED MY PATH");
+                                break;
+                            }
+                        }
+                    }
 
                     // IF YOU NEVER END UP RESERVING THE FRONT OF YOUR PATH, THE SWITCHES WILL NEVER SWITCH FOR YOU
 
@@ -1180,43 +1200,9 @@ void TrainManager::generatePathWithoutZone(Train* curTrain, Train* otherTrain, u
     uint64_t travelledDistance = 0;
     TrackNode* prev = nullptr;
 
-    // // is this even needed anymore
-    // for (auto it = redirectedTrain->path.begin(); it != redirectedTrain->path.end(); ++it) {
-    //     TrackNode* node = *it;
-    //     uint64_t edgeDistance = 0;
-    //     if (!prev) {
-    //         prev = node;
-    //         continue;
-    //     }
-    //     if (node->type == NodeType::BRANCH) {
-    //         if (node->edge[DIR_CURVED].dest == prev) {
-    //             edgeDistance += node->edge[DIR_CURVED].dist;
-    //         }
-    //         if (node->edge[DIR_STRAIGHT].dest == prev) {
-    //             edgeDistance += node->edge[DIR_STRAIGHT].dist;
-    //         }
-    //     } else {
-    //         edgeDistance += node->edge[DIR_AHEAD].dist;
-    //     }
-    //     if (!lastSensor) {
-    //         travelledDistance += edgeDistance;
-    //         if (node->type == NodeType::SENSOR && travelledDistance >= curTrain->stoppingDistance &&
-    //             node->name[0] != 'F') {
-    //             lastSensor = node;
-    //         }
-    //     }
-    //     prev = node;
-    // }
     // this assumes that we are at constant velocity, but the train will use it's stopping distance when calculating
     //   how many ticks to wait
     redirectedTrain->whereToIssueStop = travelledDistance - redirectedTrain->stoppingDistance;
-    // redirectedTrain->stoppingSensor = lastSensor;
-    // char stopBox = redirectedTrain->stoppingSensor->name[0];
-    // unsigned int stopSensorNum = ((redirectedTrain->stoppingSensor->num + 1) - (stopBox - 'A') * 16);
-    // if (stopBox == 'F') {
-    //     ASSERT(0, "this should never be reached: trying to stop on a fake sensor");
-    //     stopSensorNum = redirectedTrain->stoppingSensor->num;
-    // }
 
     char tarBox = redirectedTrain->targetNode->name[0];
     unsigned int tarNum = ((redirectedTrain->targetNode->num + 1) - (tarBox - 'A') * 16);
@@ -1229,6 +1215,7 @@ void TrainManager::generatePathWithoutZone(Train* curTrain, Train* otherTrain, u
         startNum = redirectedTrain->sensorAhead->num;
     }
     printer_proprietor::debugPrintF(printerProprietorTid, "SENDING THE STOP INFO");
+    printer_proprietor::debugPrintF(printerProprietorTid, "(path without zone) SENDING THE STOP INFO");
 
     // train_server::newDestinationReply(trainTasks[trainNumToIndex(redirectedTrain->id)], 'A', 5, tarBox, tarNum,
     //                                   startBox, startNum, redirectedTrain->whereToIssueStop, pathReversed);
