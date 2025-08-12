@@ -12,7 +12,6 @@ void TrainReservation::initialize(TrackNode* track, uint32_t printerProprietorTi
 #else
     initZoneB(track);
 #endif
-    // zoneArray[21].reserved = true;
 }
 
 uint32_t TrainReservation::trackNodeToZoneNum(TrackNode* track) {
@@ -79,12 +78,6 @@ bool TrainReservation::freeReservation(TrackNode* sensor, unsigned int trainNumb
     ZoneSegment* result = *search;
     ASSERT(result != nullptr, "We allocated a nullptr in the map, oops");
 
-    // printer_proprietor::debugPrintF(printerProprietorTid, "TRYING TO FREE ZONE %d, WITH SENSOR %s", result->zoneNum,
-    //                                 sensor->name);
-
-    // printer_proprietor::debugPrintF(printerProprietorTid, "RESULT TRIN NUMBER: %d, ACTUAL TRAIN NUMBER: %d",
-    //                                 result->trainNumber, trainNumber);
-
     if (result->trainNumber == trainNumber) {
         result->reserved = false;
         return true;
@@ -97,6 +90,7 @@ bool TrainReservation::freeReservation(TrackNode* sensor, unsigned int trainNumb
 void TrainReservation::updateReservation(TrackNode* sensor, unsigned int trainNumber, ReservationType reservation) {
     ZoneSegment* result = mapchecker(sensor);
     ASSERT(result->trainNumber == trainNumber, "Somebody tried updating a reservation they didn't own");
+    if (result->reservationType == reservation) return;
     result->reservationType = reservation;
 }
 
