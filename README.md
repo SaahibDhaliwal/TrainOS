@@ -4,9 +4,6 @@ Implemented a preemptive microkernel for the Raspberry Pi (BCM2711, ARMv8, singl
 
 ## Kernel Architecture
 
-### Overview
-We implemented a preemptive microkernel for the Raspberry Pi (BCM2711, ARMv8, single-core) from scratch. It supports real-time train control through efficient task management, interprocess communication, and interrupt-driven I/O.
-
 ### Task Manager
 - **Preallocated slabs** for `TaskDescriptor` objects (max 64 concurrent tasks)
 - **64 priority levels**, round-robin scheduling within each
