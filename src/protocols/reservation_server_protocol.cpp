@@ -54,6 +54,8 @@ void updateReservation(int tid, int trainIndex, char* sendBuff, char* replyBuff)
     handleSendResponse(res, tid);
 }
 
+// I think I might want a command byte that will block the train, so that when waiting for reservation we just don't
+// reply
 void ReservationCourier() {
     int parentTid = sys::MyParentTid();
     ASSERT(parentTid != -1, "RESERVATION COURIER UNABLE TO GET PARENT \r\n", sys::MyTid());
@@ -66,17 +68,18 @@ void ReservationCourier() {
     emptyReply(clientTid);
 
     for (;;) {
-        uint32_t clientTid;
         char receiveBuffer[Config::MAX_MESSAGE_LENGTH] = {0};
         int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
         emptyReply(clientTid);
         char replyBuff[Config::MAX_MESSAGE_LENGTH] = {0};
         Command command = commandFromByte(receiveBuffer[0]);
         // note: these will have the first byte be a reply byte in a send message. Will need to check on train's side
+        // so these will have to be unique
         switch (command) {
             case Command::MAKE_RESERVATION: {
                 // is this not the same cyclic deadlock?
                 // where the train might call "courier make reservation" twice really quickly
+                // to fix:
                 // we need to prevent train from using any courier service until they have returned
                 Sensor reservationSensor = {.box = receiveBuffer[1], .num = static_cast<uint8_t>(receiveBuffer[2])};
                 makeReservation(reservationServerTid, trainIndex, reservationSensor, replyBuff);

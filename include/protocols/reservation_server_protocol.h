@@ -7,7 +7,6 @@
 #include "sensor.h"
 #include "zone.h"
 
-// #include "command_server_protocol.h"
 constexpr const char* RESERVATION_SERVER_NAME = "reservation_server";
 
 namespace reservation_server {
@@ -15,10 +14,11 @@ namespace reservation_server {
 enum class Command : char { MAKE_RESERVATION = 1, FREE_RESERVATION, UPDATE_RESERVATION, COUNT, UNKNOWN_COMMAND };
 enum class Reply : char {
     RESERVATION_SUCCESS = 6,
-    RESERVATION_FAIL,
+    RESERVATION_FAILURE,
     STOPPED_TRAIN_IN_ZONE,
     FREE_SUCCESS,
-    FREE_FAIL,
+    FREE_FAILURE,
+    UPDATE_SUCCESS,
     COUNT,
     UNKNOWN_REPLY
 };

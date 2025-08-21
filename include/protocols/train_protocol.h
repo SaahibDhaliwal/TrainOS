@@ -19,16 +19,7 @@ enum class Command : char {
     COUNT,
     UNKNOWN_COMMAND
 };
-enum class Reply : char {
-    SUCCESS = 1,
-    RESERVATION_SUCCESS,
-    RESERVATION_FAILURE,
-    FREE_SUCCESS,
-    FREE_FAILURE,
-    INVALID_SERVER,
-    COUNT,
-    UNKNOWN_REPLY
-};
+enum class Reply : char { SUCCESS = 1, INVALID_SERVER, COUNT, UNKNOWN_REPLY };
 
 enum class Seed : char { SEED_8H, SEED14, COUNT, UNKNOWN_COMMAND };
 
@@ -40,8 +31,6 @@ char toByte(Reply r);
 Command commandFromByte(char c);
 Reply replyFromByte(char c);
 
-void sendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox, unsigned int nextSensorNum,
-                    uint64_t distance);
 void setTrainSpeed(int tid, unsigned int trainSpeed);
 
 void reverseTrain(int tid);

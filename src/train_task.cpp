@@ -13,6 +13,7 @@
 #include "pathfinding.h"
 #include "printer_proprietor_protocol.h"
 #include "queue.h"
+#include "reservation_server_protocol.h"
 #include "ring_buffer.h"
 #include "rpi.h"
 #include "sensor.h"
@@ -83,10 +84,16 @@ void TrainTask() {
     emptyReceive(&clientTid);
     ASSERT(clientTid == stopNotifierTid, "TRAIN TASK DID NOT RECEIVE FROM STOPPER");
 
-    Train train(myTrainNumber, parentTid, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid,
-                stopNotifierTid);
+    // should we just do this in the initialization?
+    // also, what priority should it have?
+    int reservationTid = sys::Create(Config::NOTIFIER_PRIORITY, reservation_server::ReservationCourier);
+    printer_proprietor::formatToString(sendBuff, Config::MAX_MESSAGE_LENGTH, "%d", trainNumToIndex(myTrainNumber) + 1);
+    int res = sys::Send(clientTid, sendBuff, strlen(sendBuff), nullptr, 0);
 
-    printer_proprietor::debugPrintF(printerProprietorTid, "%u tid is %u", myTrainNumber, sys::MyTid());
+    Train train(myTrainNumber, parentTid, printerProprietorTid, marklinServerTid, clockServerTid, updaterTid,
+                stopNotifierTid, reservationTid);
+
+    printer_proprietor::debugPrintF(printerProprietorTid, "Train %u tid is %u", myTrainNumber, sys::MyTid());
 
     for (;;) {
         char receiveBuff[Config::MAX_MESSAGE_LENGTH] = {0};
@@ -167,6 +174,11 @@ void TrainTask() {
                 train.updateState();
             }
             emptyReply(updaterTid);  // not immediate
+
+        } else if (clientTid == reservationTid) {
+            emptyReply(clientTid);
+            // deal with it in the train object
+            train.handleReservationReply(receiveBuff);
 
         } else {
             ASSERT(0, "someone else sent to train task?");

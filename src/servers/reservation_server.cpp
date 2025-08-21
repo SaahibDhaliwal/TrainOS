@@ -47,6 +47,7 @@ void ReservationServer() {
                 ASSERT(targetTrackNodeIdx != -1, "could not parse the sensor from the reservation request");
                 TrackNode* reservationTrackNode = &track[targetTrackNodeIdx];
                 uint32_t zoneNum = trainReservation.trackNodeToZoneNum(reservationTrackNode);
+                // we either return here if we get the reservation, or later if we fail
                 if (trainReservation.reservationAttempt(reservationTrackNode, trainIndexToNum(trainIndex))) {
                     replyBuff[0] = toByte(Reply::RESERVATION_SUCCESS);
                     printer_proprietor::formatToString(replyBuff + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", zoneNum);
@@ -55,7 +56,7 @@ void ReservationServer() {
                 } else if (trainReservation.reservationStatus(reservationTrackNode) == ReservationType::STOPPED) {
                     replyBuff[0] = toByte(Reply::STOPPED_TRAIN_IN_ZONE);
                 } else {
-                    replyBuff[0] = toByte(Reply::RESERVATION_FAIL);
+                    replyBuff[0] = toByte(Reply::RESERVATION_FAILURE);
                 }
                 // will return which train is there
                 uint32_t trainNum = trainReservation.isSectionReserved(reservationTrackNode);
@@ -77,7 +78,7 @@ void ReservationServer() {
                 if (result) {
                     replyBuff[0] = toByte(Reply::FREE_SUCCESS);
                 } else {
-                    replyBuff[0] = toByte(Reply::FREE_FAIL);
+                    replyBuff[0] = toByte(Reply::FREE_FAILURE);
                 }
                 sys::Reply(clientTid, replyBuff, strlen(replyBuff));
                 break;  // just to surpress compilation warning
@@ -92,7 +93,8 @@ void ReservationServer() {
                     TrackNode* sensorNode = &track[targetTrackNodeIdx];
                     trainReservation.updateReservation(sensorNode, trainIndexToNum(trainIndex), rType);
                 }
-                emptyReply(clientTid);
+                replyBuff[0] = toByte(Reply::UPDATE_SUCCESS);
+                sys::Reply(clientTid, replyBuff, strlen(replyBuff));
                 break;
             }
             default:

@@ -10,6 +10,15 @@
 #include "train_protocol.h"
 #include "zone.h"
 
+struct ReservationInfo {
+    bool msgInFlight;
+    Sensor stopSensor;
+    Sensor targetSensor;
+    Sensor firstSensor;
+    unsigned int distance;
+    bool reverse;
+};
+
 class Train {
    private:
     uint32_t parentTid;
@@ -19,6 +28,9 @@ class Train {
     uint32_t updaterTid;
     uint32_t stopNotifierTid;
     uint32_t reverseTid;
+    uint32_t reservationTid;
+
+    bool isReservationCourierAvailable = true;
 
     TrackNode track[TRACK_MAX];
     uint64_t distanceMatrix[TRACK_MAX][TRACK_MAX];
@@ -88,6 +100,9 @@ class Train {
     bool firstReservationFailure = false;
     bool firstUpdatedReservation = true;
 
+    Sensor lastReservationSensor;
+    Sensor lastFreedSensor;
+
     Sensor zoneEntranceSensorAhead;                      // sensor ahead of train marking a zone entrace
     uint64_t distanceToZoneEntranceSensorAhead = 0;      // mm, static
     int64_t distRemainingToZoneEntranceSensorAhead = 0;  // mm, dynamic
@@ -112,7 +127,7 @@ class Train {
    public:
     bool isPlayer = false;
     Train(unsigned int myTrainNumber, int parentTid, uint32_t printerProprietorTid, uint32_t marklinServerTid,
-          uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid);
+          uint32_t clockServerTid, uint32_t updaterTid, uint32_t stopNotifierTid, uint32_t reservationTid);
 
     // getters
     uint32_t getReverseTid();
@@ -143,6 +158,8 @@ class Train {
 
     uint64_t getReverseDelayTicks();
     uint64_t getStopDelayTicks(int64_t curMicros);
+
+    void handleReservationReply(char* receiveBuff);
 
     void stop();
 };

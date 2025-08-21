@@ -3,10 +3,12 @@
 #include "command.h"
 #include "config.h"
 #include "generic_protocol.h"
+#include "name_server_protocol.h"
 #include "printer_proprietor_protocol.h"
 #include "rpi.h"
 #include "sys_call_stubs.h"
 #include "test_utils.h"
+#include "train_protocol.h"
 #include "util.h"
 
 namespace localization_server {
@@ -87,36 +89,6 @@ void setStopLocation(int tid, int trainNumber, char box, int sensorNum, int offs
 void resetTrack(int tid) {
     char sendBuf = toByte(Command::RESET_TRACK);
     int res = sys::Send(tid, &sendBuf, 1, nullptr, 0);
-    handleSendResponse(res, tid);
-}
-
-// either returns your zone num (success) or zero (failure)
-void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
-    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::MAKE_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
-                                       sensor.box, sensor.num);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
-    handleSendResponse(res, tid);
-}
-
-void initReservation(int tid, int trainIndex, char* replyBuff) {
-    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    // char replyBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::INITIAL_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
-    handleSendResponse(res, tid);
-}
-
-void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff) {
-    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-
-    sendBuf[0] = toByte(Command::FREE_RESERVATION);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c", trainIndex + 1,
-                                       sensor.box, sensor.num);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, replyBuff, Config::MAX_MESSAGE_LENGTH);
     handleSendResponse(res, tid);
 }
 
@@ -204,14 +176,6 @@ void initTrain(int tid, int trainIndex, Sensor initSensor) {
     handleSendResponse(res, tid);
 }
 
-void hitFakeSensor(int tid, int trainIndex) {
-    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::FAKE_SENSOR_HIT);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", trainIndex + 1);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
-    handleSendResponse(res, tid);
-}
-
 void playerInput(int tid, char input) {
     // our allowed player controls (r for reverse, q to quit)
     if (input != 'w' && input != 'a' && input != 's' && input != 'd' && input != 'r' && input != 'q') {
@@ -223,6 +187,34 @@ void playerInput(int tid, char input) {
     printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c", input);
     int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
     handleSendResponse(res, tid);
+}
+
+void courierSendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox,
+                           unsigned int nextSensorNum) {
+    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
+    sendBuf[0] = toByte(train_server::Command::NEW_SENSOR);
+    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c", currentBox,
+                                       static_cast<char>(currentSensorNum), nextBox, static_cast<char>(nextSensorNum));
+    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
+    handleSendResponse(res, tid);
+}
+
+void TrainSensorCourier() {
+    int parentTid = sys::MyParentTid();
+    ASSERT(parentTid != -1, "SENSOR COURIER UNABLE TO GET PARENT \r\n", sys::MyTid());
+
+    uint32_t clientTid = 0;
+    // ensure we send the index after spawning
+    int trainTid = uIntReceive(&clientTid);
+    emptyReply(clientTid);
+
+    for (;;) {
+        uint32_t clientTid;
+        char receiveBuffer[Config::MAX_MESSAGE_LENGTH] = {0};
+        int msgLen = sys::Receive(&clientTid, receiveBuffer, Config::MAX_MESSAGE_LENGTH - 1);
+        emptyReply(clientTid);
+        sys::Send(trainTid, receiveBuffer, strlen(receiveBuffer), nullptr, 0);  // pass along the message
+    }
 }
 
 }  // namespace localization_server

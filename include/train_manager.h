@@ -46,6 +46,8 @@ class TrainManager {
    private:
     localization_server::Train trains[Config::MAX_TRAINS];
     uint32_t trainTasks[Config::MAX_TRAINS];
+    uint32_t sensorCouriers[Config::MAX_TRAINS];
+
     TrackNode track[TRACK_MAX];
     Turnout turnouts[SINGLE_SWITCH_COUNT + DOUBLE_SWITCH_COUNT];
     TrainReservation trainReservation;
@@ -104,7 +106,6 @@ class TrainManager {
 
     void initializeTrain(int trainIndex, Sensor initSensor);
     void initializePlayer(int trainIndex, Sensor initSensor);
-    void fakeSensorHit(int trainIndex);
 
     void processPlayerInput(char input);
 };

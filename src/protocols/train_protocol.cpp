@@ -27,17 +27,6 @@ Reply replyFromByte(char c) {
     return (c < static_cast<char>(Reply::COUNT)) ? static_cast<Reply>(c) : Reply::UNKNOWN_REPLY;
 }
 
-void sendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox, unsigned int nextSensorNum,
-                    uint64_t distance) {
-    char sendBuf[Config::MAX_MESSAGE_LENGTH] = {0};
-    sendBuf[0] = toByte(Command::NEW_SENSOR);
-    printer_proprietor::formatToString(sendBuf + 1, Config::MAX_MESSAGE_LENGTH - 1, "%c%c%c%c%d", currentBox,
-                                       static_cast<char>(currentSensorNum), nextBox, static_cast<char>(nextSensorNum),
-                                       distance);
-    int res = sys::Send(tid, sendBuf, strlen(sendBuf) + 1, nullptr, 0);
-    handleSendResponse(res, tid);
-}
-
 void setTrainSpeed(int tid, unsigned int trainSpeed) {
     char sendBuf[6] = {0};
     sendBuf[0] = toByte(Command::SET_SPEED);

@@ -52,9 +52,9 @@ void resetTrack(int tid);
 
 void setStopLocation(int localizationTid, int trainNumber, char box, int sensorNum, int offset);
 
-void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
-void initReservation(int tid, int trainIndex, char* replyBuff);
-void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+// void makeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
+// void initReservation(int tid, int trainIndex, char* replyBuff);
+// void freeReservation(int tid, int trainIndex, Sensor sensor, char* replyBuff);
 
 struct DestinationInfo {
     Sensor stopSensor;
@@ -80,6 +80,11 @@ void initPlayer(int tid, int trainIndex, Sensor initSensor);
 void hitFakeSensor(int tid, int trainIndex);
 
 void playerInput(int tid, char input);
+
+void courierSendSensorInfo(int tid, char currentBox, unsigned int currentSensorNum, char nextBox,
+                           unsigned int nextSensorNum);
+
+void TrainSensorCourier();
 
 }  // namespace localization_server
 
