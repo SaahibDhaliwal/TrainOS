@@ -1,3 +1,5 @@
+https://github.com/user-attachments/assets/46adc8c5-95a7-4b7d-a6d7-b83958271743
+
 Implemented a preemptive microkernel for the Raspberry Pi (BCM2711, ARMv8, single-core) from scratch. It supports real-time train control through efficient task management, interprocess communication, and interrupt-driven I/O.
 
 ---
